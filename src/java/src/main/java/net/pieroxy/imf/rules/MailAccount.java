@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 
 public class MailAccount implements Runnable{
   private final static Logger LOGGER = Logger.getLogger(MailAccount.class.getName());
+  private final static long MAX_BACKOFF_MS = 30 * 60 * 1000L; // 30 minutes
   private final MailAccountConfiguration config;
   private final String dataFolder;
 
@@ -26,14 +27,26 @@ public class MailAccount implements Runnable{
 
   @Override
   public void run() {
-    while (true) {
-      try { Thread.sleep(config.getRunEvery()); } catch (Exception ignored) {}
+    long delayMs = config.getRunEvery();
+    while (!Thread.currentThread().isInterrupted()) {
+      try {
+        Thread.sleep(delayMs);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break;
+      }
       try {
         processMessages();
+        delayMs = config.getRunEvery();
       } catch (Exception e) {
-        LOGGER.log(Level.WARNING, e.getMessage(), e);
+        // Backoff exponentiel : évite de marteler un serveur en panne ou un mot de passe
+        // invalide toutes les `runEvery` ms indéfiniment. Réinitialisé au prochain succès.
+        delayMs = Math.min(delayMs * 2, MAX_BACKOFF_MS);
+        LOGGER.log(Level.WARNING, "Account " + config.getDisplayName() + ": " + e.getMessage()
+                + ". Next retry in " + delayMs + "ms.", e);
       }
     }
+    LOGGER.info("Account " + config.getDisplayName() + " stopped.");
   }
 
   private void inspect(Message message) {
