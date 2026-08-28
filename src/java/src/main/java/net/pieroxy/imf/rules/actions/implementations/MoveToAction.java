@@ -19,8 +19,10 @@ public class MoveToAction extends Action {
     Folder source = message.getFolder();
     Store store = source.getStore();
     Folder target = store.getFolder(getConfig().getKey());
+    getLogger().fine(() -> "Moving message from " + source.getFullName() + " to " + getConfig().getKey());
     if (!target.exists()) {
       target.create(Folder.HOLDS_MESSAGES);
+      getLogger().fine(() -> "Created missing target folder " + getConfig().getKey());
     }
     source.copyMessages(new Message[]{message}, target);
     message.setFlag(Flags.Flag.DELETED, true);

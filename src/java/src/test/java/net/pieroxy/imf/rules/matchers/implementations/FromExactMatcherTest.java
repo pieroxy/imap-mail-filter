@@ -7,7 +7,12 @@ import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -93,5 +98,38 @@ public class FromExactMatcherTest {
     } catch (MessagingException expected) {
       // ok
     }
+  }
+
+  @Test
+  public void logsEachMatchAttemptAtDebugLevelWithTheFromAddress() throws Exception {
+    MailFilterRuleMatcherConfiguration config = new MailFilterRuleMatcherConfiguration();
+    config.setKey("debug-test@example.com");
+    config.setLogLevel("DEBUG");
+    FromExactMatcher matcher = new FromExactMatcher();
+    matcher.setConfig(config);
+
+    assertEquals("logLevel=DEBUG doit se traduire en Level.FINE", Level.FINE, matcher.getLogger().getLevel());
+
+    List<LogRecord> records = new ArrayList<>();
+    Handler capture = new Handler() {
+      @Override public void publish(LogRecord record) { records.add(record); }
+      @Override public void flush() {}
+      @Override public void close() {}
+    };
+    matcher.getLogger().addHandler(capture);
+    matcher.getLogger().setUseParentHandlers(false);
+    try {
+      MimeMessage message = new MimeMessage(session);
+      message.setFrom(new InternetAddress("debug-test@example.com"));
+
+      matcher.matches(message);
+    } finally {
+      matcher.getLogger().removeHandler(capture);
+      matcher.getLogger().setUseParentHandlers(true);
+    }
+
+    assertEquals(1, records.size());
+    assertEquals(Level.FINE, records.get(0).getLevel());
+    assertTrue(records.get(0).getMessage().contains("debug-test@example.com"));
   }
 }

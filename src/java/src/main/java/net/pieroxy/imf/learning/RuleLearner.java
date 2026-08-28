@@ -8,6 +8,7 @@ import net.pieroxy.imf.rules.actions.Action;
 import net.pieroxy.imf.rules.actions.ActionType;
 import net.pieroxy.imf.rules.matchers.Matcher;
 import net.pieroxy.imf.rules.matchers.MatcherType;
+import net.pieroxy.imf.utils.MailTools;
 
 import javax.mail.Flags;
 import javax.mail.Folder;
@@ -89,7 +90,15 @@ public class RuleLearner {
         LOGGER.info("Learned rule: " + matcherType + "(" + matcherKey + ") -> " + actionType + "(" + actionKey + ")");
       }
 
-      Action.build(actionConfig).run(example);
+      Action action = Action.build(actionConfig);
+      try {
+        boolean result = action.run(example);
+        action.getLogger().info(() -> "Action applied (success=" + result + ") to learning example from "
+                + MailTools.describeFromSafely(example));
+      } catch (Exception e) {
+        action.getLogger().log(Level.WARNING, "Action failed on learning example from "
+                + MailTools.describeFromSafely(example), e);
+      }
 
       if (!example.isSet(Flags.Flag.DELETED)) {
         // L'action n'a ni déplacé ni supprimé le message d'exemple : on le range quand même

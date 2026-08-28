@@ -12,12 +12,23 @@ import java.io.IOException;
 public class MailTools {
     public static String getFrom(Message message) throws MessagingException {
         Address[] from = message.getFrom();
+        if (from == null) return "";
         StringBuilder sb = new StringBuilder();
         for (Address a : from) {
             if (sb.length()>1) sb.append(" ");
             sb.append(getNiceMailAddress(a));
         }
         return sb.toString();
+    }
+
+    /** Description du From pour les logs : ne lève jamais, retourne un texte de repli sinon. */
+    public static String describeFromSafely(Message message) {
+        try {
+            String from = getFrom(message);
+            return from.isEmpty() ? "(unknown)" : from;
+        } catch (MessagingException e) {
+            return "?";
+        }
     }
 
     public static String getNiceMailAddress(Address address) throws MessagingException {

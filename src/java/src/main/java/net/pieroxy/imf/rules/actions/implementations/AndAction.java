@@ -13,7 +13,9 @@ public class AndAction extends Action {
   @Override
   public boolean run(Message message) throws MessagingException {
     for (Action child : getChildren()) {
-      if (!child.run(message)) return false;
+      boolean result = child.run(message);
+      getLogger().fine(() -> "AND: child " + child.getClass().getSimpleName() + " -> " + result);
+      if (!result) return false;
     }
     return true;
   }

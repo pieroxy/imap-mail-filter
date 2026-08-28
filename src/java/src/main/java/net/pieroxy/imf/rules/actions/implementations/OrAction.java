@@ -13,7 +13,9 @@ public class OrAction extends Action {
   @Override
   public boolean run(Message message) throws MessagingException {
     for (Action child : getChildren()) {
-      if (child.run(message)) return true;
+      boolean result = child.run(message);
+      getLogger().fine(() -> "OR: child " + child.getClass().getSimpleName() + " -> " + result);
+      if (result) return true;
     }
     return false;
   }

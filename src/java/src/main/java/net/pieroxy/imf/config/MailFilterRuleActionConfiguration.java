@@ -11,6 +11,10 @@ public class MailFilterRuleActionConfiguration {
    * Uniquement renseigné pour les actions composites (AND / OR).
    */
   private List<MailFilterRuleActionConfiguration> children;
+  /**
+   * Niveau de log pour ce noeud (DEBUG/INFO/WARNING/ERROR), optionnel. Défaut : WARNING.
+   */
+  private String logLevel;
 
   public ActionType getType() {
     return type;
@@ -34,5 +38,13 @@ public class MailFilterRuleActionConfiguration {
 
   public void setChildren(List<MailFilterRuleActionConfiguration> children) {
     this.children = children;
+  }
+
+  public String getLogLevel() {
+    return logLevel;
+  }
+
+  public void setLogLevel(String logLevel) {
+    this.logLevel = logLevel;
   }
 }

@@ -11,6 +11,10 @@ public class MailFilterRuleMatcherConfiguration {
    * Uniquement renseigné pour les matchers composites (AND / OR).
    */
   private List<MailFilterRuleMatcherConfiguration> children;
+  /**
+   * Niveau de log pour ce noeud (DEBUG/INFO/WARNING/ERROR), optionnel. Défaut : WARNING.
+   */
+  private String logLevel;
 
   public MatcherType getType() {
     return type;
@@ -34,5 +38,13 @@ public class MailFilterRuleMatcherConfiguration {
 
   public void setChildren(List<MailFilterRuleMatcherConfiguration> children) {
     this.children = children;
+  }
+
+  public String getLogLevel() {
+    return logLevel;
+  }
+
+  public void setLogLevel(String logLevel) {
+    this.logLevel = logLevel;
   }
 }

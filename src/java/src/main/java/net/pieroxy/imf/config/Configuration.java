@@ -5,6 +5,7 @@ import java.util.List;
 public class Configuration {
   private List<MailAccountConfiguration> configurations;
   private String dataFolder;
+  private String logFile;
 
   public List<MailAccountConfiguration> getConfigurations() {
     return configurations;
@@ -20,5 +21,13 @@ public class Configuration {
 
   public void setDataFolder(String dataFolder) {
     this.dataFolder = dataFolder;
+  }
+
+  public String getLogFile() {
+    return logFile;
+  }
+
+  public void setLogFile(String logFile) {
+    this.logFile = logFile;
   }
 }

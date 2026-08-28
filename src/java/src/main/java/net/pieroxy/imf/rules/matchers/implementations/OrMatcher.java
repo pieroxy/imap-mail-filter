@@ -13,7 +13,9 @@ public class OrMatcher extends Matcher {
   @Override
   public boolean matches(Message message) throws MessagingException {
     for (Matcher child : getChildren()) {
-      if (child.matches(message)) return true;
+      boolean result = child.matches(message);
+      getLogger().fine(() -> "OR: child " + child.getClass().getSimpleName() + " -> " + result);
+      if (result) return true;
     }
     return false;
   }

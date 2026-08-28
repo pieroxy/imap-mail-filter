@@ -13,7 +13,9 @@ public class AndMatcher extends Matcher {
   @Override
   public boolean matches(Message message) throws MessagingException {
     for (Matcher child : getChildren()) {
-      if (!child.matches(message)) return false;
+      boolean result = child.matches(message);
+      getLogger().fine(() -> "AND: child " + child.getClass().getSimpleName() + " -> " + result);
+      if (!result) return false;
     }
     return true;
   }
