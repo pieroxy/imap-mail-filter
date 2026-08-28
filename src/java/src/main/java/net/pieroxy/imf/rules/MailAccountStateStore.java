@@ -1,6 +1,7 @@
 package net.pieroxy.imf.rules;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
 
 import java.io.File;
 import java.io.FileReader;
@@ -28,7 +29,7 @@ public class MailAccountStateStore {
     try (FileReader r = new FileReader(stateFile)) {
       MailAccountState state = GSON.fromJson(r, MailAccountState.class);
       return state != null ? state : new MailAccountState();
-    } catch (IOException e) {
+    } catch (IOException | JsonParseException e) {
       LOGGER.log(Level.WARNING, "Could not read state file " + stateFile, e);
       return new MailAccountState();
     }
