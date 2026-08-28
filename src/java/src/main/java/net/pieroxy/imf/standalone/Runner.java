@@ -38,7 +38,7 @@ public class Runner {
     }));
     Gson gson = new Gson();
     Runner.config = gson.fromJson(new FileReader(new File(args[0], "config.json")), Configuration.class);
-    config.getConfigurations().forEach(conf -> new Thread(new MailAccount(conf)).start());
+    config.getConfigurations().forEach(conf -> new Thread(new MailAccount(conf, config.getDataFolder())).start());
   }
 
   private static boolean has(String[] args, String lookFor) {
