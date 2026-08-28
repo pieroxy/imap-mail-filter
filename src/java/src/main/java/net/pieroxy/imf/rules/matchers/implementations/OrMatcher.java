@@ -5,15 +5,15 @@ import net.pieroxy.imf.rules.matchers.Matcher;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 
-public class FromExactMatcher extends Matcher {
+/**
+ * Matche si au moins un des matchers enfants matche (court-circuite au premier succès).
+ * Sans enfant, un OR est faux par convention.
+ */
+public class OrMatcher extends Matcher {
   @Override
   public boolean matches(Message message) throws MessagingException {
-    var froms = message.getFrom();
-    if (froms == null) {
-      return false;
-    }
-    if (froms.length == 1) {
-      return froms[0].toString().equals(getConfig().getKey());
+    for (Matcher child : getChildren()) {
+      if (child.matches(message)) return true;
     }
     return false;
   }

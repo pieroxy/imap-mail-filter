@@ -1,11 +1,16 @@
 package net.pieroxy.imf.config;
 
 import net.pieroxy.imf.rules.actions.ActionType;
-import net.pieroxy.imf.rules.matchers.MatcherType;
+
+import java.util.List;
 
 public class MailFilterRuleActionConfiguration {
   private ActionType type;
   private String key;
+  /**
+   * Uniquement renseigné pour les actions composites (AND / OR).
+   */
+  private List<MailFilterRuleActionConfiguration> children;
 
   public ActionType getType() {
     return type;
@@ -21,5 +26,13 @@ public class MailFilterRuleActionConfiguration {
 
   public void setKey(String key) {
     this.key = key;
+  }
+
+  public List<MailFilterRuleActionConfiguration> getChildren() {
+    return children;
+  }
+
+  public void setChildren(List<MailFilterRuleActionConfiguration> children) {
+    this.children = children;
   }
 }
