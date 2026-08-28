@@ -20,7 +20,7 @@ public abstract class Action {
     Action action = config.getType().getImplementation();
     action.setConfig(config);
     if (config.getChildren() != null) {
-      action.children = config.getChildren().stream().map(Action::build).collect(Collectors.toList());
+      action.setChildren(config.getChildren().stream().map(Action::build).collect(Collectors.toList()));
     }
     return action;
   }
@@ -35,5 +35,8 @@ public abstract class Action {
   }
   protected List<Action> getChildren() {
     return children;
+  }
+  protected void setChildren(List<Action> children) {
+    this.children = children;
   }
 }
