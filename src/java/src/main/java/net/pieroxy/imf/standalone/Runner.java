@@ -16,7 +16,6 @@ public class Runner {
   private final static long SHUTDOWN_JOIN_TIMEOUT_MS = 5000;
   private final static String GIT_REV;
   private final static String MVN_VER;
-  private static net.pieroxy.imf.standalone.Services services;
   private static Configuration config;
   private static final List<Thread> accountThreads = new ArrayList<>();
 
