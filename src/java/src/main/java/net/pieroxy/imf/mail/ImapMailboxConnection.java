@@ -5,6 +5,7 @@ import net.pieroxy.imf.config.MailAccountConfiguration;
 
 import javax.mail.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -67,9 +68,41 @@ public class ImapMailboxConnection implements ImapMailbox {
   }
 
   @Override
+  public Folder getOrCreateFolder(String... pathSegments) throws MessagingException {
+    // Navigation relative niveau par niveau : indépendant du caractère séparateur du serveur
+    // (contrairement à un nom pleinement qualifié passé directement à store.getFolder(...)).
+    Folder current = store.getDefaultFolder();
+    for (String segment : pathSegments) {
+      current = current.getFolder(segment);
+      if (!current.exists()) {
+        current.create(Folder.HOLDS_MESSAGES | Folder.HOLDS_FOLDERS);
+      }
+    }
+    return current;
+  }
+
+  @Override
+  public List<Folder> listSubfolders(Folder parent) throws MessagingException {
+    return Arrays.asList(parent.list());
+  }
+
+  @Override
+  public Message[] getAllMessages(Folder folder) throws MessagingException {
+    if (!folder.isOpen()) folder.open(Folder.READ_WRITE);
+    return folder.getMessages();
+  }
+
+  @Override
+  public void closeAndExpunge(Folder folder) throws MessagingException {
+    if (folder.isOpen()) folder.close(true);
+  }
+
+  @Override
   public void close() {
     try {
-      if (inbox.isOpen()) inbox.close(false);
+      // expunge=true : les actions (MoveToAction) marquent \Deleted les messages qu'elles
+      // relogent ailleurs ; il faut purger l'INBOX en conséquence à la fin du cycle.
+      if (inbox.isOpen()) inbox.close(true);
     } catch (MessagingException e) {
       LOGGER.log(Level.WARNING, "Error closing inbox", e);
     }

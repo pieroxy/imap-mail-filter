@@ -27,6 +27,15 @@ public abstract class Matcher {
 
   public abstract boolean matches(Message message) throws MessagingException;
 
+  /**
+   * Calcule la clé de config à partir d'un message d'exemple (apprentissage de règle via les
+   * dossiers imf-rules/). Seuls les matchers "feuille" (voir {@link net.pieroxy.imf.rules.matchers.MatcherType#learnableValues()})
+   * ont besoin de la redéfinir ; les composites ne sont jamais sollicités pour ça.
+   */
+  public String extractKeyFromExample(Message message) throws MessagingException {
+    throw new UnsupportedOperationException(getClass().getSimpleName() + " does not support learning a rule from an example message");
+  }
+
   public void setConfig(MailFilterRuleMatcherConfiguration config) {
     this.config = config;
   }

@@ -36,10 +36,14 @@ public class RuleTest {
     return c;
   }
 
-  private static MailFilterRuleActionConfiguration moveTo(String folder) {
+  /**
+   * Action AND sans enfant : réussit vacuously sans toucher au message. Utilisée ici pour
+   * tester le déclenchement par le matcher sans dépendre de la mécanique IMAP réelle de
+   * MoveToAction (qui a besoin d'un Folder/Store réels, absents d'un MimeMessage de test).
+   */
+  private static MailFilterRuleActionConfiguration noopAction() {
     MailFilterRuleActionConfiguration c = new MailFilterRuleActionConfiguration();
-    c.setType(ActionType.MOVE_TO);
-    c.setKey(folder);
+    c.setType(ActionType.AND);
     return c;
   }
 
@@ -47,7 +51,7 @@ public class RuleTest {
   public void appliesWhenMatcherMatches() throws Exception {
     MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
     config.setMatcher(fromEquals("alice@example.com"));
-    config.setAction(moveTo("Archive"));
+    config.setAction(noopAction());
 
     Rule rule = new Rule(config);
 
@@ -58,7 +62,7 @@ public class RuleTest {
   public void doesNotApplyWhenMatcherDoesNotMatch() throws Exception {
     MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
     config.setMatcher(fromEquals("alice@example.com"));
-    config.setAction(moveTo("Archive"));
+    config.setAction(noopAction());
 
     Rule rule = new Rule(config);
 
@@ -73,7 +77,7 @@ public class RuleTest {
 
     MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
     config.setMatcher(and);
-    config.setAction(moveTo("Archive"));
+    config.setAction(noopAction());
 
     Rule rule = new Rule(config);
 

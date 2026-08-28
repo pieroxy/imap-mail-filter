@@ -1,12 +1,17 @@
 package net.pieroxy.imf.rules;
 
 import net.pieroxy.imf.config.MailAccountConfiguration;
+import net.pieroxy.imf.config.MailFilterRuleConfiguration;
+import net.pieroxy.imf.learning.LearnedRulesStore;
+import net.pieroxy.imf.learning.RuleLearner;
 import net.pieroxy.imf.mail.ImapMailbox;
 import net.pieroxy.imf.mail.ImapMailboxConnection;
 import net.pieroxy.imf.scheduling.BackoffLoop;
 
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,10 +27,12 @@ public class MailAccount implements Runnable {
 
   private final MailAccountConfiguration config;
   private final MailAccountStateStore stateStore;
+  private final LearnedRulesStore learnedRulesStore;
 
   public MailAccount(MailAccountConfiguration config, String dataFolder) {
     this.config = config;
     this.stateStore = new MailAccountStateStore(dataFolder, config.getDisplayName());
+    this.learnedRulesStore = new LearnedRulesStore(dataFolder, config.getDisplayName());
   }
 
   @Override
@@ -33,11 +40,34 @@ public class MailAccount implements Runnable {
     new BackoffLoop(config.getRunEvery(), MAX_BACKOFF_MS).run(config.getDisplayName(), this::processMessages);
   }
 
+  /** Applique la première règle qui matche (config manuelle, puis règles apprises). */
   private void inspect(Message message) {
+    for (MailFilterRuleConfiguration ruleConfig : buildRuleConfigs()) {
+      try {
+        if (new Rule(ruleConfig).apply(message)) {
+          return;
+        }
+      } catch (Exception e) {
+        LOGGER.log(Level.WARNING, "Rule failed on account " + config.getDisplayName(), e);
+      }
+    }
+  }
+
+  private List<MailFilterRuleConfiguration> buildRuleConfigs() {
+    List<MailFilterRuleConfiguration> rules = new ArrayList<>();
+    if (config.getRules() != null) {
+      rules.addAll(config.getRules());
+    }
+    rules.addAll(learnedRulesStore.load());
+    return rules;
   }
 
   private void processMessages() throws MessagingException {
     try (ImapMailbox mailbox = ImapMailboxConnection.connect(config)) {
+      RuleLearner learner = new RuleLearner(mailbox, learnedRulesStore);
+      learner.ensureFolderSkeleton();
+      learner.learnFromExamples();
+
       processNewMessages(mailbox);
     }
   }
