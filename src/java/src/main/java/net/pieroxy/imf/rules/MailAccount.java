@@ -27,7 +27,7 @@ public class MailAccount implements Runnable{
     while (true) {
       try { Thread.sleep(config.getRunEvery()); } catch (Exception ignored) {}
       try {
-        Arrays.stream(getMessages()).forEach(this::inspect);
+        processMessages();
       } catch (Exception e) {
         LOGGER.log(Level.WARNING, e.getMessage(), e);
       }
@@ -37,20 +37,28 @@ public class MailAccount implements Runnable{
   private void inspect(Message message) {
   }
 
-  private Message[] getMessages() throws MessagingException {
+  private void processMessages() throws MessagingException {
     Session session = Session.getDefaultInstance(new Properties());
     session.setDebug(false);
     Store store = session.getStore("imaps");
-    store.connect(
-            config.getHost(),
-            config.getPort(),
-            config.getUsername(),
-            config.getPassword());
-    Folder inbox = store.getFolder("INBOX");
-    inbox.open(Folder.READ_ONLY);
-
-    Date d = new Date(System.currentTimeMillis() - 5*24*60*60*1000L); // 5 days
-    Message[] messages = inbox.search(new ReceivedDateTerm(ComparisonTerm.GT, d));
-    return messages;
+    try {
+      store.connect(
+              config.getHost(),
+              config.getPort(),
+              config.getUsername(),
+              config.getPassword());
+      Folder inbox = store.getFolder("INBOX");
+      // READ_WRITE: les actions (déplacement, marquage, etc.) doivent pouvoir modifier l'inbox.
+      inbox.open(Folder.READ_WRITE);
+      try {
+        Date d = new Date(System.currentTimeMillis() - 5*24*60*60*1000L); // 5 days
+        Message[] messages = inbox.search(new ReceivedDateTerm(ComparisonTerm.GT, d));
+        Arrays.stream(messages).forEach(this::inspect);
+      } finally {
+        inbox.close(false);
+      }
+    } finally {
+      if (store.isConnected()) store.close();
+    }
   }
 }
