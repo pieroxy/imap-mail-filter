@@ -47,10 +47,19 @@ public final class LogRotator {
   }
 
   private static void compress(File source, File destination) throws IOException {
+    // Compresse vers un fichier temporaire puis renomme atomiquement : une interruption
+    // brutale (JVM tuée, thread daemon coupé net) pendant l'écriture laisse au pire un
+    // .tmp orphelin, jamais une archive .lz4 tronquée sous son nom définitif.
+    File tmp = new File(destination.getParentFile(), destination.getName() + ".tmp");
     try (InputStream in = new BufferedInputStream(new FileInputStream(source));
         OutputStream out =
-            new LZ4FrameOutputStream(new BufferedOutputStream(new FileOutputStream(destination)))) {
+            new LZ4FrameOutputStream(new BufferedOutputStream(new FileOutputStream(tmp)))) {
       in.transferTo(out);
     }
+    Files.move(
+        tmp.toPath(),
+        destination.toPath(),
+        StandardCopyOption.REPLACE_EXISTING,
+        StandardCopyOption.ATOMIC_MOVE);
   }
 }
