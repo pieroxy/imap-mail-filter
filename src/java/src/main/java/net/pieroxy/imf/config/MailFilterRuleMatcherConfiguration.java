@@ -3,10 +3,17 @@ package net.pieroxy.imf.config;
 import net.pieroxy.imf.rules.matchers.MatcherType;
 
 import java.util.List;
+import java.util.Set;
 
 public class MailFilterRuleMatcherConfiguration {
   private MatcherType type;
   private String key;
+  /**
+   * Alternative à key quand plusieurs clés déclenchent la même action (ex: N adresses
+   * différentes toutes envoyées vers Spam) : évite une règle entière dupliquée par clé.
+   * Un matcher utilise celui des deux qui est non-nul (keys prioritaire s'il est renseigné).
+   */
+  private Set<String> keys;
   /**
    * Uniquement renseigné pour les matchers composites (AND / OR).
    */
@@ -30,6 +37,14 @@ public class MailFilterRuleMatcherConfiguration {
 
   public void setKey(String key) {
     this.key = key;
+  }
+
+  public Set<String> getKeys() {
+    return keys;
+  }
+
+  public void setKeys(Set<String> keys) {
+    this.keys = keys;
   }
 
   public List<MailFilterRuleMatcherConfiguration> getChildren() {

@@ -18,17 +18,17 @@ public class FromAddressMatcher extends Matcher {
   public boolean matches(Message message) throws MessagingException {
     var froms = message.getFrom();
     if (froms == null) {
-      getLogger().fine(() -> "no From header on message, no match against " + getConfig().getKey());
+      getLogger().fine(() -> "no From header on message, no match against " + describeKey());
       return false;
     }
     if (froms.length == 1) {
       String address = extractAddress(froms[0]);
-      boolean matched = address != null && address.equalsIgnoreCase(getConfig().getKey());
-      getLogger().fine(() -> "tested from address=" + address + " against " + getConfig().getKey()
+      boolean matched = address != null && matchesKey(address, String::equalsIgnoreCase);
+      getLogger().fine(() -> "tested from address=" + address + " against " + describeKey()
               + " -> " + (matched ? "match" : "no match"));
       return matched;
     }
-    getLogger().fine(() -> "multiple From addresses " + Arrays.toString(froms) + ", no match against " + getConfig().getKey());
+    getLogger().fine(() -> "multiple From addresses " + Arrays.toString(froms) + ", no match against " + describeKey());
     return false;
   }
 

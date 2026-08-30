@@ -12,16 +12,16 @@ public class FromExactMatcher extends Matcher {
   public boolean matches(Message message) throws MessagingException {
     var froms = message.getFrom();
     if (froms == null) {
-      getLogger().fine(() -> "no From header on message, no match against " + getConfig().getKey());
+      getLogger().fine(() -> "no From header on message, no match against " + describeKey());
       return false;
     }
     if (froms.length == 1) {
-      boolean matched = froms[0].toString().equals(getConfig().getKey());
-      getLogger().fine(() -> "tested from=" + froms[0] + " against " + getConfig().getKey()
+      boolean matched = matchesKey(froms[0].toString(), String::equals);
+      getLogger().fine(() -> "tested from=" + froms[0] + " against " + describeKey()
               + " -> " + (matched ? "match" : "no match"));
       return matched;
     }
-    getLogger().fine(() -> "multiple From addresses " + Arrays.toString(froms) + ", no match against " + getConfig().getKey());
+    getLogger().fine(() -> "multiple From addresses " + Arrays.toString(froms) + ", no match against " + describeKey());
     return false;
   }
 

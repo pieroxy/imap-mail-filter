@@ -8,6 +8,7 @@ import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import java.util.Properties;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -65,6 +66,36 @@ public class FromAddressMatcherTest {
     });
 
     assertFalse(matcherFor("alice@example.com").matches(message));
+  }
+
+  @Test
+  public void matchesAnyKeyWhenKeysIsUsedInsteadOfKey() throws Exception {
+    MailFilterRuleMatcherConfiguration config = new MailFilterRuleMatcherConfiguration();
+    config.setKeys(Set.of("alice@example.com", "bob@example.com"));
+    FromAddressMatcher matcher = new FromAddressMatcher();
+    matcher.setConfig(config);
+
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("Bob@Example.com"));
+
+    assertTrue(matcher.matches(message));
+  }
+
+  @Test
+  public void keysTakesPrecedenceOverKeyWhenBothAreSet() throws Exception {
+    MailFilterRuleMatcherConfiguration config = new MailFilterRuleMatcherConfiguration();
+    config.setKey("ignored@example.com");
+    config.setKeys(Set.of("alice@example.com"));
+    FromAddressMatcher matcher = new FromAddressMatcher();
+    matcher.setConfig(config);
+
+    MimeMessage ignoredKeyMessage = new MimeMessage(session);
+    ignoredKeyMessage.setFrom(new InternetAddress("ignored@example.com"));
+    MimeMessage keysMessage = new MimeMessage(session);
+    keysMessage.setFrom(new InternetAddress("alice@example.com"));
+
+    assertFalse(matcher.matches(ignoredKeyMessage));
+    assertTrue(matcher.matches(keysMessage));
   }
 
   @Test

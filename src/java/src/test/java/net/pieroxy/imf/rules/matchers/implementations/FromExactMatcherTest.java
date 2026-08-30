@@ -10,6 +10,7 @@ import javax.mail.internet.MimeMessage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -62,6 +63,19 @@ public class FromExactMatcherTest {
     });
 
     assertFalse(matcherFor("alice@example.com").matches(message));
+  }
+
+  @Test
+  public void matchesAnyKeyWhenKeysIsUsedInsteadOfKey() throws Exception {
+    MailFilterRuleMatcherConfiguration config = new MailFilterRuleMatcherConfiguration();
+    config.setKeys(Set.of("alice@example.com", "bob@example.com"));
+    FromExactMatcher matcher = new FromExactMatcher();
+    matcher.setConfig(config);
+
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("bob@example.com"));
+
+    assertTrue(matcher.matches(message));
   }
 
   @Test

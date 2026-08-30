@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import net.pieroxy.imf.config.MailFilterRuleConfiguration;
+import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
 
 import java.io.File;
 import java.io.FileReader;
@@ -12,8 +13,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -56,27 +59,51 @@ public class LearnedRulesStore {
   }
 
   /**
-   * Ajoute la règle si aucune règle équivalente (même type+clé de matcher, même type+clé
-   * d'action) n'existe déjà.
-   * @return true si la règle a effectivement été ajoutée.
+   * Ajoute la règle si sa clé de matcher n'est pas déjà couverte par une règle équivalente
+   * (même type de matcher, même type+clé d'action). Si une telle règle existe déjà mais avec
+   * une clé de matcher différente, la nouvelle clé est fusionnée dans la règle existante
+   * (matcher.keys) plutôt que d'ajouter une règle entière dupliquée juste pour une clé de
+   * plus — beaucoup de règles apprises partagent la même action (ex: plusieurs expéditeurs
+   * tous envoyés vers Spam).
+   * @return true si la règle a effectivement été ajoutée ou une clé effectivement fusionnée.
    */
   public boolean addIfAbsent(MailFilterRuleConfiguration rule) {
     List<MailFilterRuleConfiguration> rules = load();
+    String newKey = rule.getMatcher().getKey();
+
     for (MailFilterRuleConfiguration existing : rules) {
-      if (sameMatcher(existing, rule) && sameAction(existing, rule)) return false;
+      if (existing.getMatcher().getType() != rule.getMatcher().getType() || !sameAction(existing, rule)) continue;
+      if (hasKey(existing.getMatcher(), newKey)) return false; // déjà appris
+
+      mergeKey(existing.getMatcher(), newKey);
+      save(rules);
+      return true;
     }
+
     rules.add(rule);
     save(rules);
     return true;
   }
 
-  private boolean sameMatcher(MailFilterRuleConfiguration a, MailFilterRuleConfiguration b) {
-    return a.getMatcher().getType() == b.getMatcher().getType()
-            && Objects.equals(a.getMatcher().getKey(), b.getMatcher().getKey());
-  }
-
   private boolean sameAction(MailFilterRuleConfiguration a, MailFilterRuleConfiguration b) {
     return a.getAction().getType() == b.getAction().getType()
             && Objects.equals(a.getAction().getKey(), b.getAction().getKey());
+  }
+
+  private boolean hasKey(MailFilterRuleMatcherConfiguration matcher, String key) {
+    if (matcher.getKeys() != null) return matcher.getKeys().contains(key);
+    return Objects.equals(matcher.getKey(), key);
+  }
+
+  /** Convertit key en keys (avec l'ancienne valeur dedans) si besoin, puis y ajoute key. */
+  private void mergeKey(MailFilterRuleMatcherConfiguration matcher, String key) {
+    Set<String> keys = matcher.getKeys();
+    if (keys == null) {
+      keys = new LinkedHashSet<>();
+      if (matcher.getKey() != null) keys.add(matcher.getKey());
+      matcher.setKey(null);
+      matcher.setKeys(keys);
+    }
+    keys.add(key);
   }
 }

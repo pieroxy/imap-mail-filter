@@ -7,6 +7,7 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiPredicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -42,8 +43,7 @@ public abstract class Matcher {
 
   public void setConfig(MailFilterRuleMatcherConfiguration config) {
     this.config = config;
-    String name = Matcher.class.getName() + "." + config.getType()
-            + (config.getKey() != null ? "[" + config.getKey() + "]" : "");
+    String name = Matcher.class.getName() + "." + config.getType() + "[" + describeKey() + "]";
     this.logger = Logger.getLogger(name);
     // Défaut = INFO : WARNING (erreurs) et INFO (matché) doivent être visibles sans configuration
     // explicite ; seul le détail DEBUG de chaque test de matching est un opt-in par nœud.
@@ -54,6 +54,26 @@ public abstract class Matcher {
   }
   protected List<Matcher> getChildren() {
     return children;
+  }
+
+  /** Pour les logs : la clé si key est utilisé, sinon un résumé de la taille de keys. */
+  protected String describeKey() {
+    if (config.getKeys() != null) return config.getKeys().size() + " keys";
+    return config.getKey() != null ? config.getKey() : "";
+  }
+
+  /**
+   * Teste candidate contre la config du matcher (keys si renseigné, sinon key), avec la
+   * fonction de comparaison fournie (equals, equalsIgnoreCase...). Factorise ce qui, sans
+   * ça, serait dupliqué dans chaque matcher "feuille" apprenant plusieurs clés pour la même
+   * action (voir {@link net.pieroxy.imf.learning.LearnedRulesStore}).
+   */
+  protected boolean matchesKey(String candidate, BiPredicate<String, String> comparator) {
+    if (candidate == null) return false;
+    if (config.getKeys() != null) {
+      return config.getKeys().stream().anyMatch(k -> comparator.test(candidate, k));
+    }
+    return config.getKey() != null && comparator.test(candidate, config.getKey());
   }
 
   /** Logger propre à ce noeud de config, dont le niveau suit son logLevel (INFO par défaut). */
