@@ -37,6 +37,7 @@ public class MailAccount implements Runnable {
 
   @Override
   public void run() {
+    LOGGER.info("Starting account " + config.getDisplayName());
     new BackoffLoop(config.getRunEvery(), MAX_BACKOFF_MS).run(config.getDisplayName(), this::processMessages);
   }
 
@@ -63,6 +64,7 @@ public class MailAccount implements Runnable {
   }
 
   private void processMessages() throws MessagingException {
+    LOGGER.info("Processing account " + config.getDisplayName());
     try (ImapMailbox mailbox = ImapMailboxConnection.connect(config)) {
       RuleLearner learner = new RuleLearner(mailbox, learnedRulesStore);
       learner.ensureFolderSkeleton();

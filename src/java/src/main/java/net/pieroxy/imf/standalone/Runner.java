@@ -47,6 +47,7 @@ public class Runner {
     });
 
     Runtime.getRuntime().addShutdownHook(new Thread(Runner::shutdown, "shutdown-hook"));
+    LOGGER.info("Started IMAP-MAIL-FILTER version " + MVN_VER + " rev " + GIT_REV);
   }
 
   private static void shutdown() {
