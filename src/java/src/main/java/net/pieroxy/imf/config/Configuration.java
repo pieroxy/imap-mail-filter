@@ -6,6 +6,7 @@ public class Configuration {
   private List<MailAccountConfiguration> configurations;
   private String dataFolder;
   private String logFile;
+  private int keepLogFiles;
 
   public List<MailAccountConfiguration> getConfigurations() {
     return configurations;
@@ -29,5 +30,13 @@ public class Configuration {
 
   public void setLogFile(String logFile) {
     this.logFile = logFile;
+  }
+
+  public int getKeepLogFiles() {
+    return keepLogFiles;
+  }
+
+  public void setKeepLogFiles(int keepLogFiles) {
+    this.keepLogFiles = keepLogFiles;
   }
 }

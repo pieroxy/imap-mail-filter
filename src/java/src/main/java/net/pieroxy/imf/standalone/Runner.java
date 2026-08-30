@@ -38,7 +38,7 @@ public class Runner {
   public static void main(String[] args) throws Exception {
     Gson gson = new Gson();
     Runner.config = gson.fromJson(new FileReader(new File(args[0], "config.json")), Configuration.class);
-    LoggingBootstrap.configure(config.getLogFile());
+    LoggingBootstrap.configure(config.getLogFile(), config.getKeepLogFiles());
 
     config.getConfigurations().forEach(conf -> {
       Thread t = new Thread(new MailAccount(conf, config.getDataFolder()), "mail-account-" + conf.getDisplayName());
@@ -62,6 +62,7 @@ public class Runner {
         Thread.currentThread().interrupt();
       }
     }
+    LoggingBootstrap.shutdown();
     LOGGER.warning("Shutdown complete.");
   }
 
