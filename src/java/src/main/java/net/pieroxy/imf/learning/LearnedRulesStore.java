@@ -1,6 +1,7 @@
 package net.pieroxy.imf.learning;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import net.pieroxy.imf.config.MailFilterRuleConfiguration;
@@ -23,7 +24,9 @@ import java.util.logging.Logger;
  */
 public class LearnedRulesStore {
   private final static Logger LOGGER = Logger.getLogger(LearnedRulesStore.class.getName());
-  private final static Gson GSON = new Gson();
+  // Fichier édité à la main en cas de correction (pas d'UI pour l'instant) : indenté pour
+  // rester lisible/éditable sans avoir à le reformater soi-même.
+  private final static Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private final static Type LIST_TYPE = new TypeToken<List<MailFilterRuleConfiguration>>() {}.getType();
 
   private final File file;
