@@ -4,9 +4,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Boucle générique "attendre / exécuter" avec backoff exponentiel sur échec (réinitialisé
- * au prochain succès) et arrêt propre sur interruption. Ne connaît rien du travail exécuté,
- * ce qui la rend testable indépendamment de tout compte mail.
+ * Boucle générique "exécuter / attendre" avec backoff exponentiel sur échec (réinitialisé
+ * au prochain succès) et arrêt propre sur interruption. Le premier cycle s'exécute
+ * immédiatement (pas d'attente avant le tout premier run) ; l'attente n'intervient qu'entre
+ * deux cycles. Ne connaît rien du travail exécuté, ce qui la rend testable indépendamment de
+ * tout compte mail.
  */
 public class BackoffLoop {
   public interface Task {
@@ -25,13 +27,17 @@ public class BackoffLoop {
 
   public void run(String name, Task task) {
     long delayMs = initialDelayMs;
+    boolean firstRun = true;
     while (!Thread.currentThread().isInterrupted()) {
-      try {
-        Thread.sleep(delayMs);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        break;
+      if (!firstRun) {
+        try {
+          Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          break;
+        }
       }
+      firstRun = false;
       try {
         task.run();
         delayMs = initialDelayMs;

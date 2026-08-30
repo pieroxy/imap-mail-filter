@@ -16,15 +16,38 @@ public class BackoffLoopTest {
   @Test
   public void stopsPromptlyWhenInterruptedBeforeFirstRun() throws InterruptedException {
     AtomicInteger callCount = new AtomicInteger();
-    BackoffLoop loop = new BackoffLoop(10_000, 60_000); // délai initial volontairement énorme
+    BackoffLoop loop = new BackoffLoop(10_000, 60_000);
 
     Thread t = new Thread(() -> loop.run("test", callCount::incrementAndGet));
-    t.start();
+    // Interrompu avant même de démarrer : comme le premier cycle s'exécute désormais sans
+    // attente, interrompre après start() serait une course (le thread pourrait avoir déjà
+    // lancé la tâche). Interrompre un Thread non démarré est valide et déterministe : le flag
+    // est déjà posé quand la boucle fait son premier test.
     t.interrupt();
+    t.start();
     t.join(2000);
 
     assertFalse("le thread doit s'être arrêté", t.isAlive());
     assertEquals("la tâche ne doit jamais avoir tourné", 0, callCount.get());
+  }
+
+  @Test
+  public void runsTheFirstCycleImmediatelyWithoutWaitingTheInitialDelay() throws InterruptedException {
+    AtomicInteger callCount = new AtomicInteger();
+    BackoffLoop loop = new BackoffLoop(60_000, 60_000); // délai volontairement énorme
+
+    Thread t = new Thread(() -> loop.run("test", () -> {
+      callCount.incrementAndGet();
+      Thread.currentThread().interrupt(); // un seul cycle, puis stop
+    }));
+    long start = System.currentTimeMillis();
+    t.start();
+    t.join(2000);
+    long elapsed = System.currentTimeMillis() - start;
+
+    assertFalse("le thread doit s'être arrêté", t.isAlive());
+    assertEquals("le premier cycle doit avoir tourné sans attendre le délai initial", 1, callCount.get());
+    assertTrue("le premier cycle n'aurait pas dû attendre ~60s (elapsed=" + elapsed + "ms)", elapsed < 2000);
   }
 
   @Test
