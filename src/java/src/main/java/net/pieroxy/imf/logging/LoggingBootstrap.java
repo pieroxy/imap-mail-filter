@@ -12,7 +12,6 @@ import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 /**
  * Configure java.util.logging au démarrage. Lève d'abord le plafond des handlers déjà en
@@ -38,6 +37,7 @@ public final class LoggingBootstrap {
   public static void configure(String logFile, int keepLogFiles) {
     for (Handler handler : Logger.getLogger("").getHandlers()) {
       handler.setLevel(Level.ALL);
+      handler.setFormatter(new OneLineLogFormatter());
     }
     if (logFile == null || logFile.isBlank()) return;
 
@@ -78,7 +78,7 @@ public final class LoggingBootstrap {
         Files.createDirectories(parent);
       }
       FileHandler handler = new FileHandler(logFile, true);
-      handler.setFormatter(new SimpleFormatter());
+      handler.setFormatter(new OneLineLogFormatter());
       handler.setLevel(Level.ALL);
       Logger.getLogger("").addHandler(handler);
       fileHandler = handler;
