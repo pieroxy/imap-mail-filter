@@ -9,8 +9,6 @@ public class Configuration {
   private int keepLogFiles;
   /** Nombre de jours de fichiers du corpus classifieur à garder (0 ou absent = désactivé). */
   private int classifierCorpusRetentionDays;
-  /** Nom du dossier IMAP considéré comme spam pour le corpus classifieur. Défaut : "Spam". */
-  private String classifierSpamFolderName;
 
   public List<MailAccountConfiguration> getConfigurations() {
     return configurations;
@@ -50,13 +48,5 @@ public class Configuration {
 
   public void setClassifierCorpusRetentionDays(int classifierCorpusRetentionDays) {
     this.classifierCorpusRetentionDays = classifierCorpusRetentionDays;
-  }
-
-  public String getClassifierSpamFolderName() {
-    return classifierSpamFolderName;
-  }
-
-  public void setClassifierSpamFolderName(String classifierSpamFolderName) {
-    this.classifierSpamFolderName = classifierSpamFolderName;
   }
 }

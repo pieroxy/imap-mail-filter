@@ -12,6 +12,12 @@ public class MailAccountConfiguration {
    * Time to sleep between two runs, in seconds.
    */
   private int runEvery;
+  /**
+   * Nom du dossier IMAP considéré comme spam pour le corpus classifieur (dépend du
+   * fournisseur : "Spam" chez la plupart, "[Gmail]/Spam" chez Gmail, "Junk Email" chez
+   * Outlook...). Défaut : "Spam" si absent/vide.
+   */
+  private String classifierSpamFolderName;
 
   private List<MailFilterRuleConfiguration> rules;
 
@@ -54,6 +60,14 @@ public class MailAccountConfiguration {
 
   public void setRunEvery(int runEvery) {
     this.runEvery = runEvery;
+  }
+
+  public String getClassifierSpamFolderName() {
+    return classifierSpamFolderName;
+  }
+
+  public void setClassifierSpamFolderName(String classifierSpamFolderName) {
+    this.classifierSpamFolderName = classifierSpamFolderName;
   }
 
   public List<MailFilterRuleConfiguration> getRules() {

@@ -36,8 +36,7 @@ public class MailAccount implements Runnable {
   private final ClassifierCorpusStore classifierCorpusStore;
   private final String classifierSpamFolderName;
 
-  public MailAccount(MailAccountConfiguration config, String dataFolder,
-                      int classifierCorpusRetentionDays, String classifierSpamFolderName) {
+  public MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays) {
     this.config = config;
     this.stateStore = new MailAccountStateStore(dataFolder, config.getDisplayName());
     this.learnedRulesStore = new LearnedRulesStore(dataFolder, config.getDisplayName());
@@ -45,8 +44,8 @@ public class MailAccount implements Runnable {
     this.classifierCorpusRetentionDays = classifierCorpusRetentionDays;
     this.classifierScanStateStore = new ClassifierScanStateStore(dataFolder, config.getDisplayName());
     this.classifierCorpusStore = new ClassifierCorpusStore(dataFolder, config.getDisplayName(), classifierCorpusRetentionDays);
-    this.classifierSpamFolderName = (classifierSpamFolderName == null || classifierSpamFolderName.isBlank())
-        ? "Spam" : classifierSpamFolderName;
+    String spamFolderName = config.getClassifierSpamFolderName();
+    this.classifierSpamFolderName = (spamFolderName == null || spamFolderName.isBlank()) ? "Spam" : spamFolderName;
   }
 
   @Override
