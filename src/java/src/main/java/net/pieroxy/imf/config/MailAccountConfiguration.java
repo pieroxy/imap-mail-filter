@@ -9,7 +9,7 @@ public class MailAccountConfiguration {
   private String password;
   private String displayName;
   /**
-   * Time to sleep between two runs
+   * Time to sleep between two runs, in seconds.
    */
   private int runEvery;
 

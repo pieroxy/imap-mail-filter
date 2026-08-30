@@ -38,7 +38,7 @@ public class MailAccount implements Runnable {
   @Override
   public void run() {
     LOGGER.info("Starting account " + config.getDisplayName());
-    new BackoffLoop(config.getRunEvery(), MAX_BACKOFF_MS).run(config.getDisplayName(), this::processMessages);
+    new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS).run(config.getDisplayName(), this::processMessages);
   }
 
   /** Applique la première règle qui matche (config manuelle, puis règles apprises). */
