@@ -9,7 +9,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -106,6 +108,36 @@ public class LearnedRulesStoreTest {
     assertFalse(added);
     List<MailFilterRuleConfiguration> rules = store.load();
     assertEquals(1, rules.size());
+    assertEquals(2, rules.get(0).getMatcher().getKeys().size());
+  }
+
+  @Test
+  public void addIfAbsentCompactsPreExistingDuplicatesAlreadyInTheFile() {
+    // Simule un fichier écrit avant que la fusion n'existe : deux règles séparées, même
+    // matcher type + même action, jamais fusionnées entre elles.
+    LearnedRulesStore store = new LearnedRulesStore(tmp.getRoot().getAbsolutePath(), "account");
+    store.save(Arrays.asList(rule("alice@example.com", "Spam"), rule("bob@example.com", "Spam")));
+
+    boolean added = store.addIfAbsent(rule("carol@example.com", "Spam"));
+
+    assertTrue(added);
+    List<MailFilterRuleConfiguration> rules = store.load();
+    assertEquals("les deux doublons préexistants + la nouvelle clé : une seule règle", 1, rules.size());
+    Set<String> keys = rules.get(0).getMatcher().getKeys();
+    assertEquals(3, keys.size());
+    assertTrue(keys.containsAll(Arrays.asList("alice@example.com", "bob@example.com", "carol@example.com")));
+  }
+
+  @Test
+  public void addIfAbsentCompactsPreExistingDuplicatesEvenWhenTheKeyIsAlreadyKnown() {
+    LearnedRulesStore store = new LearnedRulesStore(tmp.getRoot().getAbsolutePath(), "account");
+    store.save(Arrays.asList(rule("alice@example.com", "Spam"), rule("bob@example.com", "Spam")));
+
+    boolean added = store.addIfAbsent(rule("alice@example.com", "Spam"));
+
+    assertFalse("alice était déjà connue, rien de nouveau appris", added);
+    List<MailFilterRuleConfiguration> rules = store.load();
+    assertEquals("les deux doublons préexistants doivent quand même être compactés", 1, rules.size());
     assertEquals(2, rules.get(0).getMatcher().getKeys().size());
   }
 

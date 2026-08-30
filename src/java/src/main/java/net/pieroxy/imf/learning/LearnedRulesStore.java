@@ -64,16 +64,21 @@ public class LearnedRulesStore {
    * une clé de matcher différente, la nouvelle clé est fusionnée dans la règle existante
    * (matcher.keys) plutôt que d'ajouter une règle entière dupliquée juste pour une clé de
    * plus — beaucoup de règles apprises partagent la même action (ex: plusieurs expéditeurs
-   * tous envoyés vers Spam).
+   * tous envoyés vers Spam). Compacte aussi, au passage, d'éventuels doublons déjà présents
+   * dans le fichier (ex: appris avant que cette fusion n'existe).
    * @return true si la règle a effectivement été ajoutée ou une clé effectivement fusionnée.
    */
   public boolean addIfAbsent(MailFilterRuleConfiguration rule) {
     List<MailFilterRuleConfiguration> rules = load();
+    boolean compacted = compact(rules);
     String newKey = rule.getMatcher().getKey();
 
     for (MailFilterRuleConfiguration existing : rules) {
       if (existing.getMatcher().getType() != rule.getMatcher().getType() || !sameAction(existing, rule)) continue;
-      if (hasKey(existing.getMatcher(), newKey)) return false; // déjà appris
+      if (hasKey(existing.getMatcher(), newKey)) {
+        if (compacted) save(rules);
+        return false; // déjà appris
+      }
 
       mergeKey(existing.getMatcher(), newKey);
       save(rules);
@@ -83,6 +88,36 @@ public class LearnedRulesStore {
     rules.add(rule);
     save(rules);
     return true;
+  }
+
+  /**
+   * Fusionne entre elles les règles qui partagent déjà (type de matcher, action) mais
+   * existent en plusieurs exemplaires distincts dans la liste — un fichier écrit avant que la
+   * fusion n'existe, ou tout autre accident, peut en contenir.
+   * @return true si quelque chose a été fusionné (donc si rules a été modifiée).
+   */
+  private boolean compact(List<MailFilterRuleConfiguration> rules) {
+    boolean changed = false;
+    for (int i = 0; i < rules.size(); i++) {
+      MailFilterRuleConfiguration keep = rules.get(i);
+      for (int j = rules.size() - 1; j > i; j--) {
+        MailFilterRuleConfiguration duplicate = rules.get(j);
+        if (keep.getMatcher().getType() == duplicate.getMatcher().getType() && sameAction(keep, duplicate)) {
+          mergeMatcherKeysInto(keep.getMatcher(), duplicate.getMatcher());
+          rules.remove(j);
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  private void mergeMatcherKeysInto(MailFilterRuleMatcherConfiguration target, MailFilterRuleMatcherConfiguration source) {
+    if (source.getKeys() != null) {
+      source.getKeys().forEach(key -> mergeKey(target, key));
+    } else if (source.getKey() != null) {
+      mergeKey(target, source.getKey());
+    }
   }
 
   private boolean sameAction(MailFilterRuleConfiguration a, MailFilterRuleConfiguration b) {
