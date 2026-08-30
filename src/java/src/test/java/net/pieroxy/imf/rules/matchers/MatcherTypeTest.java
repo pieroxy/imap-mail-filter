@@ -10,6 +10,7 @@ public class MatcherTypeTest {
   @Test
   public void onlyLeafTypesAreLearnable() {
     assertTrue(MatcherType.learnableValues().contains(MatcherType.FROM_EQUALS));
+    assertTrue(MatcherType.learnableValues().contains(MatcherType.FROM_ADDRESS_EQUALS));
     assertFalse(MatcherType.learnableValues().contains(MatcherType.AND));
     assertFalse(MatcherType.learnableValues().contains(MatcherType.OR));
   }
