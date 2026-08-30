@@ -7,6 +7,8 @@ import net.pieroxy.imf.logging.LoggingBootstrap;
 import net.pieroxy.imf.rules.MailAccount;
 
 import java.io.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -51,8 +53,8 @@ public class Runner {
   }
 
   private static void shutdown() {
-    LOGGER.warning("Shutting down, interrupting " + accountThreads.size() + " account thread(s)...");
-    // NB: un cycle IMAP déjà en cours (I/O bloquante socket) ne sera pas interrompu à chaud ;
+    logDirectly("Shutting down, interrupting " + accountThreads.size() + " account thread(s)...");
+    // Un cycle IMAP déjà en cours (I/O bloquante socket) ne sera pas interrompu à chaud ;
     // ceci empêche seulement le déclenchement d'un nouveau cycle et laisse un cycle en cours
     // se terminer dans la limite du timeout ci-dessous.
     accountThreads.forEach(Thread::interrupt);
@@ -64,7 +66,27 @@ public class Runner {
       }
     }
     LoggingBootstrap.shutdown();
-    LOGGER.warning("Shutdown complete.");
+    logDirectly("Shutdown complete.");
+  }
+
+  /**
+   * java.util.logging installe son propre shutdown hook (LogManager) qui réinitialise les
+   * handlers ; l'ordre d'exécution entre hooks concurrents n'est pas garanti, donc un appel à
+   * LOGGER ici peut silencieusement disparaître selon lequel des deux hooks passe en premier.
+   * On écrit donc directement sur stderr et dans le fichier de log, seuls canaux fiables à ce
+   * stade de l'arrêt.
+   */
+  private static void logDirectly(String message) {
+    String line = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + " " + message;
+    System.err.println(line);
+    String logFile = config.getLogFile();
+    if (logFile != null && !logFile.isBlank()) {
+      try (FileWriter writer = new FileWriter(logFile, true)) {
+        writer.write(line + System.lineSeparator());
+      } catch (IOException ignored) {
+        // best effort : rien de plus fiable à faire à ce stade de l'arrêt.
+      }
+    }
   }
 
   private static boolean has(String[] args, String lookFor) {
