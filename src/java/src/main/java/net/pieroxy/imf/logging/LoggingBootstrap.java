@@ -1,6 +1,8 @@
 package net.pieroxy.imf.logging;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.concurrent.Executors;
@@ -71,6 +73,10 @@ public final class LoggingBootstrap {
 
   private static synchronized void openFileHandler() {
     try {
+      Path parent = Path.of(logFile).toAbsolutePath().getParent();
+      if (parent != null) {
+        Files.createDirectories(parent);
+      }
       FileHandler handler = new FileHandler(logFile, true);
       handler.setFormatter(new SimpleFormatter());
       handler.setLevel(Level.ALL);
