@@ -1,5 +1,9 @@
 package net.pieroxy.imf.rules;
 
+import net.pieroxy.imf.classifier.ClassifierCorpusScanner;
+import net.pieroxy.imf.classifier.ClassifierCorpusStore;
+import net.pieroxy.imf.classifier.ClassifierScanState;
+import net.pieroxy.imf.classifier.ClassifierScanStateStore;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 import net.pieroxy.imf.learning.LearnedRulesStore;
 import net.pieroxy.imf.learning.RuleLearner;
@@ -9,6 +13,7 @@ import net.pieroxy.imf.scheduling.BackoffLoop;
 
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import java.time.LocalDate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,12 +31,22 @@ public class MailAccount implements Runnable {
   private final MailAccountStateStore stateStore;
   private final LearnedRulesStore learnedRulesStore;
   private final RuleCatalog ruleCatalog;
+  private final int classifierCorpusRetentionDays;
+  private final ClassifierScanStateStore classifierScanStateStore;
+  private final ClassifierCorpusStore classifierCorpusStore;
+  private final String classifierSpamFolderName;
 
-  public MailAccount(MailAccountConfiguration config, String dataFolder) {
+  public MailAccount(MailAccountConfiguration config, String dataFolder,
+                      int classifierCorpusRetentionDays, String classifierSpamFolderName) {
     this.config = config;
     this.stateStore = new MailAccountStateStore(dataFolder, config.getDisplayName());
     this.learnedRulesStore = new LearnedRulesStore(dataFolder, config.getDisplayName());
     this.ruleCatalog = new RuleCatalog(config.getRules(), learnedRulesStore);
+    this.classifierCorpusRetentionDays = classifierCorpusRetentionDays;
+    this.classifierScanStateStore = new ClassifierScanStateStore(dataFolder, config.getDisplayName());
+    this.classifierCorpusStore = new ClassifierCorpusStore(dataFolder, config.getDisplayName(), classifierCorpusRetentionDays);
+    this.classifierSpamFolderName = (classifierSpamFolderName == null || classifierSpamFolderName.isBlank())
+        ? "Spam" : classifierSpamFolderName;
   }
 
   @Override
@@ -63,6 +78,29 @@ public class MailAccount implements Runnable {
       }
 
       processNewMessages(mailbox);
+
+      if (classifierCorpusRetentionDays > 0) {
+        scanClassifierCorpusIfDue(mailbox);
+      }
+    }
+  }
+
+  /**
+   * Scanne au plus une fois par jour civil (pas de scheduler dédié : on profite du cycle
+   * déjà en cours, sur la même connexion IMAP). Une erreur ici n'empêche jamais le traitement
+   * normal des messages, qui vient de se terminer avec succès juste au-dessus.
+   */
+  private void scanClassifierCorpusIfDue(ImapMailbox mailbox) {
+    LocalDate today = LocalDate.now();
+    ClassifierScanState state = classifierScanStateStore.load();
+    if (today.toString().equals(state.getLastScanDate())) return;
+
+    try {
+      new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName).scan(state, today);
+      state.setLastScanDate(today.toString());
+      classifierScanStateStore.save(state);
+    } catch (Exception e) {
+      LOGGER.log(Level.WARNING, "Classifier corpus scan failed for account " + config.getDisplayName(), e);
     }
   }
 

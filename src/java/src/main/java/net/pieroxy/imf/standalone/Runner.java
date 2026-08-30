@@ -43,7 +43,9 @@ public class Runner {
     LoggingBootstrap.configure(config.getLogFile(), config.getKeepLogFiles());
 
     config.getConfigurations().forEach(conf -> {
-      Thread t = new Thread(new MailAccount(conf, config.getDataFolder()), "mail-account-" + conf.getDisplayName());
+      MailAccount account = new MailAccount(conf, config.getDataFolder(),
+          config.getClassifierCorpusRetentionDays(), config.getClassifierSpamFolderName());
+      Thread t = new Thread(account, "mail-account-" + conf.getDisplayName());
       accountThreads.add(t);
       t.start();
     });

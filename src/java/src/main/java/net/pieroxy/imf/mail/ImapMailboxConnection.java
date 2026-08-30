@@ -82,8 +82,47 @@ public class ImapMailboxConnection implements ImapMailbox {
   }
 
   @Override
+  public Folder getRootFolder() throws MessagingException {
+    return store.getDefaultFolder();
+  }
+
+  @Override
   public List<Folder> listSubfolders(Folder parent) throws MessagingException {
     return Arrays.asList(parent.list());
+  }
+
+  @Override
+  public long getUidValidity(Folder folder) throws MessagingException {
+    openReadOnly(folder);
+    return ((IMAPFolder) folder).getUIDValidity();
+  }
+
+  @Override
+  public Message[] getMessagesSince(Folder folder, long lastUid) throws MessagingException {
+    openReadOnly(folder);
+    IMAPFolder imapFolder = (IMAPFolder) folder;
+    Message[] candidates = imapFolder.getMessagesByUID(lastUid + 1, UIDFolder.LASTUID);
+    List<Message> result = new ArrayList<>();
+    for (Message m : candidates) {
+      // Comme pour l'INBOX : getMessagesByUID peut renvoyer la borne basse même si son UID
+      // est en fait <= lastUid.
+      if (imapFolder.getUID(m) > lastUid) result.add(m);
+    }
+    return result.toArray(new Message[0]);
+  }
+
+  @Override
+  public long getUid(Folder folder, Message message) throws MessagingException {
+    return ((IMAPFolder) folder).getUID(message);
+  }
+
+  @Override
+  public void closeReadOnly(Folder folder) throws MessagingException {
+    if (folder.isOpen()) folder.close(false);
+  }
+
+  private void openReadOnly(Folder folder) throws MessagingException {
+    if (!folder.isOpen()) folder.open(Folder.READ_ONLY);
   }
 
   @Override

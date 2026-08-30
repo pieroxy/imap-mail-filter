@@ -24,8 +24,25 @@ public interface ImapMailbox extends AutoCloseable {
   /** Résout le dossier désigné par ce chemin (un segment par niveau), en le créant si besoin. */
   Folder getOrCreateFolder(String... pathSegments) throws MessagingException;
 
+  /** Racine de l'arborescence de dossiers du compte, pour une énumération générique. */
+  Folder getRootFolder() throws MessagingException;
+
   /** Sous-dossiers directs de parent, dans l'ordre renvoyé par le serveur. */
   List<Folder> listSubfolders(Folder parent) throws MessagingException;
+
+  /**
+   * Variantes génériques (n'importe quel dossier, pas seulement l'INBOX) des méthodes de suivi
+   * par UID ci-dessus, utilisées par le scan du corpus classifieur. Ouvrent le dossier en
+   * lecture seule si besoin (jamais \Seen posé juste en le parcourant).
+   */
+  long getUidValidity(Folder folder) throws MessagingException;
+
+  Message[] getMessagesSince(Folder folder, long lastUid) throws MessagingException;
+
+  long getUid(Folder folder, Message message) throws MessagingException;
+
+  /** Ferme folder sans expunge (lecture seule, rien à purger). */
+  void closeReadOnly(Folder folder) throws MessagingException;
 
   /** Tous les messages de folder (l'ouvre en lecture/écriture si nécessaire). */
   Message[] getAllMessages(Folder folder) throws MessagingException;
