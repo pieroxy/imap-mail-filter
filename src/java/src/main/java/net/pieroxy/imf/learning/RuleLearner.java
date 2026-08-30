@@ -46,30 +46,35 @@ public class RuleLearner {
     }
   }
 
-  public void learnFromExamples() throws MessagingException {
+  /** @return true si au moins une nouvelle règle a été apprise pendant cet appel. */
+  public boolean learnFromExamples() throws MessagingException {
+    boolean learnedSomething = false;
     for (MatcherType matcherType : MatcherType.learnableValues()) {
       for (ActionType actionType : ActionType.learnableValues()) {
         Folder actionFolder = mailbox.getOrCreateFolder(ROOT_FOLDER, matcherType.name(), actionType.name());
         for (Folder keyFolder : mailbox.listSubfolders(actionFolder)) {
-          learnFromKeyFolder(matcherType, actionType, keyFolder);
+          learnedSomething |= learnFromKeyFolder(matcherType, actionType, keyFolder);
         }
       }
     }
+    return learnedSomething;
   }
 
-  private void learnFromKeyFolder(MatcherType matcherType, ActionType actionType, Folder keyFolder) throws MessagingException {
+  private boolean learnFromKeyFolder(MatcherType matcherType, ActionType actionType, Folder keyFolder) throws MessagingException {
     String actionKey = keyFolder.getName();
     Message[] examples = mailbox.getAllMessages(keyFolder);
+    boolean learnedSomething = false;
     try {
       for (Message example : examples) {
-        learnFromExample(matcherType, actionType, actionKey, example);
+        learnedSomething |= learnFromExample(matcherType, actionType, actionKey, example);
       }
     } finally {
       mailbox.closeAndExpunge(keyFolder);
     }
+    return learnedSomething;
   }
 
-  private void learnFromExample(MatcherType matcherType, ActionType actionType, String actionKey, Message example) {
+  private boolean learnFromExample(MatcherType matcherType, ActionType actionType, String actionKey, Message example) {
     try {
       Matcher matcher = matcherType.getImplementation();
       String matcherKey = matcher.extractKeyFromExample(example);
@@ -86,7 +91,8 @@ public class RuleLearner {
       ruleConfig.setMatcher(matcherConfig);
       ruleConfig.setAction(actionConfig);
 
-      if (store.addIfAbsent(ruleConfig)) {
+      boolean learned = store.addIfAbsent(ruleConfig);
+      if (learned) {
         LOGGER.info("Learned rule: " + matcherType + "(" + matcherKey + ") -> " + actionType + "(" + actionKey + ")");
       }
 
@@ -105,9 +111,11 @@ public class RuleLearner {
         // pour ne pas réapprendre la même règle en boucle à chaque cycle.
         moveToDone(example);
       }
+      return learned;
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Failed to learn a rule from example message under "
               + ROOT_FOLDER + "/" + matcherType + "/" + actionType + "/" + actionKey, e);
+      return false;
     }
   }
 
