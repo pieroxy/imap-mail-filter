@@ -64,6 +64,11 @@
       <artifactId>dnsjava</artifactId>
       <version>3.6.5</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.james.jdkim</groupId>
+      <artifactId>apache-jdkim-library</artifactId>
+      <version>0.5</version>
+    </dependency>
   </dependencies>
 
   <build>
