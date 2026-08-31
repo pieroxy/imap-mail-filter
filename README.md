@@ -18,6 +18,7 @@ Just Java 17 and an Internet connection.
 Brings to your IMAP account:
 * SPF, DKIM, DMARC and FCrDNS checks
 * Rules based on **from** and **subject**
+* ML-based spam detection ([`SUBJECT_CLASSIFIER_EQUALS`](docs/matchers/subject-classifier-equals.md)), trained locally on your own emails — no dataset, no third-party service, just a model built and kept from your own mailbox as it grows
 
 Additionally:
 
@@ -26,7 +27,7 @@ Additionally:
 
 ## Roadmap
 
-* ML-based spam detection, trained locally on your emails.
+* Feed the classifier more than just the subject — sender, recipient, IP.
 * Simple web UI to edit more complex rules.
 
 ## Documentation
@@ -45,4 +46,14 @@ it's the weakest of the four (see [its doc](docs/matchers/fcrdns-result-equals.m
 only combined with SPF `softfail` via `AND`, as corroboration rather than a trigger on its own —
 and that combined rule leaves the message unread, for manual review rather than an outright
 Spam verdict.
+
+It also enables classifier corpus collection (`classifierCorpusRetentionDays`) and adds one
+[`SUBJECT_CLASSIFIER_EQUALS`](docs/matchers/subject-classifier-equals.md) rule at a `>0.99`
+threshold, pre-marked read like the protocol-verified signals above. It does nothing at all
+until a model has actually been trained, which requires **at least 50 examples of each class**
+(`SPAM`/`HAM`) — see [Classifier corpus collection](docs/README.md#classifier-corpus-collection).
+That threshold isn't just about having *some* data: a model trained on too few examples tends to
+produce artificially extreme scores (a word seen once on one side of the split can swing a score
+to 0.99 on its own, not because it's a genuinely reliable pattern) — 50 gives `>0.99` a fairer
+chance of meaning what it says before this rule starts acting on it.
 

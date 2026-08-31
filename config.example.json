@@ -2,6 +2,7 @@
   "dataFolder": "/var/lib/imf",
   "logFile": "/var/log/imf/imf.log",
   "keepLogFiles": 14,
+  "classifierCorpusRetentionDays": 90,
   "configurations": [
     {
       "displayName": "personal",
@@ -32,6 +33,10 @@
             ]
           },
           "action": { "type": "MOVE_TO", "key": "Spam" }
+        },
+        {
+          "matcher": { "type": "SUBJECT_CLASSIFIER_EQUALS", "key": ">0.99" },
+          "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
         }
       ]
     }

@@ -128,7 +128,7 @@ public class SubjectClassifierMatcherTest {
         "Reminder: dentist appointment Friday", "Photos from the weekend trip",
         "Updated schedule for next sprint", "Thanks for the feedback yesterday",
     };
-    for (int i = 0; i < 3; i++) { // 30 exemples par classe : confortablement au-dessus du minimum
+    for (int i = 0; i < 6; i++) { // 60 exemples par classe : confortablement au-dessus du minimum (50)
       for (String s : spamSubjects) examples.add(example(s, ClassifierLabel.SPAM));
       for (String s : hamSubjects) examples.add(example(s, ClassifierLabel.HAM));
     }

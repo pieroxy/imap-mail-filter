@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
  */
 public class SubjectClassifierTrainer {
   private final static Logger LOGGER = Logger.getLogger(SubjectClassifierTrainer.class.getName());
-  static final int MIN_EXAMPLES_PER_CLASS = 20;
+  static final int MIN_EXAMPLES_PER_CLASS = 50;
 
   private final ClassifierCorpusStore corpusStore;
 

@@ -16,6 +16,7 @@ configurable rules to new mail: move it, mark it read, or both. Rules can be wri
 - [Logging](#logging)
 - [Data files](#data-files)
 - [Classifier corpus collection](#classifier-corpus-collection)
+  - [Subject classifier training](#subject-classifier-training)
 
 ## Running IMF
 
@@ -110,6 +111,14 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
         {
           "matcher": { "type": "FROM_ADDRESS_EQUALS", "keys": ["boss@example.com", "hr@example.com"] },
           "action": { "type": "READ" }
+        },
+        {
+          "matcher": { "type": "SUBJECT_CLASSIFIER_EQUALS", "key": ">0.99" },
+          "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
+        },
+        {
+          "matcher": { "type": "SUBJECT_CLASSIFIER_EQUALS", "key": ">0.5" },
+          "action": { "type": "MOVE_TO", "key": "Spam" }
         }
       ]
     }
@@ -119,8 +128,14 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
 
 This example: sends SPF hard-failures and DMARC failures to Spam pre-marked read, sends SPF
 softfails to Spam unread (for manual review), routes a newsletter domain to a `Newsletters`
-folder only when it also carries a valid DKIM signature for that domain, and simply marks mail
-from two trusted addresses as read (using `keys` to match either one) without moving it.
+folder only when it also carries a valid DKIM signature for that domain, simply marks mail from
+two trusted addresses as read (using `keys` to match either one) without moving it, and — once
+enough data has been collected, see [Classifier corpus collection](#classifier-corpus-collection)
+below — sends very-confidently-classified subjects to Spam pre-marked read, and merely
+possibly-spammy ones to Spam left unread for review. Two rules at two thresholds rather than one:
+[`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) only ever matches/doesn't
+match, so "confident" vs "unsure" is expressed as two separately-configured rules, not a single
+rule with a confidence level.
 
 The `FCRDNS_RESULT_EQUALS: none` rule is here mainly to show the syntax — see
 [its own doc](matchers/fcrdns-result-equals.md) before using it standalone like this in
@@ -144,6 +159,7 @@ A rule is a `matcher` + an `action`. When a matcher matches a message, its actio
 | [`DKIM_RESULT_EQUALS`](matchers/dkim-result-equals.md) | Match a live-verified DKIM result. |
 | [`DMARC_RESULT_EQUALS`](matchers/dmarc-result-equals.md) | Match a live-evaluated DMARC result (SPF/DKIM domain alignment). |
 | [`FCRDNS_RESULT_EQUALS`](matchers/fcrdns-result-equals.md) | Match a live-evaluated reverse DNS (FCrDNS) result on the connecting IP. |
+| [`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) | Match when a locally-trained model scores the subject above/below a threshold. |
 | [`AND`](matchers/and.md) | Composite: all children must match. |
 | [`OR`](matchers/or.md) | Composite: any child matching is enough. |
 
@@ -235,15 +251,37 @@ Everything IMF persists lives under `dataFolder`, one file/folder per account (k
 | `<displayName>-learned-rules.json` | Rules learned via `imf-rules/` (see above). Hand-editable. |
 | `classifier-corpus/<displayName>-scan-state.json` | Per-folder UID cursor for corpus scanning. |
 | `classifier-corpus/<displayName>/classifier-YYYY-MM-DD.json.lz4` | One compressed file per day of collected corpus data. |
+| `classifier-corpus/<displayName>/subject-model.bin` | Trained subject classifier model (see below). Absent until enough data has been collected. |
 
 ## Classifier corpus collection
 
-When `classifierCorpusRetentionDays > 0`, IMF spends a little time once a day (per account)
-walking every folder except `INBOX` and `imf-rules/`, labeling messages `SPAM` (if in the
-`classifierSpamFolderName` folder) or `HAM` (everything else), and writing them out as a
-labeled dataset under `dataFolder`. Files older than `classifierCorpusRetentionDays` days are
-pruned.
+When `classifierCorpusRetentionDays > 0`, IMF builds a labeled dataset per account under
+`dataFolder`, walking every folder except `INBOX` and `imf-rules/` and labeling messages `SPAM`
+(if in the `classifierSpamFolderName` folder) or `HAM` (everything else). Two different scan
+rhythms:
 
-**This currently only collects a labeled dataset — nothing in IMF yet classifies incoming mail
-using it.** There is no classifier-based matcher today; this is groundwork for a future
-capability, not something that affects filtering decisions now.
+- **The `classifierSpamFolderName` folder** is scanned **every cycle** (the same cadence as
+  normal INBOX processing). This is deliberate: it's the one folder a user might empty
+  themselves before the next daily scan would otherwise have seen it (e.g. purging Spam by hand
+  every evening) — scanning it every cycle means a message is captured for the corpus as soon as
+  it arrives, not whenever the next daily pass happens to fall.
+- **Every other folder** is scanned **once a day**, since none of them are at similar risk of
+  being emptied out from under the scanner, and walking the whole account tree every cycle would
+  be wasteful.
+
+Both share the same per-folder UID cursor, so nothing gets recorded twice. Files older than
+`classifierCorpusRetentionDays` days are pruned once a day.
+
+### Subject classifier training
+
+Once a day, right after a full scan completes (not gated separately — same cycle, same IMAP
+connection), IMF (re)trains a subject-only spam classifier
+([`DocumentCategorizerME`](https://opennlp.apache.org/), Naive Bayes) on the entire retained
+corpus, and writes it to `classifier-corpus/<displayName>/subject-model.bin`. Training is
+skipped — logged, not an error — until there are **at least 50 examples of each class** (`SPAM`
+and `HAM`); a lopsided or too-small corpus produces a model that hasn't learned anything useful,
+so IMF doesn't bother writing one yet.
+
+Use [`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) in a rule to actually
+act on this — see its doc for the config format (a probability threshold like `">0.9"`, not a
+value to match) and how it behaves before a model exists.
