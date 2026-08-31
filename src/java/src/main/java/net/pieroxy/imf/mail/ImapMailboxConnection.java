@@ -108,7 +108,18 @@ public class ImapMailboxConnection implements ImapMailbox {
       // est en fait <= lastUid.
       if (imapFolder.getUID(m) > lastUid) result.add(m);
     }
-    return result.toArray(new Message[0]);
+    Message[] messages = result.toArray(new Message[0]);
+    // Sans ce fetch groupé, chaque accès individuel à un en-tête (Subject/From/To/Date/
+    // Received) déclenche sa propre commande IMAP par message : sur un dossier de plusieurs
+    // milliers de messages (des années d'archives), ça peut prendre des dizaines de minutes
+    // au lieu de quelques secondes.
+    if (messages.length > 0) {
+      FetchProfile profile = new FetchProfile();
+      profile.add(FetchProfile.Item.ENVELOPE);
+      profile.add("Received");
+      folder.fetch(messages, profile);
+    }
+    return messages;
   }
 
   @Override

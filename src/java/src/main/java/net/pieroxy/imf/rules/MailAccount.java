@@ -85,9 +85,12 @@ public class MailAccount implements Runnable {
   }
 
   /**
-   * Scanne au plus une fois par jour civil (pas de scheduler dédié : on profite du cycle
-   * déjà en cours, sur la même connexion IMAP). Une erreur ici n'empêche jamais le traitement
-   * normal des messages, qui vient de se terminer avec succès juste au-dessus.
+   * Scanne au plus une fois par jour civil une fois à jour (pas de scheduler dédié : on
+   * profite du cycle déjà en cours, sur la même connexion IMAP). Tant qu'il reste du retard
+   * à rattraper (scan() plafonné, voir {@link ClassifierCorpusScanner}), on relance au cycle
+   * suivant au lieu d'attendre le lendemain, pour rattraper l'historique en plusieurs cycles
+   * rapides plutôt qu'un seul cycle interminable. Une erreur ici n'empêche jamais le
+   * traitement normal des messages, qui vient de se terminer avec succès juste au-dessus.
    */
   private void scanClassifierCorpusIfDue(ImapMailbox mailbox) {
     LocalDate today = LocalDate.now();
@@ -95,8 +98,11 @@ public class MailAccount implements Runnable {
     if (today.toString().equals(state.getLastScanDate())) return;
 
     try {
-      new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName).scan(state, today);
-      state.setLastScanDate(today.toString());
+      boolean moreWorkPending = new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName)
+          .scan(state, today);
+      if (!moreWorkPending) {
+        state.setLastScanDate(today.toString());
+      }
       classifierScanStateStore.save(state);
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Classifier corpus scan failed for account " + config.getDisplayName(), e);
