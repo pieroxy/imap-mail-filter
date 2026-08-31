@@ -5,6 +5,7 @@ import net.pieroxy.imf.rules.matchers.implementations.FromAddressMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromDomainMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromExactMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.OrMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.SpfResultMatcher;
 
 import java.util.Arrays;
 import java.util.List;
@@ -14,6 +15,7 @@ public enum MatcherType {
   FROM_EQUALS(FromExactMatcher::new, true),
   FROM_ADDRESS_EQUALS(FromAddressMatcher::new, true),
   FROM_DOMAIN_EQUALS(FromDomainMatcher::new, true),
+  SPF_RESULT_EQUALS(SpfResultMatcher::new, true),
   AND(AndMatcher::new, false),
   OR(OrMatcher::new, false);
 
