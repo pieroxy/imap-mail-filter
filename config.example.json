@@ -1,0 +1,39 @@
+{
+  "dataFolder": "/var/lib/imf",
+  "logFile": "/var/log/imf/imf.log",
+  "keepLogFiles": 14,
+  "configurations": [
+    {
+      "displayName": "personal",
+      "host": "imap.example.com",
+      "port": 993,
+      "username": "me@example.com",
+      "password": "secret",
+      "runEvery": 300,
+      "rules": [
+        {
+          "matcher": { "type": "SPF_RESULT_EQUALS", "key": "fail" },
+          "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
+        },
+        {
+          "matcher": { "type": "DKIM_RESULT_EQUALS", "key": "fail" },
+          "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
+        },
+        {
+          "matcher": { "type": "DMARC_RESULT_EQUALS", "key": "fail" },
+          "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
+        },
+        {
+          "matcher": {
+            "type": "AND",
+            "children": [
+              { "type": "SPF_RESULT_EQUALS", "key": "softfail" },
+              { "type": "FCRDNS_RESULT_EQUALS", "keys": ["fail", "none"] }
+            ]
+          },
+          "action": { "type": "MOVE_TO", "key": "Spam" }
+        }
+      ]
+    }
+  ]
+}

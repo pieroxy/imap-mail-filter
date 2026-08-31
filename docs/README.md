@@ -90,6 +90,14 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
           "action": { "type": "MOVE_TO", "key": "Spam" }
         },
         {
+          "matcher": { "type": "DMARC_RESULT_EQUALS", "key": "fail" },
+          "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
+        },
+        {
+          "matcher": { "type": "FCRDNS_RESULT_EQUALS", "key": "none" },
+          "action": { "type": "MOVE_TO", "key": "Spam" }
+        },
+        {
           "matcher": {
             "type": "AND",
             "children": [
@@ -109,10 +117,16 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
 }
 ```
 
-This example: sends SPF hard-failures to Spam pre-marked read, sends SPF softfails to Spam
-unread (for manual review), routes a newsletter domain to a `Newsletters` folder only when it
-also carries a valid DKIM signature for that domain, and simply marks mail from two trusted
-addresses as read (using `keys` to match either one) without moving it.
+This example: sends SPF hard-failures and DMARC failures to Spam pre-marked read, sends SPF
+softfails to Spam unread (for manual review), routes a newsletter domain to a `Newsletters`
+folder only when it also carries a valid DKIM signature for that domain, and simply marks mail
+from two trusted addresses as read (using `keys` to match either one) without moving it.
+
+The `FCRDNS_RESULT_EQUALS: none` rule is here mainly to show the syntax — see
+[its own doc](matchers/fcrdns-result-equals.md) before using it standalone like this in
+production: it's a much weaker signal than SPF/DKIM/DMARC (plenty of legitimate small mail
+servers have no forward-confirmed reverse DNS), so it's usually better combined with another
+weak signal via `AND` than acted on alone.
 
 ## Matchers and actions
 
