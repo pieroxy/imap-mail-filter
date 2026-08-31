@@ -35,6 +35,7 @@ public class MailAccount implements Runnable {
   private final ClassifierScanStateStore classifierScanStateStore;
   private final ClassifierCorpusStore classifierCorpusStore;
   private final String classifierSpamFolderName;
+  private LocalDate lastSkeletonEnsureDate;
 
   public MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays) {
     this.config = config;
@@ -63,21 +64,36 @@ public class MailAccount implements Runnable {
     LOGGER.info("Processing account " + config.getDisplayName());
     try (ImapMailbox mailbox = ImapMailboxConnection.connect(config)) {
       RuleLearner learner = new RuleLearner(mailbox, learnedRulesStore);
-      learner.ensureFolderSkeleton();
+      ManualReprocessor reprocessor = new ManualReprocessor(mailbox, ruleCatalog);
+      ensureFolderSkeletonsIfDue(learner, reprocessor);
+
       if (learner.learnFromExamples()) {
         ruleCatalog.invalidate();
       }
 
       processNewMessages(mailbox);
 
-      ManualReprocessor reprocessor = new ManualReprocessor(mailbox, ruleCatalog);
-      reprocessor.ensureFolderSkeleton();
       reprocessor.reprocessPending();
 
       if (classifierCorpusRetentionDays > 0) {
         scanClassifierCorpusIfDue(mailbox);
       }
     }
+  }
+
+  /**
+   * Les dossiers "imf-rules/..." ne changent quasiment jamais une fois créés : pas la peine de
+   * revérifier leur existence à chaque cycle (potentiellement toutes les minutes selon
+   * runEvery). Une fois au démarrage (lastSkeletonEnsureDate vaut encore null) puis une fois
+   * par jour civil ensuite suffit à se remettre d'une suppression accidentelle sans attendre un
+   * redémarrage.
+   */
+  private void ensureFolderSkeletonsIfDue(RuleLearner learner, ManualReprocessor reprocessor) throws MessagingException {
+    LocalDate today = LocalDate.now();
+    if (today.equals(lastSkeletonEnsureDate)) return;
+    learner.ensureFolderSkeleton();
+    reprocessor.ensureFolderSkeleton();
+    lastSkeletonEnsureDate = today;
   }
 
   /**
