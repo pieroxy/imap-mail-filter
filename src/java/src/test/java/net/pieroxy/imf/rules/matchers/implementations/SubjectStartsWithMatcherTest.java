@@ -33,29 +33,29 @@ public class SubjectStartsWithMatcherTest {
 
   @Test
   public void matchesWhenSubjectStartsWithKey() throws Exception {
-    assertTrue(matcherFor("Your invoice").matches(messageWithSubject("Your invoice #12345 is ready")));
+    assertTrue(matcherFor("Your invoice").matches(messageWithSubject("Your invoice #12345 is ready")).matched());
   }
 
   @Test
   public void matchesCaseInsensitively() throws Exception {
-    assertTrue(matcherFor("your invoice").matches(messageWithSubject("YOUR INVOICE #12345 is ready")));
+    assertTrue(matcherFor("your invoice").matches(messageWithSubject("YOUR INVOICE #12345 is ready")).matched());
   }
 
   @Test
   public void doesNotMatchWhenPrefixIsElsewhereInSubject() throws Exception {
-    assertFalse(matcherFor("invoice").matches(messageWithSubject("Re: Your invoice #12345")));
+    assertFalse(matcherFor("invoice").matches(messageWithSubject("Re: Your invoice #12345")).matched());
   }
 
   @Test
   public void doesNotMatchWhenSubjectIsShorterThanKey() throws Exception {
-    assertFalse(matcherFor("Your invoice is ready").matches(messageWithSubject("Your invoice")));
+    assertFalse(matcherFor("Your invoice is ready").matches(messageWithSubject("Your invoice")).matched());
   }
 
   @Test
   public void doesNotMatchWhenNoSubjectHeader() throws Exception {
     MimeMessage message = new MimeMessage(session);
 
-    assertFalse(matcherFor("Your invoice").matches(message));
+    assertFalse(matcherFor("Your invoice").matches(message).matched());
   }
 
   @Test
@@ -65,7 +65,7 @@ public class SubjectStartsWithMatcherTest {
     SubjectStartsWithMatcher matcher = new SubjectStartsWithMatcher();
     matcher.setConfig(config);
 
-    assertTrue(matcher.matches(messageWithSubject("Payment reminder: account #987")));
+    assertTrue(matcher.matches(messageWithSubject("Payment reminder: account #987")).matched());
   }
 
   @Test

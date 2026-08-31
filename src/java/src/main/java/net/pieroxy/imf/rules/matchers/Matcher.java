@@ -7,6 +7,7 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiPredicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -30,7 +31,7 @@ public abstract class Matcher {
     return matcher;
   }
 
-  public abstract boolean matches(Message message) throws MessagingException;
+  public abstract MatchResult matches(Message message) throws MessagingException;
 
   /**
    * Calcule la clé de config à partir d'un message d'exemple (apprentissage de règle via les
@@ -64,16 +65,30 @@ public abstract class Matcher {
 
   /**
    * Teste candidate contre la config du matcher (keys si renseigné, sinon key), avec la
-   * fonction de comparaison fournie (equals, equalsIgnoreCase...). Factorise ce qui, sans
-   * ça, serait dupliqué dans chaque matcher "feuille" apprenant plusieurs clés pour la même
-   * action (voir {@link net.pieroxy.imf.learning.LearnedRulesStore}).
+   * fonction de comparaison fournie (equals, equalsIgnoreCase...), et renvoie la clé
+   * configurée qui a matché (utile pour {@link #matched}, notamment quand plusieurs "keys"
+   * sont configurées et qu'on veut savoir laquelle a précisément fait mouche). Factorise ce
+   * qui, sans ça, serait dupliqué dans chaque matcher "feuille" apprenant plusieurs clés pour
+   * la même action (voir {@link net.pieroxy.imf.learning.LearnedRulesStore}).
    */
-  protected boolean matchesKey(String candidate, BiPredicate<String, String> comparator) {
-    if (candidate == null) return false;
+  protected Optional<String> matchingKey(String candidate, BiPredicate<String, String> comparator) {
+    if (candidate == null) return Optional.empty();
     if (config.getKeys() != null) {
-      return config.getKeys().stream().anyMatch(k -> comparator.test(candidate, k));
+      return config.getKeys().stream().filter(k -> comparator.test(candidate, k)).findFirst();
     }
-    return config.getKey() != null && comparator.test(candidate, config.getKey());
+    if (config.getKey() != null && comparator.test(candidate, config.getKey())) {
+      return Optional.of(config.getKey());
+    }
+    return Optional.empty();
+  }
+
+  /** Un match, avec une description lisible ("NomDeLaClasse(détail)") pour les logs. */
+  protected MatchResult matched(String debugDetail) {
+    return MatchResult.matched(getClass().getSimpleName() + "(" + debugDetail + ")");
+  }
+
+  protected MatchResult notMatched() {
+    return MatchResult.notMatched();
   }
 
   /** Logger propre à ce noeud de config, dont le niveau suit son logLevel (INFO par défaut). */

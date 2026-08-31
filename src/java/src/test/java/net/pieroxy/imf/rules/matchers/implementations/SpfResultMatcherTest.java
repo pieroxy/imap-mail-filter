@@ -44,7 +44,7 @@ public class SpfResultMatcherTest {
 
     MimeMessage message = messageWithReceivedAndFrom("203.0.113.10", "sender@example.com");
 
-    assertTrue(matcher.matches(message));
+    assertTrue(matcher.matches(message).matched());
   }
 
   @Test
@@ -55,7 +55,7 @@ public class SpfResultMatcherTest {
 
     MimeMessage message = messageWithReceivedAndFrom("198.51.100.1", "spoofed@example.com");
 
-    assertTrue(matcher.matches(message));
+    assertTrue(matcher.matches(message).matched());
   }
 
   @Test
@@ -66,7 +66,7 @@ public class SpfResultMatcherTest {
 
     MimeMessage message = messageWithReceivedAndFrom("203.0.113.10", "sender@example.com");
 
-    assertTrue(matcher.matches(message));
+    assertTrue(matcher.matches(message).matched());
   }
 
   @Test
@@ -80,7 +80,7 @@ public class SpfResultMatcherTest {
 
     MimeMessage message = messageWithReceivedAndFrom("198.51.100.1", "sender@example.com");
 
-    assertTrue(matcher.matches(message));
+    assertTrue(matcher.matches(message).matched());
   }
 
   /**
@@ -97,7 +97,7 @@ public class SpfResultMatcherTest {
     MimeMessage message = messageWithReceivedAndFrom("198.51.100.1", "spoofed@example.com");
     message.addHeader("Authentication-Results", "mx.forged.example; spf=pass smtp.mailfrom=spoofed@example.com");
 
-    assertTrue(matcher.matches(message)); // "fail" matche : le header pass préexistant est ignoré
+    assertTrue(matcher.matches(message).matched()); // "fail" matche : le header pass préexistant est ignoré
   }
 
   @Test
@@ -109,7 +109,7 @@ public class SpfResultMatcherTest {
     MimeMessage message = new MimeMessage(session); // pas de header Received
     message.setFrom(new InternetAddress("sender@example.com"));
 
-    assertFalse(matcher.matches(message));
+    assertFalse(matcher.matches(message).matched());
   }
 
   @Test

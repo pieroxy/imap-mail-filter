@@ -36,7 +36,7 @@ public class FromExactMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("alice@example.com"));
 
-    assertTrue(matcherFor("alice@example.com").matches(message));
+    assertTrue(matcherFor("alice@example.com").matches(message).matched());
   }
 
   @Test
@@ -44,14 +44,14 @@ public class FromExactMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("alice@example.com"));
 
-    assertFalse(matcherFor("bob@example.com").matches(message));
+    assertFalse(matcherFor("bob@example.com").matches(message).matched());
   }
 
   @Test
   public void doesNotMatchWhenNoFromHeader() throws Exception {
     MimeMessage message = new MimeMessage(session);
 
-    assertFalse(matcherFor("alice@example.com").matches(message));
+    assertFalse(matcherFor("alice@example.com").matches(message).matched());
   }
 
   @Test
@@ -62,7 +62,7 @@ public class FromExactMatcherTest {
             new InternetAddress("bob@example.com")
     });
 
-    assertFalse(matcherFor("alice@example.com").matches(message));
+    assertFalse(matcherFor("alice@example.com").matches(message).matched());
   }
 
   @Test
@@ -75,7 +75,7 @@ public class FromExactMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("bob@example.com"));
 
-    assertTrue(matcher.matches(message));
+    assertTrue(matcher.matches(message).matched());
   }
 
   @Test

@@ -1,5 +1,6 @@
 package net.pieroxy.imf.rules.matchers.implementations;
 
+import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 
 import javax.mail.Address;
@@ -7,6 +8,7 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import java.util.Arrays;
+import java.util.Optional;
 
 /**
  * Comme {@link FromAddressMatcher}, mais ne compare que le nom de domaine de l'adresse
@@ -15,21 +17,21 @@ import java.util.Arrays;
  */
 public class FromDomainMatcher extends Matcher {
   @Override
-  public boolean matches(Message message) throws MessagingException {
+  public MatchResult matches(Message message) throws MessagingException {
     var froms = message.getFrom();
     if (froms == null) {
       getLogger().fine(() -> "no From header on message, no match against " + describeKey());
-      return false;
+      return notMatched();
     }
     if (froms.length == 1) {
       String domain = extractDomain(froms[0]);
-      boolean matched = domain != null && matchesKey(domain, String::equalsIgnoreCase);
+      Optional<String> hit = domain != null ? matchingKey(domain, String::equalsIgnoreCase) : Optional.empty();
       getLogger().fine(() -> "tested from domain=" + domain + " against " + describeKey()
-              + " -> " + (matched ? "match" : "no match"));
-      return matched;
+              + " -> " + (hit.isPresent() ? "match" : "no match"));
+      return hit.map(this::matched).orElseGet(this::notMatched);
     }
     getLogger().fine(() -> "multiple From addresses " + Arrays.toString(froms) + ", no match against " + describeKey());
-    return false;
+    return notMatched();
   }
 
   @Override

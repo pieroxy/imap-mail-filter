@@ -1,9 +1,11 @@
 package net.pieroxy.imf.rules.matchers.implementations;
 
+import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import java.util.Optional;
 
 /**
  * Matche si le {@code Subject:} du message commence par la clé configurée, de façon
@@ -18,16 +20,16 @@ import javax.mail.MessagingException;
  */
 public class SubjectStartsWithMatcher extends Matcher {
   @Override
-  public boolean matches(Message message) throws MessagingException {
+  public MatchResult matches(Message message) throws MessagingException {
     String subject = message.getSubject();
     if (subject == null) {
       getLogger().fine(() -> "no Subject header on message, no match against " + describeKey());
-      return false;
+      return notMatched();
     }
-    boolean matched = matchesKey(subject, SubjectStartsWithMatcher::startsWithIgnoreCase);
+    Optional<String> hit = matchingKey(subject, SubjectStartsWithMatcher::startsWithIgnoreCase);
     getLogger().fine(() -> "tested subject=" + subject + " against " + describeKey()
-            + " -> " + (matched ? "match" : "no match"));
-    return matched;
+            + " -> " + (hit.isPresent() ? "match" : "no match"));
+    return hit.map(this::matched).orElseGet(this::notMatched);
   }
 
   @Override

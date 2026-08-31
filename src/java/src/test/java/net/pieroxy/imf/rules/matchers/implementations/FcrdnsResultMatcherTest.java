@@ -40,14 +40,14 @@ public class FcrdnsResultMatcherTest {
             .withA("mail.example.com", "203.0.113.10");
     FcrdnsResultMatcher matcher = matcherWithEvaluator("pass", new FcrdnsEvaluator(resolver));
 
-    assertTrue(matcher.matches(messageWithReceivedIp("203.0.113.10")));
+    assertTrue(matcher.matches(messageWithReceivedIp("203.0.113.10")).matched());
   }
 
   @Test
   public void matchesNoneWhenNoPtrRecord() throws Exception {
     FcrdnsResultMatcher matcher = matcherWithEvaluator("none", new FcrdnsEvaluator(new FakeFcrdnsDnsResolver()));
 
-    assertTrue(matcher.matches(messageWithReceivedIp("203.0.113.10")));
+    assertTrue(matcher.matches(messageWithReceivedIp("203.0.113.10")).matched());
   }
 
   @Test
@@ -55,7 +55,7 @@ public class FcrdnsResultMatcherTest {
     FcrdnsResultMatcher matcher = matcherWithEvaluator("pass", new FcrdnsEvaluator(new FakeFcrdnsDnsResolver()));
     MimeMessage message = new MimeMessage(session); // pas de header Received
 
-    assertFalse(matcher.matches(message));
+    assertFalse(matcher.matches(message).matched());
   }
 
   @Test

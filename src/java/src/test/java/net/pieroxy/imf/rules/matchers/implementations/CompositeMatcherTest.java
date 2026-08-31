@@ -11,6 +11,7 @@ import javax.mail.internet.MimeMessage;
 import java.util.Arrays;
 import java.util.Properties;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -44,19 +45,19 @@ public class CompositeMatcherTest {
   @Test
   public void andMatchesOnlyWhenAllChildrenMatch() throws Exception {
     Matcher and = Matcher.build(composite(MatcherType.AND, leaf("alice@example.com"), leaf("alice@example.com")));
-    assertTrue(and.matches(messageFrom("alice@example.com")));
+    assertTrue(and.matches(messageFrom("alice@example.com")).matched());
 
     Matcher andMismatch = Matcher.build(composite(MatcherType.AND, leaf("alice@example.com"), leaf("bob@example.com")));
-    assertFalse(andMismatch.matches(messageFrom("alice@example.com")));
+    assertFalse(andMismatch.matches(messageFrom("alice@example.com")).matched());
   }
 
   @Test
   public void orMatchesWhenAnyChildMatches() throws Exception {
     Matcher or = Matcher.build(composite(MatcherType.OR, leaf("bob@example.com"), leaf("alice@example.com")));
-    assertTrue(or.matches(messageFrom("alice@example.com")));
+    assertTrue(or.matches(messageFrom("alice@example.com")).matched());
 
     Matcher orMismatch = Matcher.build(composite(MatcherType.OR, leaf("bob@example.com"), leaf("carol@example.com")));
-    assertFalse(orMismatch.matches(messageFrom("alice@example.com")));
+    assertFalse(orMismatch.matches(messageFrom("alice@example.com")).matched());
   }
 
   @Test
@@ -66,13 +67,31 @@ public class CompositeMatcherTest {
             composite(MatcherType.OR, leaf("bob@example.com"), leaf("alice@example.com")),
             leaf("alice@example.com")));
 
-    assertTrue(rule.matches(messageFrom("alice@example.com")));
-    assertFalse(rule.matches(messageFrom("carol@example.com")));
+    assertTrue(rule.matches(messageFrom("alice@example.com")).matched());
+    assertFalse(rule.matches(messageFrom("carol@example.com")).matched());
   }
 
   @Test
   public void emptyAndIsVacuouslyTrueEmptyOrIsFalse() throws Exception {
-    assertTrue(new AndMatcher().matches(messageFrom("alice@example.com")));
-    assertFalse(new OrMatcher().matches(messageFrom("alice@example.com")));
+    assertTrue(new AndMatcher().matches(messageFrom("alice@example.com")).matched());
+    assertFalse(new OrMatcher().matches(messageFrom("alice@example.com")).matched());
+  }
+
+  @Test
+  public void andDebugStringListsEveryChildThatMatched() throws Exception {
+    Matcher and = Matcher.build(composite(MatcherType.AND, leaf("alice@example.com"), leaf("alice@example.com")));
+
+    assertEquals("AndMatcher(FromExactMatcher(alice@example.com), FromExactMatcher(alice@example.com))",
+            and.matches(messageFrom("alice@example.com")).debugString());
+  }
+
+  @Test
+  public void orDebugStringNamesOnlyTheChildThatMatched() throws Exception {
+    // Le premier enfant (bob) ne matche pas et n'apparaît donc pas dans la debug string :
+    // seul celui qui a effectivement fait matcher le OR y figure.
+    Matcher or = Matcher.build(composite(MatcherType.OR, leaf("bob@example.com"), leaf("alice@example.com")));
+
+    assertEquals("OrMatcher(FromExactMatcher(alice@example.com))",
+            or.matches(messageFrom("alice@example.com")).debugString());
   }
 }

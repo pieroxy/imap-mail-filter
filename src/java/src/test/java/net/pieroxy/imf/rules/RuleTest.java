@@ -10,9 +10,12 @@ import org.junit.Test;
 import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 import static org.junit.Assert.assertFalse;
@@ -85,6 +88,36 @@ public class RuleTest {
 
     assertTrue(rule.apply(messageFrom("alice@example.com")));
     assertFalse(rule.apply(messageFrom("bob@example.com")));
+  }
+
+  /**
+   * Rule.apply() logue le "debugString" du MatchResult (ex: "FromExactMatcher(...)"), pas
+   * juste le nom de la classe du matcher — utile pour savoir, sur un matcher à plusieurs
+   * "keys", laquelle a précisément fait matcher la règle.
+   */
+  @Test
+  public void logsTheMatcherDebugStringWhenARuleMatches() throws Exception {
+    MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
+    config.setMatcher(fromEquals("alice@example.com"));
+    config.setAction(noopAction());
+    Rule rule = new Rule(config);
+
+    List<LogRecord> records = new ArrayList<>();
+    Handler capture = new Handler() {
+      @Override public void publish(LogRecord record) { records.add(record); }
+      @Override public void flush() {}
+      @Override public void close() {}
+    };
+    Logger matcherLogger = Logger.getLogger(net.pieroxy.imf.rules.matchers.Matcher.class.getName());
+    matcherLogger.addHandler(capture);
+    try {
+      rule.apply(messageFrom("alice@example.com"));
+    } finally {
+      matcherLogger.removeHandler(capture);
+    }
+
+    assertTrue(records.stream().anyMatch(r ->
+            r.getMessage().contains("FromExactMatcher(alice@example.com) matched message from")));
   }
 
   @Test

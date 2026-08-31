@@ -31,7 +31,28 @@ public class FromDomainMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("jdupont@hotmail.com", "Jean Dupont"));
 
-    assertTrue(matcherFor("hotmail.com").matches(message));
+    assertTrue(matcherFor("hotmail.com").matches(message).matched());
+  }
+
+  @Test
+  public void debugStringNamesTheClassAndTheKeyThatMatched() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("jdupont@gmail.com", "Jean Dupont"));
+
+    assertEquals("FromDomainMatcher(gmail.com)", matcherFor("gmail.com").matches(message).debugString());
+  }
+
+  @Test
+  public void debugStringNamesTheSpecificKeyAmongMultipleThatMatched() throws Exception {
+    MailFilterRuleMatcherConfiguration config = new MailFilterRuleMatcherConfiguration();
+    config.setKeys(Set.of("gmail.com", "hotmail.com"));
+    FromDomainMatcher matcher = new FromDomainMatcher();
+    matcher.setConfig(config);
+
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("jdupont@Hotmail.com"));
+
+    assertEquals("FromDomainMatcher(hotmail.com)", matcher.matches(message).debugString());
   }
 
   @Test
@@ -39,7 +60,7 @@ public class FromDomainMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("jdupont@Hotmail.COM"));
 
-    assertTrue(matcherFor("hotmail.com").matches(message));
+    assertTrue(matcherFor("hotmail.com").matches(message).matched());
   }
 
   @Test
@@ -47,14 +68,14 @@ public class FromDomainMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("alice@example.com"));
 
-    assertFalse(matcherFor("other.com").matches(message));
+    assertFalse(matcherFor("other.com").matches(message).matched());
   }
 
   @Test
   public void doesNotMatchWhenNoFromHeader() throws Exception {
     MimeMessage message = new MimeMessage(session);
 
-    assertFalse(matcherFor("example.com").matches(message));
+    assertFalse(matcherFor("example.com").matches(message).matched());
   }
 
   @Test
@@ -65,7 +86,7 @@ public class FromDomainMatcherTest {
             new InternetAddress("bob@example.com")
     });
 
-    assertFalse(matcherFor("example.com").matches(message));
+    assertFalse(matcherFor("example.com").matches(message).matched());
   }
 
   @Test
@@ -78,7 +99,7 @@ public class FromDomainMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("alice@Other.com"));
 
-    assertTrue(matcher.matches(message));
+    assertTrue(matcher.matches(message).matched());
   }
 
   @Test

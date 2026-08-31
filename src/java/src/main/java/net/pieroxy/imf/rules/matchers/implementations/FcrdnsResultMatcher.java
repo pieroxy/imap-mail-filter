@@ -3,6 +3,7 @@ package net.pieroxy.imf.rules.matchers.implementations;
 import net.pieroxy.imf.fcrdns.DnsJavaFcrdnsDnsResolver;
 import net.pieroxy.imf.fcrdns.FcrdnsEvaluator;
 import net.pieroxy.imf.fcrdns.FcrdnsResult;
+import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 import net.pieroxy.imf.spf.SpfIdentityExtractor;
 
@@ -33,12 +34,12 @@ public class FcrdnsResultMatcher extends Matcher {
   }
 
   @Override
-  public boolean matches(Message message) throws MessagingException {
+  public MatchResult matches(Message message) throws MessagingException {
     String result = evaluateFcrdns(message);
-    boolean matched = result != null && matchesKey(result, String::equalsIgnoreCase);
+    Optional<String> hit = result != null ? matchingKey(result, String::equalsIgnoreCase) : Optional.empty();
     getLogger().fine(() -> "tested fcrdns result=" + result + " against " + describeKey()
-            + " -> " + (matched ? "match" : "no match"));
-    return matched;
+            + " -> " + (hit.isPresent() ? "match" : "no match"));
+    return hit.map(this::matched).orElseGet(this::notMatched);
   }
 
   @Override

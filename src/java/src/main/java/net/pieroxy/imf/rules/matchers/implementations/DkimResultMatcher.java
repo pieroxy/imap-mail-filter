@@ -2,6 +2,7 @@ package net.pieroxy.imf.rules.matchers.implementations;
 
 import net.pieroxy.imf.dkim.DkimResult;
 import net.pieroxy.imf.dkim.DkimVerifier;
+import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 import org.apache.james.jdkim.api.PublicKeyRecordRetriever;
 import org.apache.james.jdkim.impl.DNSPublicKeyRecordRetriever;
@@ -13,6 +14,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Optional;
 
 /**
  * Compare le résultat d'une vérification DKIM (ex: "pass", "fail", "none", "permerror") à la
@@ -49,12 +51,12 @@ public class DkimResultMatcher extends Matcher {
   }
 
   @Override
-  public boolean matches(Message message) throws MessagingException {
+  public MatchResult matches(Message message) throws MessagingException {
     String result = evaluateDkim(message);
-    boolean matched = result != null && matchesKey(result, String::equalsIgnoreCase);
+    Optional<String> hit = result != null ? matchingKey(result, String::equalsIgnoreCase) : Optional.empty();
     getLogger().fine(() -> "tested dkim result=" + result + " against " + describeKey()
-            + " -> " + (matched ? "match" : "no match"));
-    return matched;
+            + " -> " + (hit.isPresent() ? "match" : "no match"));
+    return hit.map(this::matched).orElseGet(this::notMatched);
   }
 
   @Override

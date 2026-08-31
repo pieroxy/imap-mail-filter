@@ -1,5 +1,6 @@
 package net.pieroxy.imf.rules.matchers.implementations;
 
+import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 
 import javax.mail.Message;
@@ -11,12 +12,12 @@ import javax.mail.MessagingException;
  */
 public class OrMatcher extends Matcher {
   @Override
-  public boolean matches(Message message) throws MessagingException {
+  public MatchResult matches(Message message) throws MessagingException {
     for (Matcher child : getChildren()) {
-      boolean result = child.matches(message);
-      getLogger().fine(() -> "OR: child " + child.getClass().getSimpleName() + " -> " + result);
-      if (result) return true;
+      MatchResult result = child.matches(message);
+      getLogger().fine(() -> "OR: child " + child.getClass().getSimpleName() + " -> " + result.matched());
+      if (result.matched()) return matched(result.debugString());
     }
-    return false;
+    return notMatched();
   }
 }

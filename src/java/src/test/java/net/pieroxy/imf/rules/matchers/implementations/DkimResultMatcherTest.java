@@ -49,7 +49,7 @@ public class DkimResultMatcherTest {
             .withRecord("sel1", "example.com", signed.publicKeyRecord);
     DkimResultMatcher matcher = matcherWithVerifier("pass", new DkimVerifier(retriever));
 
-    assertTrue(matcher.matches(parse(signed.rawMessage)));
+    assertTrue(matcher.matches(parse(signed.rawMessage)).matched());
   }
 
   @Test
@@ -59,7 +59,7 @@ public class DkimResultMatcherTest {
             .withRecord("sel1", "example.com", signed.publicKeyRecord);
     DkimResultMatcher matcher = matcherWithVerifier("fail", new DkimVerifier(retriever));
 
-    assertFalse(matcher.matches(parse(signed.rawMessage)));
+    assertFalse(matcher.matches(parse(signed.rawMessage)).matched());
   }
 
   @Test
@@ -67,7 +67,7 @@ public class DkimResultMatcherTest {
     String raw = "From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Test\r\n\r\nHello world\r\n";
     DkimResultMatcher matcher = matcherWithVerifier("none", new DkimVerifier(new FakeDkimPublicKeyRecordRetriever()));
 
-    assertTrue(matcher.matches(parse(raw)));
+    assertTrue(matcher.matches(parse(raw)).matched());
   }
 
   @Test

@@ -1,5 +1,6 @@
 package net.pieroxy.imf.rules.matchers.implementations;
 
+import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 import net.pieroxy.imf.spf.DnsJavaSpfDnsResolver;
 import net.pieroxy.imf.spf.SpfEvaluator;
@@ -34,12 +35,12 @@ public class SpfResultMatcher extends Matcher {
   }
 
   @Override
-  public boolean matches(Message message) throws MessagingException {
+  public MatchResult matches(Message message) throws MessagingException {
     String result = evaluateLive(message);
-    boolean matched = result != null && matchesKey(result, String::equalsIgnoreCase);
+    Optional<String> hit = result != null ? matchingKey(result, String::equalsIgnoreCase) : Optional.empty();
     getLogger().fine(() -> "tested spf result=" + result + " against " + describeKey()
-            + " -> " + (matched ? "match" : "no match"));
-    return matched;
+            + " -> " + (hit.isPresent() ? "match" : "no match"));
+    return hit.map(this::matched).orElseGet(this::notMatched);
   }
 
   @Override

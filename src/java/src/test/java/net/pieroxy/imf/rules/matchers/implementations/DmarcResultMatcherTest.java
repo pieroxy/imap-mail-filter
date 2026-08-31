@@ -54,7 +54,7 @@ public class DmarcResultMatcherTest {
             + "\tby mx.myprovider.com with SMTPS id abc; Mon, 31 Aug 2026 10:00:00 +0000\r\n"
             + "Subject: Test\r\n\r\nHello\r\n";
 
-    assertTrue(matcher.matches(parse(raw)));
+    assertTrue(matcher.matches(parse(raw)).matched());
   }
 
   @Test
@@ -71,7 +71,7 @@ public class DmarcResultMatcherTest {
             .withTxt("_dmarc.example.com", "v=DMARC1; p=reject"));
     DmarcResultMatcher matcher = matcherWithEvaluators("pass", spfEvaluator, retriever, dmarcEvaluator);
 
-    assertTrue(matcher.matches(parse(signed.rawMessage)));
+    assertTrue(matcher.matches(parse(signed.rawMessage)).matched());
   }
 
   @Test
@@ -83,6 +83,6 @@ public class DmarcResultMatcherTest {
 
     String raw = "Subject: Test\r\n\r\nHello\r\n"; // pas de From du tout
 
-    assertFalse(matcher.matches(parse(raw)));
+    assertFalse(matcher.matches(parse(raw)).matched());
   }
 }

@@ -31,7 +31,7 @@ public class FromAddressMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("jdupont@hotmail.com", "Jean Dupont"));
 
-    assertTrue(matcherFor("jdupont@hotmail.com").matches(message));
+    assertTrue(matcherFor("jdupont@hotmail.com").matches(message).matched());
   }
 
   @Test
@@ -39,7 +39,7 @@ public class FromAddressMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("JDupont@Hotmail.com", "Jean Dupont"));
 
-    assertTrue(matcherFor("jdupont@hotmail.com").matches(message));
+    assertTrue(matcherFor("jdupont@hotmail.com").matches(message).matched());
   }
 
   @Test
@@ -47,14 +47,14 @@ public class FromAddressMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("alice@example.com"));
 
-    assertFalse(matcherFor("bob@example.com").matches(message));
+    assertFalse(matcherFor("bob@example.com").matches(message).matched());
   }
 
   @Test
   public void doesNotMatchWhenNoFromHeader() throws Exception {
     MimeMessage message = new MimeMessage(session);
 
-    assertFalse(matcherFor("alice@example.com").matches(message));
+    assertFalse(matcherFor("alice@example.com").matches(message).matched());
   }
 
   @Test
@@ -65,7 +65,7 @@ public class FromAddressMatcherTest {
             new InternetAddress("bob@example.com")
     });
 
-    assertFalse(matcherFor("alice@example.com").matches(message));
+    assertFalse(matcherFor("alice@example.com").matches(message).matched());
   }
 
   @Test
@@ -78,7 +78,7 @@ public class FromAddressMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("Bob@Example.com"));
 
-    assertTrue(matcher.matches(message));
+    assertTrue(matcher.matches(message).matched());
   }
 
   @Test
@@ -94,8 +94,8 @@ public class FromAddressMatcherTest {
     MimeMessage keysMessage = new MimeMessage(session);
     keysMessage.setFrom(new InternetAddress("alice@example.com"));
 
-    assertFalse(matcher.matches(ignoredKeyMessage));
-    assertTrue(matcher.matches(keysMessage));
+    assertFalse(matcher.matches(ignoredKeyMessage).matched());
+    assertTrue(matcher.matches(keysMessage).matched());
   }
 
   @Test

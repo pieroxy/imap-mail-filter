@@ -2,6 +2,7 @@ package net.pieroxy.imf.rules;
 
 import net.pieroxy.imf.config.MailFilterRuleConfiguration;
 import net.pieroxy.imf.rules.actions.Action;
+import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 import net.pieroxy.imf.utils.MailTools;
 
@@ -28,17 +29,17 @@ public class Rule {
    * @return true si le matcher a matché (indépendamment du succès de l'action).
    */
   public boolean apply(Message message) {
-    boolean matched;
+    MatchResult matchResult;
     try {
-      matched = matcher.matches(message);
+      matchResult = matcher.matches(message);
     } catch (Exception e) {
       matcher.getLogger().log(Level.WARNING, "Matcher failed on message from " + MailTools.describeFromSafely(message), e);
       return false;
     }
-    if (!matched) {
+    if (!matchResult.matched()) {
       return false;
     }
-    matcher.getLogger().info(() -> matcher.getClass().getSimpleName() + " matched message from " + MailTools.describeFromSafely(message));
+    matcher.getLogger().info(() -> matchResult.debugString() + " matched message from " + MailTools.describeFromSafely(message));
 
     try {
       boolean result = action.run(message);
