@@ -17,9 +17,13 @@ public enum MatcherType {
   FROM_EQUALS(FromExactMatcher::new, true),
   FROM_ADDRESS_EQUALS(FromAddressMatcher::new, true),
   FROM_DOMAIN_EQUALS(FromDomainMatcher::new, true),
-  SPF_RESULT_EQUALS(SpfResultMatcher::new, true),
-  DKIM_RESULT_EQUALS(DkimResultMatcher::new, true),
-  DMARC_RESULT_EQUALS(DmarcResultMatcher::new, true),
+  // Pas learnable : la clé possible (pass/fail/softfail/...) est un ensemble fixe et déjà
+  // documenté, pas une valeur spécifique à découvrir par l'exemple. Et contrairement à
+  // FROM_*, la règle apprise ne serait pas spécifique à l'exemple déposé : elle s'appliquerait
+  // globalement à tout message ayant le même statut, pas juste à un expéditeur précis.
+  SPF_RESULT_EQUALS(SpfResultMatcher::new, false),
+  DKIM_RESULT_EQUALS(DkimResultMatcher::new, false),
+  DMARC_RESULT_EQUALS(DmarcResultMatcher::new, false),
   AND(AndMatcher::new, false),
   OR(OrMatcher::new, false);
 

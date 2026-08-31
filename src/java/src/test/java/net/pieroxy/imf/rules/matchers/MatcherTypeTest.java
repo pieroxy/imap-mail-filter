@@ -8,14 +8,28 @@ import static org.junit.Assert.assertTrue;
 public class MatcherTypeTest {
 
   @Test
-  public void onlyLeafTypesAreLearnable() {
+  public void fromMatchersAreLearnable() {
     assertTrue(MatcherType.learnableValues().contains(MatcherType.FROM_EQUALS));
     assertTrue(MatcherType.learnableValues().contains(MatcherType.FROM_ADDRESS_EQUALS));
     assertTrue(MatcherType.learnableValues().contains(MatcherType.FROM_DOMAIN_EQUALS));
-    assertTrue(MatcherType.learnableValues().contains(MatcherType.SPF_RESULT_EQUALS));
-    assertTrue(MatcherType.learnableValues().contains(MatcherType.DKIM_RESULT_EQUALS));
-    assertTrue(MatcherType.learnableValues().contains(MatcherType.DMARC_RESULT_EQUALS));
+  }
+
+  @Test
+  public void compositeTypesAreNotLearnable() {
     assertFalse(MatcherType.learnableValues().contains(MatcherType.AND));
     assertFalse(MatcherType.learnableValues().contains(MatcherType.OR));
+  }
+
+  /**
+   * SPF/DKIM/DMARC ne sont pas learnable : leurs clés possibles (pass/fail/softfail/...) sont
+   * un ensemble fixe et déjà documenté, pas une valeur spécifique à découvrir par l'exemple —
+   * et contrairement à FROM_*, la règle apprise ne serait pas propre à l'exemple déposé, elle
+   * s'appliquerait globalement à tout message ayant le même statut.
+   */
+  @Test
+  public void protocolResultMatchersAreNotLearnable() {
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.SPF_RESULT_EQUALS));
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.DKIM_RESULT_EQUALS));
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.DMARC_RESULT_EQUALS));
   }
 }
