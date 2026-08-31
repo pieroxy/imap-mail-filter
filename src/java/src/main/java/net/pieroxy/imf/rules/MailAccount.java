@@ -56,15 +56,7 @@ public class MailAccount implements Runnable {
 
   /** Applique la première règle qui matche (config manuelle, puis règles apprises). */
   private void inspect(Message message) {
-    for (Rule rule : ruleCatalog.get()) {
-      try {
-        if (rule.apply(message)) {
-          return;
-        }
-      } catch (Exception e) {
-        LOGGER.log(Level.WARNING, "Rule failed on account " + config.getDisplayName(), e);
-      }
-    }
+    Rule.applyFirstMatching(ruleCatalog.get(), message, LOGGER, "account " + config.getDisplayName());
   }
 
   private void processMessages() throws MessagingException {
@@ -77,6 +69,10 @@ public class MailAccount implements Runnable {
       }
 
       processNewMessages(mailbox);
+
+      ManualReprocessor reprocessor = new ManualReprocessor(mailbox, ruleCatalog);
+      reprocessor.ensureFolderSkeleton();
+      reprocessor.reprocessPending();
 
       if (classifierCorpusRetentionDays > 0) {
         scanClassifierCorpusIfDue(mailbox);

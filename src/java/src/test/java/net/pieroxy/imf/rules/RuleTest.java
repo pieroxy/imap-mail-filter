@@ -11,7 +11,9 @@ import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -83,5 +85,35 @@ public class RuleTest {
 
     assertTrue(rule.apply(messageFrom("alice@example.com")));
     assertFalse(rule.apply(messageFrom("bob@example.com")));
+  }
+
+  @Test
+  public void applyFirstMatchingReturnsFalseForEmptyList() throws Exception {
+    assertFalse(Rule.applyFirstMatching(List.of(), messageFrom("alice@example.com"), Logger.getLogger("test"), "test"));
+  }
+
+  @Test
+  public void applyFirstMatchingReturnsFalseWhenNoRuleMatches() throws Exception {
+    MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
+    config.setMatcher(fromEquals("alice@example.com"));
+    config.setAction(noopAction());
+    List<Rule> rules = List.of(new Rule(config));
+
+    assertFalse(Rule.applyFirstMatching(rules, messageFrom("bob@example.com"), Logger.getLogger("test"), "test"));
+  }
+
+  @Test
+  public void applyFirstMatchingSkipsNonMatchingRulesAndAppliesTheOneThatMatches() throws Exception {
+    MailFilterRuleConfiguration first = new MailFilterRuleConfiguration();
+    first.setMatcher(fromEquals("carol@example.com"));
+    first.setAction(noopAction());
+
+    MailFilterRuleConfiguration second = new MailFilterRuleConfiguration();
+    second.setMatcher(fromEquals("alice@example.com"));
+    second.setAction(noopAction());
+
+    List<Rule> rules = Arrays.asList(new Rule(first), new Rule(second));
+
+    assertTrue(Rule.applyFirstMatching(rules, messageFrom("alice@example.com"), Logger.getLogger("test"), "test"));
   }
 }
