@@ -2,6 +2,7 @@ package net.pieroxy.imf.rules.matchers;
 
 import net.pieroxy.imf.rules.matchers.implementations.AndMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromAddressMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.FromDomainMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromExactMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.OrMatcher;
 
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
 public enum MatcherType {
   FROM_EQUALS(FromExactMatcher::new, true),
   FROM_ADDRESS_EQUALS(FromAddressMatcher::new, true),
+  FROM_DOMAIN_EQUALS(FromDomainMatcher::new, true),
   AND(AndMatcher::new, false),
   OR(OrMatcher::new, false);
 
