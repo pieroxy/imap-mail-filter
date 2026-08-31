@@ -38,7 +38,7 @@ public class Rule {
     if (!matched) {
       return false;
     }
-    matcher.getLogger().info(() -> "Matched message from " + MailTools.describeFromSafely(message));
+    matcher.getLogger().info(() -> matcher.getClass().getSimpleName() + " matched message from " + MailTools.describeFromSafely(message));
 
     try {
       boolean result = action.run(message);
