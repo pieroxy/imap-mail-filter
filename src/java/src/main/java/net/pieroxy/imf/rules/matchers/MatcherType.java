@@ -9,6 +9,7 @@ import net.pieroxy.imf.rules.matchers.implementations.FromDomainMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromExactMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.OrMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SpfResultMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.SubjectClassifierMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SubjectStartsWithMatcher;
 
 import java.util.Arrays;
@@ -28,6 +29,10 @@ public enum MatcherType {
   DKIM_RESULT_EQUALS(DkimResultMatcher::new, false),
   DMARC_RESULT_EQUALS(DmarcResultMatcher::new, false),
   FCRDNS_RESULT_EQUALS(FcrdnsResultMatcher::new, false),
+  // Pas learnable non plus, mais pour une raison différente des matchers d'authentification
+  // ci-dessus : l'apprentissage ne vient pas d'un dépôt d'exemple dans imf-rules/, mais du
+  // corpus collecté par ClassifierCorpusScanner et réentraîné par SubjectClassifierTrainer.
+  SUBJECT_CLASSIFIER_EQUALS(SubjectClassifierMatcher::new, false),
   AND(AndMatcher::new, false),
   OR(OrMatcher::new, false);
 

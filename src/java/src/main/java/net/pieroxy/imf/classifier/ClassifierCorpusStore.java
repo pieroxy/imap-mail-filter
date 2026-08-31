@@ -56,6 +56,28 @@ public class ClassifierCorpusStore {
     write(file, all);
   }
 
+  /**
+   * Tous les exemples actuellement conservés (donc déjà dans la fenêtre de rétention si
+   * pruneOlderThan a été appelé avant), tous fichiers journaliers confondus. Utilisé par
+   * {@link SubjectClassifierTrainer} pour (ré)entraîner sur tout ce qui est retenu.
+   */
+  public List<ClassifierExample> readAll() {
+    File[] files = accountFolder.listFiles();
+    if (files == null) return List.of();
+    List<ClassifierExample> all = new ArrayList<>();
+    for (File f : files) {
+      if (FILE_DATE_PATTERN.matcher(f.getName()).matches()) {
+        all.addAll(read(f));
+      }
+    }
+    return all;
+  }
+
+  /** Chemin du modèle de classification de sujet entraîné pour ce compte. */
+  public File getModelFile() {
+    return new File(accountFolder, "subject-model.bin");
+  }
+
   /** Supprime les fichiers datés de plus de keepDays jours avant today. Sans effet si keepDays<=0. */
   public void pruneOlderThan(LocalDate today) {
     if (keepDays <= 0) return;

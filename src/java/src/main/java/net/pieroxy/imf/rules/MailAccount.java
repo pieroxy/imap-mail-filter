@@ -4,12 +4,14 @@ import net.pieroxy.imf.classifier.ClassifierCorpusScanner;
 import net.pieroxy.imf.classifier.ClassifierCorpusStore;
 import net.pieroxy.imf.classifier.ClassifierScanState;
 import net.pieroxy.imf.classifier.ClassifierScanStateStore;
+import net.pieroxy.imf.classifier.SubjectClassifierTrainer;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 import net.pieroxy.imf.learning.LearnedRulesStore;
 import net.pieroxy.imf.learning.RuleLearner;
 import net.pieroxy.imf.mail.ImapMailbox;
 import net.pieroxy.imf.mail.ImapMailboxConnection;
 import net.pieroxy.imf.mail.ImapMailboxFactory;
+import net.pieroxy.imf.rules.matchers.SubjectClassifierContext;
 import net.pieroxy.imf.scheduling.BackoffLoop;
 
 import javax.mail.Message;
@@ -35,6 +37,7 @@ public class MailAccount implements Runnable {
   private final int classifierCorpusRetentionDays;
   private final ClassifierScanStateStore classifierScanStateStore;
   private final ClassifierCorpusStore classifierCorpusStore;
+  private final SubjectClassifierTrainer subjectClassifierTrainer;
   private final String classifierSpamFolderName;
   private final ImapMailboxFactory mailboxFactory;
   private LocalDate lastSkeletonEnsureDate;
@@ -52,6 +55,7 @@ public class MailAccount implements Runnable {
     this.classifierCorpusRetentionDays = classifierCorpusRetentionDays;
     this.classifierScanStateStore = new ClassifierScanStateStore(dataFolder, config.getDisplayName());
     this.classifierCorpusStore = new ClassifierCorpusStore(dataFolder, config.getDisplayName(), classifierCorpusRetentionDays);
+    this.subjectClassifierTrainer = new SubjectClassifierTrainer(classifierCorpusStore);
     String spamFolderName = config.getClassifierSpamFolderName();
     this.classifierSpamFolderName = (spamFolderName == null || spamFolderName.isBlank()) ? "Spam" : spamFolderName;
     this.mailboxFactory = mailboxFactory;
@@ -59,6 +63,11 @@ public class MailAccount implements Runnable {
 
   @Override
   public void run() {
+    // Une fois pour toutes sur CE thread, avant tout traitement : SubjectClassifierMatcher n'a
+    // aucun autre moyen de savoir à quel compte (donc quel modèle) il appartient, puisqu'il est
+    // construit sans contexte par MatcherType.getImplementation(). Ça tient parce que ce thread
+    // est dédié à ce compte pour toute la durée de vie du process (voir SubjectClassifierContext).
+    SubjectClassifierContext.set(classifierCorpusStore.getModelFile());
     LOGGER.info("Starting account " + config.getDisplayName());
     new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS).run(config.getDisplayName(), this::processMessages);
   }
@@ -118,15 +127,29 @@ public class MailAccount implements Runnable {
     ClassifierScanState state = classifierScanStateStore.load();
     if (today.toString().equals(state.getLastScanDate())) return;
 
+    boolean caughtUpToday;
     try {
       boolean moreWorkPending = new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName)
           .scan(state, today);
-      if (!moreWorkPending) {
+      caughtUpToday = !moreWorkPending;
+      if (caughtUpToday) {
         state.setLastScanDate(today.toString());
       }
       classifierScanStateStore.save(state);
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Classifier corpus scan failed for account " + config.getDisplayName(), e);
+      return;
+    }
+
+    // Séparé du try ci-dessus : un échec d'entraînement ne doit pas empêcher le scan (déjà
+    // réussi) d'avoir marqué la journée comme traitée, sinon on relance le scan à chaque cycle
+    // pour rien alors que lui a fonctionné.
+    if (caughtUpToday) {
+      try {
+        subjectClassifierTrainer.train();
+      } catch (Exception e) {
+        LOGGER.log(Level.WARNING, "Subject classifier training failed for account " + config.getDisplayName(), e);
+      }
     }
   }
 

@@ -34,4 +34,14 @@ public class MatcherTypeTest {
     assertFalse(MatcherType.learnableValues().contains(MatcherType.DMARC_RESULT_EQUALS));
     assertFalse(MatcherType.learnableValues().contains(MatcherType.FCRDNS_RESULT_EQUALS));
   }
+
+  /**
+   * Pas learnable par dépôt d'exemple non plus, mais pour une raison différente des matchers
+   * de protocole ci-dessus : l'apprentissage vient du corpus classifieur (voir
+   * SubjectClassifierTrainer), pas des dossiers imf-rules/.
+   */
+  @Test
+  public void subjectClassifierIsNotLearnable() {
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.SUBJECT_CLASSIFIER_EQUALS));
+  }
 }
