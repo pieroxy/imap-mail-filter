@@ -42,6 +42,11 @@ public class ManualReprocessor {
   public void reprocessPending() throws MessagingException {
     Folder toProcessFolder = mailbox.getOrCreateFolder(ROOT_FOLDER, TO_PROCESS_FOLDER);
     Message[] pending = mailbox.getAllMessages(toProcessFolder);
+    // Silencieux quand il n'y a rien à faire (le cas normal, à chaque cycle) : ne loguer que
+    // quand une action déclenchée à la main a effectivement quelque chose à montrer.
+    if (pending.length > 0) {
+      LOGGER.info(() -> pending.length + " message(s) found in " + ROOT_FOLDER + "/" + TO_PROCESS_FOLDER + " to reprocess");
+    }
     try {
       for (Message message : pending) {
         reprocess(message);
@@ -53,13 +58,18 @@ public class ManualReprocessor {
 
   private void reprocess(Message message) {
     try {
-      Rule.applyFirstMatching(ruleCatalog.get(), message, LOGGER, ROOT_FOLDER + "/" + TO_PROCESS_FOLDER);
-      if (!message.isSet(Flags.Flag.DELETED)) {
-        // Aucune règle n'a matché, ou celle qui a matché n'a pas déplacé/supprimé le message
-        // (ex: une action qui se contente de le marquer) : on le range quand même pour ne pas
-        // le retraiter en boucle à chaque cycle.
-        moveToDone(message);
+      LOGGER.info(() -> "Reprocessing message from " + MailTools.describeFromSafely(message));
+      boolean matched = Rule.applyFirstMatching(ruleCatalog.get(), message, LOGGER, ROOT_FOLDER + "/" + TO_PROCESS_FOLDER);
+      if (message.isSet(Flags.Flag.DELETED)) {
+        LOGGER.info(() -> "Message from " + MailTools.describeFromSafely(message) + " was relocated by its matching rule's action");
+        return;
       }
+      // Aucune règle n'a matché, ou celle qui a matché n'a pas déplacé/supprimé le message
+      // (ex: une action qui se contente de le marquer) : on le range quand même pour ne pas
+      // le retraiter en boucle à chaque cycle.
+      moveToDone(message);
+      LOGGER.info(() -> (matched ? "Matching rule's action left the message in place; moved" : "No rule matched; moved")
+              + " message from " + MailTools.describeFromSafely(message) + " to " + ROOT_FOLDER + "/" + DONE_FOLDER);
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Failed to reprocess message from " + MailTools.describeFromSafely(message)
               + " under " + ROOT_FOLDER + "/" + TO_PROCESS_FOLDER, e);
