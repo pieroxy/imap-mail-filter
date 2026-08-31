@@ -2,9 +2,20 @@ package net.pieroxy.imf.spf;
 
 import org.junit.Test;
 
+import java.util.logging.Logger;
+
 import static org.junit.Assert.assertEquals;
 
 public class SpfEvaluatorTest {
+
+  @Test
+  public void evaluateWithExplicitLoggerBehavesLikeDefault() {
+    FakeSpfDnsResolver resolver = new FakeSpfDnsResolver()
+            .withTxt("example.com", "v=spf1 ip4:203.0.113.0/24 -all");
+    SpfEvaluator evaluator = new SpfEvaluator(resolver);
+
+    assertEquals(SpfResult.PASS, evaluator.evaluate("203.0.113.42", "example.com", Logger.getLogger("test")));
+  }
 
   @Test
   public void ip4MechanismPasses() {

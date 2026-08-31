@@ -9,6 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -86,5 +87,21 @@ public class SpfIdentityExtractorTest {
     MimeMessage message = new MimeMessage(session);
 
     assertTrue(SpfIdentityExtractor.extractSenderDomain(message).isEmpty());
+  }
+
+  @Test
+  public void extractClientIpWithExplicitLoggerBehavesLikeDefault() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.addHeader("Received", "from mail.example.com (mail.example.com [203.0.113.10]) by mx.example.com with ESMTP id 1");
+
+    assertEquals(Optional.of("203.0.113.10"), SpfIdentityExtractor.extractClientIp(message, Logger.getLogger("test")));
+  }
+
+  @Test
+  public void extractSenderDomainWithExplicitLoggerBehavesLikeDefault() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("someone@example.com"));
+
+    assertEquals(Optional.of("example.com"), SpfIdentityExtractor.extractSenderDomain(message, Logger.getLogger("test")));
   }
 }

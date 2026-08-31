@@ -79,13 +79,17 @@ public class SpfResultMatcher extends Matcher {
   }
 
   private String evaluateLive(Message message) throws MessagingException {
-    Optional<String> ip = SpfIdentityExtractor.extractClientIp(message);
-    Optional<String> domain = SpfIdentityExtractor.extractSenderDomain(message);
+    // getLogger() (niveau piloté par le "logLevel" de CETTE règle dans le JSON) est passé
+    // jusqu'au fond de l'extraction et de l'évaluation, pour que "logLevel": "DEBUG" sur la
+    // règle suffise à voir toute la trace (header Received examiné, record SPF trouvé,
+    // mécanisme par mécanisme) sans toucher à une configuration de logging globale.
+    Optional<String> ip = SpfIdentityExtractor.extractClientIp(message, getLogger());
+    Optional<String> domain = SpfIdentityExtractor.extractSenderDomain(message, getLogger());
     if (ip.isEmpty() || domain.isEmpty()) {
       getLogger().fine(() -> "Cannot evaluate SPF live: missing client IP or sender domain");
       return null;
     }
-    SpfResult result = evaluator.evaluate(ip.get(), domain.get());
+    SpfResult result = evaluator.evaluate(ip.get(), domain.get(), getLogger());
     getLogger().fine(() -> "Evaluated SPF live for ip=" + ip.get() + " domain=" + domain.get() + " -> " + result.getCode());
     return result.getCode();
   }
