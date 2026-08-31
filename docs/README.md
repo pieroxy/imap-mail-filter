@@ -139,6 +139,7 @@ A rule is a `matcher` + an `action`. When a matcher matches a message, its actio
 | [`FROM_EQUALS`](matchers/from-equals.md) | Exact match of the full `From:` header. |
 | [`FROM_ADDRESS_EQUALS`](matchers/from-address-equals.md) | Match the sender's email address only. |
 | [`FROM_DOMAIN_EQUALS`](matchers/from-domain-equals.md) | Match the sender's domain only. |
+| [`SUBJECT_STARTS_WITH`](matchers/subject-starts-with.md) | Match a prefix of the `Subject:` header. |
 | [`SPF_RESULT_EQUALS`](matchers/spf-result-equals.md) | Match a live-verified SPF result. |
 | [`DKIM_RESULT_EQUALS`](matchers/dkim-result-equals.md) | Match a live-verified DKIM result. |
 | [`DMARC_RESULT_EQUALS`](matchers/dmarc-result-equals.md) | Match a live-evaluated DMARC result (SPF/DKIM domain alignment). |

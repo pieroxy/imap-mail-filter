@@ -9,6 +9,7 @@ import net.pieroxy.imf.rules.matchers.implementations.FromDomainMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromExactMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.OrMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SpfResultMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.SubjectStartsWithMatcher;
 
 import java.util.Arrays;
 import java.util.List;
@@ -18,6 +19,7 @@ public enum MatcherType {
   FROM_EQUALS(FromExactMatcher::new, true),
   FROM_ADDRESS_EQUALS(FromAddressMatcher::new, true),
   FROM_DOMAIN_EQUALS(FromDomainMatcher::new, true),
+  SUBJECT_STARTS_WITH(SubjectStartsWithMatcher::new, true),
   // Pas learnable : la clé possible (pass/fail/softfail/...) est un ensemble fixe et déjà
   // documenté, pas une valeur spécifique à découvrir par l'exemple. Et contrairement à
   // FROM_*, la règle apprise ne serait pas spécifique à l'exemple déposé : elle s'appliquerait

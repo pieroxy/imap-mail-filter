@@ -12,6 +12,7 @@ public class MatcherTypeTest {
     assertTrue(MatcherType.learnableValues().contains(MatcherType.FROM_EQUALS));
     assertTrue(MatcherType.learnableValues().contains(MatcherType.FROM_ADDRESS_EQUALS));
     assertTrue(MatcherType.learnableValues().contains(MatcherType.FROM_DOMAIN_EQUALS));
+    assertTrue(MatcherType.learnableValues().contains(MatcherType.SUBJECT_STARTS_WITH));
   }
 
   @Test
