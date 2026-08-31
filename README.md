@@ -11,7 +11,23 @@ IMF also implements a dead simple way to report spam or create a simple rule: ju
 
 ## Requirements
 
-Just Java 17 and an Internet connexion.
+Just Java 17 and an Internet connection.
+
+## Features
+
+Brings to your IMAP account:
+* SPF, DKIM, DMARC and FCrDNS checks
+* Rules based on **from** and **subject**
+
+Additionally:
+
+* Logs show exactly which rule acted on each message
+* No third-party service ever sees your mail — the only outbound traffic is DNS lookups for SPF/DKIM/DMARC/FCrDNS checks, which reveal sender domains/IPs but never message content.
+
+## Roadmap
+
+* ML-based spam detection, trained locally on your emails.
+* Simple web UI to edit more complex rules.
 
 ## Documentation
 
