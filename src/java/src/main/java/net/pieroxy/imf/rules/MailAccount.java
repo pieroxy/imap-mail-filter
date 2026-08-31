@@ -69,6 +69,12 @@ public class MailAccount implements Runnable {
     // est dédié à ce compte pour toute la durée de vie du process (voir SubjectClassifierContext).
     SubjectClassifierContext.set(classifierCorpusStore.getModelFile());
     LOGGER.info("Starting account " + config.getDisplayName());
+    // Construit l'arbre Matcher/Action tout de suite plutôt que d'attendre le premier message :
+    // RuleCatalog est normalement paresseux (voir inspect()), mais certains matchers (comme
+    // SubjectClassifierMatcher) ont besoin d'être construits pour annoncer leur état dès le
+    // démarrage — sinon, sur un compte qui ne reçoit rien tout de suite, on ne saurait jamais
+    // si le classifieur est actif ou pas.
+    ruleCatalog.get();
     new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS).run(config.getDisplayName(), this::processMessages);
   }
 
@@ -87,6 +93,7 @@ public class MailAccount implements Runnable {
 
       if (learner.learnFromExamples()) {
         ruleCatalog.invalidate();
+        ruleCatalog.get(); // reconstruit tout de suite (voir le commentaire dans run())
       }
 
       processNewMessages(mailbox);

@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -84,10 +85,36 @@ public class SubjectClassifierMatcherTest {
   }
 
   @Test
-  public void isInactiveAndLogsOnceWhenNoModelHasBeenTrainedYet() throws Exception {
+  public void announcesInactiveStateAssoonAsConfiguredNotAtFirstMessage() throws Exception {
     SubjectClassifierContext.set(tmp.newFile("does-not-exist.bin"));
     tmp.getRoot().listFiles((dir, name) -> name.equals("does-not-exist.bin"))[0].delete(); // le fichier ne doit pas exister
-    SubjectClassifierMatcher matcher = matcherFor(">0.5");
+
+    // setConfig() logge sur SON logger propre (dérivé de la config), pas encore accessible
+    // avant construction : on capture donc via la racine, qui reçoit tout par propagation
+    // (comportement par défaut tant que rien n'appelle setUseParentHandlers(false)).
+    List<LogRecord> records = new ArrayList<>();
+    Handler capture = new Handler() {
+      @Override public void publish(LogRecord record) { records.add(record); }
+      @Override public void flush() {}
+      @Override public void close() {}
+    };
+    Logger root = Logger.getLogger("");
+    root.addHandler(capture);
+    try {
+      matcherFor(">0.5"); // le check + log doit arriver ici, pas au premier matches()
+    } finally {
+      root.removeHandler(capture);
+    }
+
+    assertTrue("l'état doit être annoncé dès la construction, pas au premier message reçu",
+        records.stream().anyMatch(r -> r.getMessage() != null && r.getMessage().contains("inactive")));
+  }
+
+  @Test
+  public void doesNotReannounceInactiveStateOnEveryMessageAfterTheInitialCheck() throws Exception {
+    SubjectClassifierContext.set(tmp.newFile("does-not-exist.bin"));
+    tmp.getRoot().listFiles((dir, name) -> name.equals("does-not-exist.bin"))[0].delete();
+    SubjectClassifierMatcher matcher = matcherFor(">0.5"); // logge déjà "inactive" une fois ici, non capturé
 
     List<LogRecord> records = new ArrayList<>();
     Handler capture = new Handler() {
@@ -107,7 +134,7 @@ public class SubjectClassifierMatcherTest {
     }
 
     long inactiveLogs = records.stream().filter(r -> r.getMessage().contains("inactive")).count();
-    assertEquals("le message d'inactivité ne doit apparaître qu'une fois, pas par message inspecté", 1, inactiveLogs);
+    assertEquals("déjà annoncé pendant setConfig() : aucun message inspecté ne doit reloguer", 0, inactiveLogs);
   }
 
   @Test

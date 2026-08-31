@@ -51,6 +51,12 @@ public class SubjectClassifierMatcher extends Matcher {
     }
     operator = m.group(1);
     threshold = Double.parseDouble(m.group(2));
+
+    // Vérifie/logge l'état tout de suite (actif ou pas, et pourquoi) plutôt que d'attendre le
+    // premier message inspecté — MailAccount construit le catalogue de règles dès le démarrage
+    // précisément pour ça (voir MailAccount.run()) : sur un compte qui ne reçoit rien tout de
+    // suite, on saurait sinon jamais si ce matcher est opérationnel.
+    loadCategorizer();
   }
 
   @Override
