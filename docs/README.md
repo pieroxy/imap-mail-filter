@@ -127,6 +127,7 @@ A rule is a `matcher` + an `action`. When a matcher matches a message, its actio
 | [`FROM_DOMAIN_EQUALS`](matchers/from-domain-equals.md) | Match the sender's domain only. |
 | [`SPF_RESULT_EQUALS`](matchers/spf-result-equals.md) | Match a live-verified SPF result. |
 | [`DKIM_RESULT_EQUALS`](matchers/dkim-result-equals.md) | Match a live-verified DKIM result. |
+| [`DMARC_RESULT_EQUALS`](matchers/dmarc-result-equals.md) | Match a live-evaluated DMARC result (SPF/DKIM domain alignment). |
 | [`AND`](matchers/and.md) | Composite: all children must match. |
 | [`OR`](matchers/or.md) | Composite: any child matching is enough. |
 
@@ -202,10 +203,10 @@ lz4-compressed archives (kept for `keepLogFiles` days) if `keepLogFiles > 0`.
 
 Each matcher/action node in a rule has its own logger, independently leveled via that node's
 `logLevel` config field (default `INFO`). Setting `"logLevel": "DEBUG"` on an
-[`SPF_RESULT_EQUALS`](matchers/spf-result-equals.md) or
-[`DKIM_RESULT_EQUALS`](matchers/dkim-result-equals.md) matcher is particularly useful: it
+[`SPF_RESULT_EQUALS`](matchers/spf-result-equals.md), [`DKIM_RESULT_EQUALS`](matchers/dkim-result-equals.md),
+or [`DMARC_RESULT_EQUALS`](matchers/dmarc-result-equals.md) matcher is particularly useful: it
 surfaces that rule's full live verification trace (DNS records fetched, mechanisms/signatures
-evaluated) without touching any global logging configuration.
+evaluated, alignment computed) without touching any global logging configuration.
 
 ## Data files
 

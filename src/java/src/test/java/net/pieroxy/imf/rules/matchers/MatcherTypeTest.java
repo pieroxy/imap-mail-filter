@@ -14,6 +14,7 @@ public class MatcherTypeTest {
     assertTrue(MatcherType.learnableValues().contains(MatcherType.FROM_DOMAIN_EQUALS));
     assertTrue(MatcherType.learnableValues().contains(MatcherType.SPF_RESULT_EQUALS));
     assertTrue(MatcherType.learnableValues().contains(MatcherType.DKIM_RESULT_EQUALS));
+    assertTrue(MatcherType.learnableValues().contains(MatcherType.DMARC_RESULT_EQUALS));
     assertFalse(MatcherType.learnableValues().contains(MatcherType.AND));
     assertFalse(MatcherType.learnableValues().contains(MatcherType.OR));
   }

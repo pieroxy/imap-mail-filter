@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Vérifie la ou les signatures DKIM (RFC 6376) d'un message, en s'appuyant sur
@@ -49,6 +50,14 @@ public class DkimVerifier {
 
   /** Comme {@link #verify(InputStream)}, mais journalise (niveau FINE) le détail par signature sur le logger donné. */
   public DkimResult verify(InputStream rawMessage, Logger logger) {
+    return verifyDetailed(rawMessage, logger).result();
+  }
+
+  /**
+   * Comme {@link #verify(InputStream, Logger)}, mais expose en plus les domaines signataires
+   * ({@code d=}) de chaque signature qui a effectivement vérifié — voir {@link DkimVerification}.
+   */
+  public DkimVerification verifyDetailed(InputStream rawMessage, Logger logger) {
     DKIMVerifier verifier = new DKIMVerifier(publicKeyRecordRetriever);
     // Repli utilisé seulement si getResults() ci-dessous ne donne rien d'exploitable : quand
     // verify() lève, le résultat précis par signature (ex: FAIL pour un bodyhash qui ne
@@ -72,7 +81,7 @@ public class DkimVerifier {
     } catch (IOException e) {
       // Rien n'a pu être lu : pas de résultats à consulter, on s'arrête ici.
       logger.log(Level.FINE, "Failed to read message for DKIM verification", e);
-      return DkimResult.TEMPERROR;
+      return new DkimVerification(DkimResult.TEMPERROR, List.of());
     }
 
     List<Result> results = verifier.getResults();
@@ -81,20 +90,24 @@ public class DkimVerifier {
         logger.fine(() -> "DKIM signature result: " + result.getHeaderTextWithReason());
       }
     }
+    List<String> passingDomains = results == null ? List.of() : results.stream()
+            .filter(Result::isSuccess)
+            .map(r -> r.getRecord().getDToken().toString())
+            .collect(Collectors.toList());
 
     if (verifier.hasAnyValidSignature()) {
-      return DkimResult.PASS;
+      return new DkimVerification(DkimResult.PASS, passingDomains);
     }
     if (results == null || results.isEmpty()) {
-      if (exceptionFallback != null) return exceptionFallback;
+      if (exceptionFallback != null) return new DkimVerification(exceptionFallback, passingDomains);
       logger.fine(() -> "No DKIM-Signature header on message");
-      return DkimResult.NONE;
+      return new DkimVerification(DkimResult.NONE, passingDomains);
     }
     for (Result.Type type : PRIORITY) {
       if (results.stream().anyMatch(r -> r.getResultType() == type)) {
-        return DkimResult.valueOf(type.name());
+        return new DkimVerification(DkimResult.valueOf(type.name()), passingDomains);
       }
     }
-    return exceptionFallback != null ? exceptionFallback : DkimResult.NONE;
+    return new DkimVerification(exceptionFallback != null ? exceptionFallback : DkimResult.NONE, passingDomains);
   }
 }
