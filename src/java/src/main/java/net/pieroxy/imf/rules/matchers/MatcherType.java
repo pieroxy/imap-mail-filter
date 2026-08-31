@@ -3,6 +3,7 @@ package net.pieroxy.imf.rules.matchers;
 import net.pieroxy.imf.rules.matchers.implementations.AndMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.DkimResultMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.DmarcResultMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.FcrdnsResultMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromAddressMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromDomainMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromExactMatcher;
@@ -24,6 +25,7 @@ public enum MatcherType {
   SPF_RESULT_EQUALS(SpfResultMatcher::new, false),
   DKIM_RESULT_EQUALS(DkimResultMatcher::new, false),
   DMARC_RESULT_EQUALS(DmarcResultMatcher::new, false),
+  FCRDNS_RESULT_EQUALS(FcrdnsResultMatcher::new, false),
   AND(AndMatcher::new, false),
   OR(OrMatcher::new, false);
 

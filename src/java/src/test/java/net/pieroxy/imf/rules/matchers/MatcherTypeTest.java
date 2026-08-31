@@ -31,5 +31,6 @@ public class MatcherTypeTest {
     assertFalse(MatcherType.learnableValues().contains(MatcherType.SPF_RESULT_EQUALS));
     assertFalse(MatcherType.learnableValues().contains(MatcherType.DKIM_RESULT_EQUALS));
     assertFalse(MatcherType.learnableValues().contains(MatcherType.DMARC_RESULT_EQUALS));
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.FCRDNS_RESULT_EQUALS));
   }
 }

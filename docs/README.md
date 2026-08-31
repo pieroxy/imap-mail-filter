@@ -128,6 +128,7 @@ A rule is a `matcher` + an `action`. When a matcher matches a message, its actio
 | [`SPF_RESULT_EQUALS`](matchers/spf-result-equals.md) | Match a live-verified SPF result. |
 | [`DKIM_RESULT_EQUALS`](matchers/dkim-result-equals.md) | Match a live-verified DKIM result. |
 | [`DMARC_RESULT_EQUALS`](matchers/dmarc-result-equals.md) | Match a live-evaluated DMARC result (SPF/DKIM domain alignment). |
+| [`FCRDNS_RESULT_EQUALS`](matchers/fcrdns-result-equals.md) | Match a live-evaluated reverse DNS (FCrDNS) result on the connecting IP. |
 | [`AND`](matchers/and.md) | Composite: all children must match. |
 | [`OR`](matchers/or.md) | Composite: any child matching is enough. |
 
