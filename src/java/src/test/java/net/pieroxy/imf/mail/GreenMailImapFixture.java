@@ -24,7 +24,10 @@ public class GreenMailImapFixture {
   private static final String USERNAME = "test@localhost";
   private static final String PASSWORD = "password";
 
-  private final GreenMail greenMail = new GreenMail(ServerSetupTest.IMAP);
+  // Port dynamique (attribué par l'OS), pas le port de test fixe de GreenMail : plusieurs
+  // instances de cette fixture tournent en parallèle une fois les tests parallélisés (voir
+  // pom.xml), et un port fixe ferait entrer ces instances en conflit entre elles.
+  private final GreenMail greenMail = new GreenMail(ServerSetupTest.IMAP.dynamicPort());
 
   public void start() {
     greenMail.start();
