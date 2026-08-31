@@ -30,6 +30,3 @@ only combined with SPF `softfail` via `AND`, as corroboration rather than a trig
 and that combined rule leaves the message unread, for manual review rather than an outright
 Spam verdict.
 
-Nothing here has a per-rule `logLevel` set (default `INFO`): add `"logLevel": "DEBUG"`
-temporarily on a specific rule if you need to see its full verification trace — see
-[Logging](docs/README.md#logging).
