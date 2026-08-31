@@ -94,8 +94,27 @@ public class MailAccount implements Runnable {
       reprocessor.reprocessPending();
 
       if (classifierCorpusRetentionDays > 0) {
+        scanSpamFolderForClassifierCorpus(mailbox);
         scanClassifierCorpusIfDue(mailbox);
       }
+    }
+  }
+
+  /**
+   * Contrairement au reste de l'arborescence (une fois par jour, voir plus bas), Spam est
+   * scanné à chaque cycle : c'est le seul dossier qu'un utilisateur est susceptible de vider
+   * lui-même avant le prochain scan quotidien (ex: purge manuelle tous les soirs) — si on
+   * attendait le lendemain, tout le spam de la veille aurait disparu avant d'avoir jamais été
+   * capturé pour le corpus. Partage le même état (par dossier) que le scan quotidien, donc pas
+   * de double comptage entre les deux.
+   */
+  private void scanSpamFolderForClassifierCorpus(ImapMailbox mailbox) {
+    ClassifierScanState state = classifierScanStateStore.load();
+    try {
+      new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName).scanSpamFolderNow(state);
+      classifierScanStateStore.save(state);
+    } catch (Exception e) {
+      LOGGER.log(Level.WARNING, "Classifier corpus spam scan failed for account " + config.getDisplayName(), e);
     }
   }
 

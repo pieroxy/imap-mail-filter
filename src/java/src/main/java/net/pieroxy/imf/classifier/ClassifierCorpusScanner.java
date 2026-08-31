@@ -10,15 +10,25 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Parcourt tous les dossiers du compte, hors INBOX et l'arbre imf-rules/ (interne à l'outil,
- * pas du courrier organisé par l'utilisateur), pour construire le corpus d'entraînement : le
- * dossier Spam d'un côté, tout le reste (Sent/Trash/Archive/...) comme exemples confirmés
- * non-spam de l'autre. Ne fetche que les nouveaux messages depuis le dernier scan (par
- * dossier, via UID), pour ne jamais retélécharger tout l'historique à chaque passage.
+ * Parcourt les dossiers du compte, hors INBOX et l'arbre imf-rules/ (interne à l'outil, pas du
+ * courrier organisé par l'utilisateur), pour construire le corpus d'entraînement : le dossier
+ * Spam d'un côté, tout le reste (Sent/Trash/Archive/...) comme exemples confirmés non-spam de
+ * l'autre. Ne fetche que les nouveaux messages depuis le dernier scan (par dossier, via UID),
+ * pour ne jamais retélécharger tout l'historique à chaque passage.
+ * <p>
+ * Deux rythmes de scan différents, exposés par deux méthodes séparées : {@link #scan} (tout
+ * l'arbre, une fois par jour — voir MailAccount) et {@link #scanSpamFolderNow} (juste Spam, à
+ * chaque cycle). La raison : Spam est le seul dossier qu'un utilisateur peut vider avant le
+ * prochain scan quotidien (ex: purge manuelle du soir) — s'il n'était scanné qu'une fois par
+ * jour, ce qui y est passé pourrait disparaître avant d'avoir jamais été capturé. Les deux
+ * méthodes partagent le même {@link ClassifierScanState} (par dossier), donc pas de double
+ * comptage : ce que le scan fréquent a déjà vu, le scan quotidien le retrouve simplement à
+ * jour et n'y refait rien.
  */
 public class ClassifierCorpusScanner {
   private final static Logger LOGGER = Logger.getLogger(ClassifierCorpusScanner.class.getName());
@@ -49,7 +59,7 @@ public class ClassifierCorpusScanner {
     LOGGER.info("Classifier corpus scan starting");
     List<ClassifierExample> newExamples = new ArrayList<>();
     messagesProcessed = 0;
-    boolean budgetExceeded = walk(mailbox.getRootFolder(), state, newExamples);
+    boolean budgetExceeded = walk(mailbox.getRootFolder(), state, newExamples, folder -> true, true);
     corpusStore.append(today, newExamples);
     corpusStore.pruneOlderThan(today);
     LOGGER.info("Classifier corpus scan " + (budgetExceeded ? "paused (budget reached, will resume next cycle): "
@@ -57,22 +67,38 @@ public class ClassifierCorpusScanner {
     return budgetExceeded;
   }
 
-  private boolean walk(Folder parent, ClassifierScanState state, List<ClassifierExample> newExamples) throws MessagingException {
+  /**
+   * Scan ciblé du seul dossier Spam, à appeler à chaque cycle (pas de plafond : un seul
+   * dossier, jamais assez volumineux pour justifier d'étaler le travail sur plusieurs cycles).
+   * Silencieux quand il n'y a rien de nouveau — appelé potentiellement toutes les minutes, pas
+   * la peine de logger "scan starting/complete" à chaque fois.
+   */
+  public void scanSpamFolderNow(ClassifierScanState state) throws MessagingException, IOException {
+    List<ClassifierExample> newExamples = new ArrayList<>();
+    messagesProcessed = 0;
+    walk(mailbox.getRootFolder(), state, newExamples, folder -> spamFolderName.equalsIgnoreCase(folder.getName()), false);
+    if (!newExamples.isEmpty()) {
+      corpusStore.append(LocalDate.now(), newExamples);
+    }
+  }
+
+  private boolean walk(Folder parent, ClassifierScanState state, List<ClassifierExample> newExamples,
+                        Predicate<Folder> shouldScan, boolean enforceBudget) throws MessagingException {
     for (Folder folder : mailbox.listSubfolders(parent)) {
-      if (messagesProcessed >= MAX_MESSAGES_PER_SCAN) return true;
+      if (enforceBudget && messagesProcessed >= MAX_MESSAGES_PER_SCAN) return true;
 
       String name = folder.getName();
       if ("INBOX".equalsIgnoreCase(name) || LEARNING_ROOT_FOLDER.equalsIgnoreCase(name)) continue;
 
       int type = folder.getType();
-      if ((type & Folder.HOLDS_MESSAGES) != 0) {
+      if ((type & Folder.HOLDS_MESSAGES) != 0 && shouldScan.test(folder)) {
         scanFolder(folder, state, newExamples);
       }
       if ((type & Folder.HOLDS_FOLDERS) != 0) {
-        if (walk(folder, state, newExamples)) return true;
+        if (walk(folder, state, newExamples, shouldScan, enforceBudget)) return true;
       }
     }
-    return messagesProcessed >= MAX_MESSAGES_PER_SCAN;
+    return enforceBudget && messagesProcessed >= MAX_MESSAGES_PER_SCAN;
   }
 
   private void scanFolder(Folder folder, ClassifierScanState state, List<ClassifierExample> newExamples) {
