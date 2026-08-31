@@ -9,6 +9,7 @@ import net.pieroxy.imf.learning.LearnedRulesStore;
 import net.pieroxy.imf.learning.RuleLearner;
 import net.pieroxy.imf.mail.ImapMailbox;
 import net.pieroxy.imf.mail.ImapMailboxConnection;
+import net.pieroxy.imf.mail.ImapMailboxFactory;
 import net.pieroxy.imf.scheduling.BackoffLoop;
 
 import javax.mail.Message;
@@ -35,9 +36,15 @@ public class MailAccount implements Runnable {
   private final ClassifierScanStateStore classifierScanStateStore;
   private final ClassifierCorpusStore classifierCorpusStore;
   private final String classifierSpamFolderName;
+  private final ImapMailboxFactory mailboxFactory;
   private LocalDate lastSkeletonEnsureDate;
 
   public MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays) {
+    this(config, dataFolder, classifierCorpusRetentionDays, ImapMailboxConnection::connect);
+  }
+
+  /** Visible pour les tests : permet d'injecter une fabrique de mailbox sans IMAPS/TLS réel. */
+  MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays, ImapMailboxFactory mailboxFactory) {
     this.config = config;
     this.stateStore = new MailAccountStateStore(dataFolder, config.getDisplayName());
     this.learnedRulesStore = new LearnedRulesStore(dataFolder, config.getDisplayName());
@@ -47,6 +54,7 @@ public class MailAccount implements Runnable {
     this.classifierCorpusStore = new ClassifierCorpusStore(dataFolder, config.getDisplayName(), classifierCorpusRetentionDays);
     String spamFolderName = config.getClassifierSpamFolderName();
     this.classifierSpamFolderName = (spamFolderName == null || spamFolderName.isBlank()) ? "Spam" : spamFolderName;
+    this.mailboxFactory = mailboxFactory;
   }
 
   @Override
@@ -60,9 +68,10 @@ public class MailAccount implements Runnable {
     Rule.applyFirstMatching(ruleCatalog.get(), message, LOGGER, "account " + config.getDisplayName());
   }
 
-  private void processMessages() throws MessagingException {
+  /** Package-private (au lieu de private) : permet à MailAccountTest d'exécuter un cycle sans passer par run()/BackoffLoop. */
+  void processMessages() throws MessagingException {
     LOGGER.info("Processing account " + config.getDisplayName());
-    try (ImapMailbox mailbox = ImapMailboxConnection.connect(config)) {
+    try (ImapMailbox mailbox = mailboxFactory.connect(config)) {
       RuleLearner learner = new RuleLearner(mailbox, learnedRulesStore);
       ManualReprocessor reprocessor = new ManualReprocessor(mailbox, ruleCatalog);
       ensureFolderSkeletonsIfDue(learner, reprocessor);

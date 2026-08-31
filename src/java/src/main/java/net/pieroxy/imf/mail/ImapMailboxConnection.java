@@ -41,6 +41,17 @@ public class ImapMailboxConnection implements ImapMailbox {
     return new ImapMailboxConnection(store, inbox);
   }
 
+  /**
+   * Réservé aux tests : enveloppe un Store déjà connecté (ex: un serveur GreenMail en IMAP
+   * simple) sans passer par connect()/IMAPS — permet de tester le reste de cette classe sans
+   * TLS ni vrai serveur IMAP distant.
+   */
+  public static ImapMailboxConnection forTesting(Store connectedStore) throws MessagingException {
+    IMAPFolder inbox = (IMAPFolder) connectedStore.getFolder("INBOX");
+    inbox.open(Folder.READ_WRITE);
+    return new ImapMailboxConnection(connectedStore, inbox);
+  }
+
   @Override
   public long getUidValidity() throws MessagingException {
     return inbox.getUIDValidity();
