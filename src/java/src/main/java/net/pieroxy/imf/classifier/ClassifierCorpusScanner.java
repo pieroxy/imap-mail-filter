@@ -59,10 +59,16 @@ public class ClassifierCorpusScanner {
   private final ClassifierCorpusStore corpusStore;
   private final String spamFolderName;
   private final Set<String> excludedFolderNames;
+  private final String logPrefix;
   private int messagesProcessed;
 
+  /**
+   * @param accountLabel displayName (ou login si absent — voir {@link net.pieroxy.imf.rules.MailAccount}) du
+   *                      compte scanné, pour préfixer chaque ligne de log ({@code "Classifier corpus [name] ..."})
+   *                      et s'y retrouver dans les logs d'une instance qui surveille plusieurs comptes.
+   */
   public ClassifierCorpusScanner(ImapMailbox mailbox, ClassifierCorpusStore corpusStore, String spamFolderName,
-                                  List<String> excludedFolderNames) {
+                                  List<String> excludedFolderNames, String accountLabel) {
     this.mailbox = mailbox;
     this.corpusStore = corpusStore;
     this.spamFolderName = spamFolderName;
@@ -72,17 +78,18 @@ public class ClassifierCorpusScanner {
     // sans refaire un stream à chaque appel.
     this.excludedFolderNames = excludedFolderNames == null ? Set.of()
         : excludedFolderNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).collect(Collectors.toUnmodifiableSet());
+    this.logPrefix = "Classifier corpus [" + accountLabel + "] ";
   }
 
   /** @return true si le plafond a été atteint (il reste du travail pour le prochain appel). */
   public boolean scan(ClassifierScanState state, LocalDate today) throws MessagingException, IOException {
-    LOGGER.info("Classifier corpus scan starting");
+    LOGGER.info(logPrefix + "scan starting");
     List<ClassifierExample> newExamples = new ArrayList<>();
     messagesProcessed = 0;
     boolean budgetExceeded = walk(mailbox.getRootFolder(), state, newExamples, folder -> true, true);
     corpusStore.append(today, newExamples);
     corpusStore.pruneOlderThan(today);
-    LOGGER.info("Classifier corpus scan " + (budgetExceeded ? "paused (budget reached, will resume next cycle): "
+    LOGGER.info(logPrefix + "scan " + (budgetExceeded ? "paused (budget reached, will resume next cycle): "
         : "complete: ") + newExamples.size() + " new example(s) recorded");
     return budgetExceeded;
   }
@@ -138,7 +145,7 @@ public class ClassifierCorpusScanner {
 
       Message[] messages = mailbox.getMessagesSince(folder, lastUid);
       if (messages.length > 0) {
-        LOGGER.info("Classifier corpus: " + messages.length + " new message(s) in " + fullName + " (" + label + ")");
+        LOGGER.info(logPrefix + messages.length + " new message(s) in " + fullName + " (" + label + ")");
       }
       long newLastUid = lastUid;
       Instant fetchDate = Instant.now();
@@ -146,19 +153,19 @@ public class ClassifierCorpusScanner {
         try {
           newExamples.add(ClassifierExampleExtractor.extract(message, label, fetchDate));
         } catch (Exception e) {
-          LOGGER.log(Level.WARNING, "Failed to extract classifier example from " + fullName, e);
+          LOGGER.log(Level.WARNING, logPrefix + "Failed to extract example from " + fullName, e);
         }
         newLastUid = Math.max(newLastUid, mailbox.getUid(folder, message));
       }
       messagesProcessed += messages.length;
       state.setFolderProgress(fullName, uidValidity, newLastUid);
     } catch (MessagingException e) {
-      LOGGER.log(Level.WARNING, "Failed to scan folder " + fullName + " for the classifier corpus", e);
+      LOGGER.log(Level.WARNING, logPrefix + "Failed to scan folder " + fullName, e);
     } finally {
       try {
         mailbox.closeReadOnly(folder);
       } catch (MessagingException e) {
-        LOGGER.log(Level.WARNING, "Failed to close folder " + fullName, e);
+        LOGGER.log(Level.WARNING, logPrefix + "Failed to close folder " + fullName, e);
       }
     }
   }

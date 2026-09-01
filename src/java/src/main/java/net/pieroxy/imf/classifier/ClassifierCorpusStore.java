@@ -41,10 +41,12 @@ public class ClassifierCorpusStore {
 
   private final File accountFolder;
   private final int keepDays;
+  private final String logPrefix;
 
   public ClassifierCorpusStore(String dataFolder, String accountKey, int keepDays) {
     this.accountFolder = new File(new File(dataFolder, "classifier-corpus"), accountKey);
     this.keepDays = keepDays;
+    this.logPrefix = "Classifier corpus [" + accountKey + "] ";
   }
 
   public void append(LocalDate day, List<ClassifierExample> newExamples) throws IOException {
@@ -89,7 +91,7 @@ public class ClassifierCorpusStore {
       if (!m.matches()) continue;
       LocalDate fileDate = LocalDate.parse(m.group(1));
       if (fileDate.isBefore(cutoff) && !f.delete()) {
-        LOGGER.warning("Could not delete stale classifier corpus file " + f);
+        LOGGER.warning(logPrefix + "Could not delete stale corpus file " + f);
       }
     }
   }
@@ -104,7 +106,7 @@ public class ClassifierCorpusStore {
       List<ClassifierExample> examples = GSON.fromJson(r, LIST_TYPE);
       return examples != null ? examples : List.of();
     } catch (IOException | JsonParseException e) {
-      LOGGER.log(Level.WARNING, "Could not read classifier corpus file " + file, e);
+      LOGGER.log(Level.WARNING, logPrefix + "Could not read corpus file " + file, e);
       return List.of();
     }
   }

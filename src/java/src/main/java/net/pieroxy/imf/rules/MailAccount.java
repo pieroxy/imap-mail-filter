@@ -129,11 +129,11 @@ public class MailAccount implements Runnable {
   private void scanSpamFolderForClassifierCorpus(ImapMailbox mailbox) {
     ClassifierScanState state = classifierScanStateStore.load();
     try {
-      new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName, classifierExcludedFolders)
+      new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName, classifierExcludedFolders, accountLabel())
           .scanSpamFolderNow(state);
       classifierScanStateStore.save(state);
     } catch (Exception e) {
-      LOGGER.log(Level.WARNING, "Classifier corpus spam scan failed for account " + config.getDisplayName(), e);
+      LOGGER.log(Level.WARNING, "Classifier corpus [" + accountLabel() + "] spam scan failed", e);
     }
   }
 
@@ -168,14 +168,14 @@ public class MailAccount implements Runnable {
     boolean caughtUpToday;
     try {
       boolean moreWorkPending = new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName,
-          classifierExcludedFolders).scan(state, today);
+          classifierExcludedFolders, accountLabel()).scan(state, today);
       caughtUpToday = !moreWorkPending;
       if (caughtUpToday) {
         state.setLastScanDate(today.toString());
       }
       classifierScanStateStore.save(state);
     } catch (Exception e) {
-      LOGGER.log(Level.WARNING, "Classifier corpus scan failed for account " + config.getDisplayName(), e);
+      LOGGER.log(Level.WARNING, "Classifier corpus [" + accountLabel() + "] scan failed", e);
       return;
     }
 
