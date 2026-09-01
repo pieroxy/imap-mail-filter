@@ -6,6 +6,7 @@ import org.junit.rules.TemporaryFolder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class ReputationListStoreTest {
 
@@ -31,5 +32,22 @@ public class ReputationListStoreTest {
     store.save("my-list", "1.2.3.4\n");
     store.save("my-list", "5.6.7.8\n");
     assertEquals("5.6.7.8\n", store.load("my-list"));
+  }
+
+  @Test
+  public void lastModifiedIsZeroWhenNoCacheExists() {
+    ReputationListStore store = new ReputationListStore(tempFolder.getRoot().getAbsolutePath());
+    assertEquals(0L, store.lastModified("unknown-id"));
+  }
+
+  @Test
+  public void lastModifiedReflectsTheMostRecentSave() throws Exception {
+    ReputationListStore store = new ReputationListStore(tempFolder.getRoot().getAbsolutePath());
+    long before = System.currentTimeMillis();
+    store.save("my-list", "1.2.3.4\n");
+    long after = System.currentTimeMillis();
+
+    long lastModified = store.lastModified("my-list");
+    assertTrue(lastModified >= before - 1000 && lastModified <= after + 1000);
   }
 }

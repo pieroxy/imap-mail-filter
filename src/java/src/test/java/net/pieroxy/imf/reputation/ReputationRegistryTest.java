@@ -5,9 +5,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.OptionalDouble;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -115,5 +118,84 @@ public class ReputationRegistryTest {
         List.of(list("blocklist", ReputationListType.IP_CIDR, 1.0)), dataFolder);
 
     assertFalse(registry.ipScore("1.2.3.4", Set.of("blocklist")).isPresent());
+  }
+
+  // --- initialDelayMs(...) : ce qui empêche un service en crash loop de retélécharger à
+  // chaque redémarrage (voir start()) ---
+
+  @Test
+  public void noCacheAtAllMeansDownloadRightAway() {
+    assertEquals(0L, ReputationRegistry.initialDelayMs(0, System.currentTimeMillis(), TimeUnit.HOURS.toMillis(24)));
+  }
+
+  @Test
+  public void freshCacheDefersTheFirstDownload() {
+    long now = System.currentTimeMillis();
+    long oneHourAgo = now - TimeUnit.HOURS.toMillis(1);
+    long refreshMs = TimeUnit.HOURS.toMillis(24);
+
+    long delay = ReputationRegistry.initialDelayMs(oneHourAgo, now, refreshMs);
+
+    assertEquals(refreshMs - TimeUnit.HOURS.toMillis(1), delay);
+  }
+
+  @Test
+  public void staleCacheMeansDownloadRightAway() {
+    long now = System.currentTimeMillis();
+    long thirtyHoursAgo = now - TimeUnit.HOURS.toMillis(30);
+
+    assertEquals(0L, ReputationRegistry.initialDelayMs(thirtyHoursAgo, now, TimeUnit.HOURS.toMillis(24)));
+  }
+
+  // --- start() de bout en bout : le comportement décrit ci-dessus tient vraiment sur un
+  // registre réel, pas seulement dans le calcul isolé ---
+
+  @Test
+  public void startDoesNotRedownloadAFreshCache() throws Exception {
+    String dataFolder = tempFolder.getRoot().getAbsolutePath();
+    File sourceFile = tempFolder.newFile("source.txt");
+    Files.writeString(sourceFile.toPath(), "9.9.9.0/24\n"); // différent du cache : prouve qu'il n'est pas relu
+
+    new ReputationListStore(dataFolder).save("blocklist", "1.2.3.0/24\n"); // cache tout frais (mtime = maintenant)
+
+    ReputationListConfig cfg = list("blocklist", ReputationListType.IP_CIDR, 1.0);
+    cfg.setUrl(sourceFile.toURI().toString());
+    cfg.setRefreshHours(24);
+
+    ReputationRegistry registry = new ReputationRegistry(List.of(cfg), dataFolder);
+    registry.start();
+    try {
+      Thread.sleep(300);
+      assertTrue("le cache frais doit rester utilisé", registry.ipScore("1.2.3.4", Set.of("blocklist")).isPresent());
+      assertFalse("la source ne doit pas avoir été retéléchargée", registry.ipScore("9.9.9.9", Set.of("blocklist")).isPresent());
+    } finally {
+      registry.stop();
+    }
+  }
+
+  @Test
+  public void startRedownloadsAStaleCacheRightAway() throws Exception {
+    String dataFolder = tempFolder.getRoot().getAbsolutePath();
+    File sourceFile = tempFolder.newFile("source.txt");
+    Files.writeString(sourceFile.toPath(), "9.9.9.0/24\n");
+
+    ReputationListStore store = new ReputationListStore(dataFolder);
+    store.save("blocklist", "1.2.3.0/24\n");
+    File cacheFile = new File(new File(dataFolder, "reputation"), "blocklist.txt.lz4");
+    assertTrue(cacheFile.setLastModified(System.currentTimeMillis() - TimeUnit.HOURS.toMillis(30)));
+
+    ReputationListConfig cfg = list("blocklist", ReputationListType.IP_CIDR, 1.0);
+    cfg.setUrl(sourceFile.toURI().toString());
+    cfg.setRefreshHours(24);
+
+    ReputationRegistry registry = new ReputationRegistry(List.of(cfg), dataFolder);
+    registry.start();
+    try {
+      Thread.sleep(300);
+      assertTrue("un cache périmé doit être retéléchargé dès le démarrage",
+          registry.ipScore("9.9.9.9", Set.of("blocklist")).isPresent());
+    } finally {
+      registry.stop();
+    }
   }
 }

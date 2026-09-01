@@ -66,7 +66,17 @@ public final class ReputationRegistry {
     return new ReputationRegistry(List.of(), null);
   }
 
-  /** Démarre le rafraîchissement périodique (une tâche par liste, à son propre refreshHours). Sans effet si aucune liste n'est configurée, ou déjà démarré. */
+  /**
+   * Démarre le rafraîchissement périodique (une tâche par liste, à son propre refreshHours).
+   * Sans effet si aucune liste n'est configurée, ou déjà démarré.
+   * <p>
+   * Le premier téléchargement de chaque liste est différé jusqu'à ce que son cache disque soit
+   * effectivement dû pour un refresh (âge du fichier &ge; refreshHours), pas déclenché
+   * systématiquement au démarrage du process : sinon, un service qui redémarre en boucle
+   * (crash loop, mauvaise config...) retéléchargerait à chaque redémarrage, potentiellement
+   * bien plus vite que refreshHours, jusqu'à se faire bannir de la source distante — exactement
+   * ce que refreshHours est censé éviter.
+   */
   public synchronized void start() {
     if (configsById.isEmpty() || scheduler != null) return;
     scheduler = Executors.newScheduledThreadPool(1, r -> {
@@ -74,10 +84,28 @@ public final class ReputationRegistry {
       t.setDaemon(true);
       return t;
     });
+    long now = System.currentTimeMillis();
     for (ReputationListConfig cfg : configsById.values()) {
       long refreshMs = TimeUnit.HOURS.toMillis(Math.max(1, cfg.getRefreshHours()));
-      scheduler.scheduleAtFixedRate(() -> refresh(cfg), 0, refreshMs, TimeUnit.MILLISECONDS);
+      long initialDelayMs = initialDelayMs(store.lastModified(cfg.getId()), now, refreshMs);
+      if (initialDelayMs > 0) {
+        LOGGER.info("Reputation list [" + cfg.getId() + "]: cached copy is " + formatDuration(refreshMs - initialDelayMs)
+            + " old, next download in " + formatDuration(initialDelayMs));
+      }
+      scheduler.scheduleAtFixedRate(() -> refresh(cfg), initialDelayMs, refreshMs, TimeUnit.MILLISECONDS);
     }
+  }
+
+  /** @return le délai avant le prochain téléchargement dû : 0 si pas de cache, ou si son âge dépasse déjà refreshMs. */
+  static long initialDelayMs(long cacheLastModifiedMillis, long nowMillis, long refreshMs) {
+    if (cacheLastModifiedMillis <= 0) return 0;
+    long age = nowMillis - cacheLastModifiedMillis;
+    return age >= refreshMs ? 0 : refreshMs - age;
+  }
+
+  private static String formatDuration(long ms) {
+    long minutes = TimeUnit.MILLISECONDS.toMinutes(ms);
+    return minutes < 60 ? minutes + "min" : TimeUnit.MILLISECONDS.toHours(ms) + "h";
   }
 
   public synchronized void stop() {

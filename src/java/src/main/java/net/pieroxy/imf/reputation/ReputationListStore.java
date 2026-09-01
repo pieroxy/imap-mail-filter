@@ -51,6 +51,17 @@ final class ReputationListStore {
     }
   }
 
+  /**
+   * Date de dernière écriture du cache pour cet id (millis epoch), ou 0 si aucun cache n'existe
+   * — sert à décider si un refresh réseau est dû (voir {@code ReputationRegistry.start()}), pas
+   * seulement en se fiant à la durée d'exécution du process courant : sans ça, un service qui
+   * redémarre en boucle (crash loop) retéléchargerait à chaque redémarrage, potentiellement à
+   * un rythme bien plus soutenu que refreshHours, jusqu'à se faire bannir de la source distante.
+   */
+  long lastModified(String id) {
+    return fileFor(id).lastModified();
+  }
+
   void save(String id, String content) throws IOException {
     folder.mkdirs();
     File file = fileFor(id);

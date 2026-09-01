@@ -355,16 +355,21 @@ download, so no per-message data (sender, IP, subject...) ever leaves the box. E
 | `refreshHours` | How often to re-download (minimum enforced: 1 hour). |
 | `score` | 0 (ok) to 1 (spam): the value attributed to anything found in this list. |
 
-Every list present in `reputationLists` is downloaded and refreshed on this schedule as soon as
-the process starts, whether or not a matcher currently references it — simpler to reason about
-than trying to lazily activate only referenced lists, and it means a list is warm and ready
-before you wire a rule to it. Blank lines are ignored; `#` or `;` start a comment, either as a
-whole line or trailing after an entry (e.g. Spamhaus DROP publishes
-`1.10.16.0/20 ; SBL256894` — the `; SBL256894` reference is stripped, not treated as part of the
-entry). A single malformed entry is skipped (logged) rather than failing the whole list. If a
-refresh fails (the source is down, network issue...), IMF keeps serving the last successfully
-downloaded copy — cached on disk, lz4-compressed, under `dataFolder/reputation/` — indefinitely,
-rather than losing the signal.
+Every list present in `reputationLists` is downloaded and refreshed on this schedule,
+whether or not a matcher currently references it — simpler to reason about than trying to
+lazily activate only referenced lists, and it means a list is warm and ready before you wire a
+rule to it. A signal is available from the very first message: the last downloaded copy is
+cached locally and reloaded before any network activity happens.
+
+A list only actually re-downloads once `refreshHours` has genuinely elapsed since its last
+successful download. Every download attempt, success or failure, is
+logged.
+
+Blank lines are ignored; `#` or `;` start a comment, either as a whole line or trailing after an
+entry (e.g. Spamhaus DROP publishes `1.10.16.0/20 ; SBL256894` — the `; SBL256894` reference is
+stripped, not treated as part of the entry). A single malformed entry is skipped (logged) rather
+than failing the whole list. If a refresh fails (the source is down, network issue...), IMF keeps
+serving the last successfully downloaded copy indefinitely, rather than losing the signal.
 
 The example above is a real, working source: [Spamhaus DROP](https://www.spamhaus.org/drop/drop.txt)
 is a free, no-registration list of netblocks entirely hijacked or leased by professional
