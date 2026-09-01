@@ -29,6 +29,20 @@ Additionally:
 
 * Feed the classifier more than just the subject — sender, recipient, IP.
 * Simple web UI to edit more complex rules.
+* More matchers:
+    * Recipient-based: TO_EQUALS/CC_EQUALS/recipient-domain matching
+    * Subject: CONTAINS, MATCHES (regex)
+    * Generic headers: HEADER_EQUALS/HEADER_CONTAINS(name, value)
+    * Body: BODY_CONTAINS, BODY_MATCHES
+    * SIZE
+    * Attachment: HAS_ATTACHMENT, FILENAME_ENDS_WITH, FILENAME_IS
+    * Dated: MESSAGE_AGE, MESSAGE_DATE
+    * IMAP_FLAGS
+* More actions:
+    * COPY_TO
+    * DELETE
+    * SET_FLAG
+    * FORWARD/REDIRECT/REPLY — Later, it's a much bigger endeavor
 
 ## Documentation
 
