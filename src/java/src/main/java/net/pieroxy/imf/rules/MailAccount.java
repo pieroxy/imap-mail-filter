@@ -79,7 +79,14 @@ public class MailAccount implements Runnable {
     // démarrage — sinon, sur un compte qui ne reçoit rien tout de suite, on ne saurait jamais
     // si le classifieur est actif ou pas.
     ruleCatalog.get();
+    ruleCatalog.logRules(LOGGER, accountLabel());
     new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS).run(config.getDisplayName(), this::processMessages);
+  }
+
+  /** displayName si renseigné, sinon repli sur le login IMAP — voir {@link RuleCatalog#logRules}. */
+  private String accountLabel() {
+    String displayName = config.getDisplayName();
+    return (displayName == null || displayName.isBlank()) ? config.getUsername() : displayName;
   }
 
   /** Applique la première règle qui matche (config manuelle, puis règles apprises). */

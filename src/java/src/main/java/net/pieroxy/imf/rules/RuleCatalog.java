@@ -5,6 +5,7 @@ import net.pieroxy.imf.learning.LearnedRulesStore;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +37,38 @@ public class RuleCatalog {
   /** Force la reconstruction (config manuelle + règles apprises relues du disque) au prochain get(). */
   public void invalidate() {
     rules = null;
+  }
+
+  /**
+   * Journalise, dans l'ordre d'évaluation (voir {@link Rule#applyFirstMatching}), une ligne par
+   * règle du catalogue — les règles de {@code config.json} d'abord, puis, séparées visuellement,
+   * les règles apprises (voir {@link #build}, qui les concatène dans le même ordre). Le tout en
+   * un seul appel à {@code logger.info} (un seul {@link java.util.logging.LogRecord}, donc un
+   * seul appel à {@code Handler.publish} — synchronisé côté JDK) pour que le bloc entier
+   * s'écrive d'un bloc et ne s'entrelace jamais avec celui d'un autre compte journalisant en
+   * parallèle sur son propre thread (voir {@link MailAccount#run}).
+   */
+  public void logRules(Logger logger, String accountLabel) {
+    List<Rule> current = get();
+    int manualCount = manualRules.size();
+    StringBuilder sb = new StringBuilder();
+    sb.append("Rules for account ").append(accountLabel).append(':').append(System.lineSeparator());
+    sb.append("  Rules from config.json (").append(manualCount).append("):").append(System.lineSeparator());
+    appendRuleRange(sb, current, 0, manualCount);
+    sb.append("  Learned rules (").append(current.size() - manualCount).append("):").append(System.lineSeparator());
+    appendRuleRange(sb, current, manualCount, current.size());
+    sb.setLength(sb.length() - System.lineSeparator().length()); // pas de ligne vide finale
+    logger.info(sb.toString());
+  }
+
+  private static void appendRuleRange(StringBuilder sb, List<Rule> rules, int from, int to) {
+    if (from == to) {
+      sb.append("    (none)").append(System.lineSeparator());
+      return;
+    }
+    for (int i = from; i < to; i++) {
+      sb.append("    ").append(rules.get(i).describe()).append(System.lineSeparator());
+    }
   }
 
   private List<Rule> build() {

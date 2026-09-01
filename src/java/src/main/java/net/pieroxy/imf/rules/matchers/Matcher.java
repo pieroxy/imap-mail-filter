@@ -64,6 +64,19 @@ public abstract class Matcher {
   }
 
   /**
+   * Représentation compacte de l'arbre de ce matcher pour les logs de démarrage (voir
+   * {@link net.pieroxy.imf.rules.RuleCatalog#logRules}), ex: {@code AND(FROM_EQUALS(toto.com),
+   * SUBJECT_STARTS_WITH(toto))} ou {@code FROM_EQUALS(32 keys)}.
+   */
+  public String describe() {
+    String type = config.getType().name();
+    if (!children.isEmpty()) {
+      return type + "(" + children.stream().map(Matcher::describe).collect(Collectors.joining(",")) + ")";
+    }
+    return type + "(" + describeKey() + ")";
+  }
+
+  /**
    * Teste candidate contre la config du matcher (keys si renseigné, sinon key), avec la
    * fonction de comparaison fournie (equals, equalsIgnoreCase...), et renvoie la clé
    * configurée qui a matché (utile pour {@link #matched}, notamment quand plusieurs "keys"

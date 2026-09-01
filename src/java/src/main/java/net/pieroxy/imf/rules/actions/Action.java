@@ -50,6 +50,19 @@ public abstract class Action {
     this.children = children;
   }
 
+  /**
+   * Représentation compacte de l'arbre de cette action pour les logs de démarrage (voir
+   * {@link net.pieroxy.imf.rules.RuleCatalog#logRules}), ex: {@code MOVE_TO(Work)} ou, pour un
+   * composite comme {@code MOVE_TO_AND_READ}, {@code MOVE_TO_AND_READ(READ(),MOVE_TO(Work))}.
+   */
+  public String describe() {
+    String type = config.getType().name();
+    if (!children.isEmpty()) {
+      return type + "(" + children.stream().map(Action::describe).collect(Collectors.joining(",")) + ")";
+    }
+    return type + "(" + (config.getKey() != null ? config.getKey() : "") + ")";
+  }
+
   /** Logger propre à ce noeud de config, dont le niveau suit son logLevel (INFO par défaut). */
   public Logger getLogger() {
     return logger;

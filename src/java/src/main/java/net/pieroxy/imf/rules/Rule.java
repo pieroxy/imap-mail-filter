@@ -23,6 +23,11 @@ public class Rule {
     action = Action.build(config.getAction());
   }
 
+  /** Représentation compacte pour les logs de démarrage, ex: {@code Rule(FROM_DOMAIN_EQUALS(toto.com),MOVE_TO(Work))}. */
+  public String describe() {
+    return "Rule(" + matcher.describe() + "," + action.describe() + ")";
+  }
+
   /**
    * Journalise sur le logger propre à chaque noeud (matcher/action) : WARNING sur erreur,
    * INFO quand le matcher matche et quand l'action s'exécute.
