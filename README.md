@@ -3,25 +3,19 @@
 
 ## What is it?
 
-imap-mail-filter is a program (a "daemon") that has the purpose of adding some automation to your email server. It is targeted at people hosting their own mail servers. Implementing those things at the mail server level or at the mail client level is more or less easy depending on the software used, but in all cases, you have to do the job all over again if/when you change said software.
+imap-mail-filter (IMF) is a small daemon that bolts spam detection and routing rules onto any IMAP mailbox — built for people who run their own mail server. On Gmail or Outlook.com? You're already covered, no need for this.
 
-IMF stands alone and just needs IMAP access to your account to add spam detection and basic routing rules.
+Mail servers and clients often do this natively, but every time you switch software you get to reconfigure it all from scratch. IMF only needs IMAP, so it doesn't care what's behind it: point it at a new server and everything — rules included — just keeps working.
 
-IMF also implements a dead simple way to report spam or create a simple rule: just move an example email into the right `imf-rules/` subfolder, and every future email matching the same criteria gets routed automatically — see [Learning rules by example](docs/README.md#learning-rules-by-example) for how that folder structure works.
-
-## Who is it for?
-
-If you're using Gmail or outlook.com for your mail, you probably have no need for this.
-
-IMF has been designed for self-hosted mail servers. Most of them support spam detection and server-side rules, one way or another, but those are often server-specific and cumbersome.
-
-This means that changing mail servers requires you to reconfigure spam detection and rules all over again.
-
-With IMF, just plug it into your new server through IMAP and you're done. All rules still work, all spam detection is up and running.
+Teaching it a new rule is dead simple too: drop an example email into the right `imf-rules/` subfolder, and every future email matching the same criteria gets routed automatically. See [Learning rules by example](docs/README.md#learning-rules-by-example) for how that folder structure works.
 
 ## Requirements
 
-Just Java 17 and an Internet connection.
+* Java 17.
+* An IMAP account, reachable over IMAPS (implicit TLS) — there's no plain-IMAP mode, sorry. Folder-creation rights too, since IMF manages its own `imf-rules/` folder tree; the default on pretty much any account you'd actually own.
+* An internet connection — to your mail server, and for the SPF/DKIM/DMARC/FCrDNS checks, which are just DNS lookups. Nothing else ever leaves the box.
+
+That's it.
 
 ## Features
 
@@ -50,6 +44,7 @@ A few things worth understanding before you dive in:
 ## Roadmap
 
 * Feed the classifier more than just the subject — sender, recipient, IP.
+* Reputation based scoring for spam detection
 * Simple web UI to edit more complex rules.
 * More matchers:
     * Recipient-based: TO_EQUALS/CC_EQUALS/recipient-domain matching
