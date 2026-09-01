@@ -35,6 +35,18 @@ Additionally:
 * Logs show exactly which rule acted on each message
 * No third-party service ever sees your mail — the only outbound traffic is DNS lookups for SPF/DKIM/DMARC/FCrDNS checks, which reveal sender domains/IPs but never message content.
 
+## Concepts
+
+A few things worth understanding before you dive in:
+
+* **No UI, no manual rule editing** — the primary way to teach IMF a rule is to drop an example email into the right `imf-rules/` subfolder. See [Learning rules by example](docs/README.md#learning-rules-by-example).
+* **First match wins** — rules from `config.json` are evaluated before learned rules, in order; the first one that matches runs its action and evaluation stops there. See [Rule evaluation order](docs/README.md#rule-evaluation-order).
+* **Everything is HAM except Spam** — for [classifier corpus collection](docs/README.md#classifier-corpus-collection), every folder is treated as legitimate mail (HAM) except the configured Spam folder. `INBOX`, `imf-rules/`, and any [excluded folders](docs/README.md#excluding-a-folder-from-the-corpus) (e.g. `SpamML`) are skipped entirely rather than counted as either.
+* **INBOX doesn't count** — INBOX is never scanned for the corpus, so mail you leave sitting there teaches the classifier nothing. Filing/archiving read mail into folders (an "inbox zero" habit) is what actually feeds it examples of legitimate mail.
+* **Unread in Spam means "review me"** — by convention (see the [starter config](config.example.json)), strong verdicts (SPF/DKIM/DMARC `fail`) are moved to Spam pre-marked read, while weaker, corroborating-only signals are left unread — a manual-review flag, since IMF has no UI to show confidence.
+* **Always verified live** — SPF/DKIM/DMARC/FCrDNS are recomputed from scratch via DNS on every check; any `Authentication-Results`/`Received-SPF` header already on the message is never trusted, since anyone could have forged it before delivery.
+* **Manual reprocessing** — drop any message into `imf-rules/ToProcess` to run the current rule set against it (handy for reclassifying an old message after adding or fixing a rule); it ends up in `imf-rules/Done` once handled, whether or not a rule actually matched. See [Manually reprocessing a message](docs/README.md#manually-reprocessing-a-message).
+
 ## Roadmap
 
 * Feed the classifier more than just the subject — sender, recipient, IP.
