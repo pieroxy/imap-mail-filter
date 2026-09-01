@@ -16,6 +16,7 @@ configurable rules to new mail: move it, mark it read, or both. Rules can be wri
 - [Logging](#logging)
 - [Data files](#data-files)
 - [Classifier corpus collection](#classifier-corpus-collection)
+  - [Excluding a folder from the corpus](#excluding-a-folder-from-the-corpus)
   - [Subject classifier training](#subject-classifier-training)
 
 ## Running IMF
@@ -60,6 +61,7 @@ Each entry in `configurations` is one IMAP account:
 | `password` | yes | IMAP password. |
 | `runEvery` | yes | Seconds between processing cycles. |
 | `classifierSpamFolderName` | no | Folder treated as "Spam" for classifier corpus labeling. Defaults to `"Spam"`. |
+| `classifierExcludedFolders` | no | Folder names (anywhere in the tree) to skip entirely for classifier corpus collection — neither `SPAM` nor `HAM`, just ignored, like `INBOX`/`imf-rules/` already are. See [Classifier corpus collection](#classifier-corpus-collection). |
 | `rules` | no | List of manually-configured rules for this account (see [Matchers and actions](#matchers-and-actions)). Absent/empty means only learned rules (if any) apply. |
 
 Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP option.
@@ -81,6 +83,7 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
       "password": "secret",
       "runEvery": 300,
       "classifierSpamFolderName": "Spam",
+      "classifierExcludedFolders": ["SpamML"],
       "rules": [
         {
           "matcher": { "type": "SPF_RESULT_EQUALS", "key": "fail", "logLevel": "DEBUG" },
@@ -114,11 +117,11 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
         },
         {
           "matcher": { "type": "SUBJECT_CLASSIFIER_EQUALS", "key": ">0.99" },
-          "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
+          "action": { "type": "MOVE_TO_AND_READ", "key": "SpamML" }
         },
         {
           "matcher": { "type": "SUBJECT_CLASSIFIER_EQUALS", "key": ">0.5" },
-          "action": { "type": "MOVE_TO", "key": "Spam" }
+          "action": { "type": "MOVE_TO", "key": "SpamML" }
         }
       ]
     }
@@ -131,11 +134,16 @@ softfails to Spam unread (for manual review), routes a newsletter domain to a `N
 folder only when it also carries a valid DKIM signature for that domain, simply marks mail from
 two trusted addresses as read (using `keys` to match either one) without moving it, and — once
 enough data has been collected, see [Classifier corpus collection](#classifier-corpus-collection)
-below — sends very-confidently-classified subjects to Spam pre-marked read, and merely
-possibly-spammy ones to Spam left unread for review. Two rules at two thresholds rather than one:
-[`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) only ever matches/doesn't
-match, so "confident" vs "unsure" is expressed as two separately-configured rules, not a single
-rule with a confidence level.
+below — sends very-confidently-classified subjects to `SpamML` pre-marked read, and merely
+possibly-spammy ones to `SpamML` left unread for review. Two rules at two thresholds rather than
+one: [`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) only ever
+matches/doesn't match, so "confident" vs "unsure" is expressed as two separately-configured
+rules, not a single rule with a confidence level.
+
+Note the classifier's verdicts go to `SpamML`, a folder of its own, **not** straight into
+`Spam` — and `classifierExcludedFolders` excludes it from corpus collection. See
+[Excluding a folder from the corpus](#excluding-a-folder-from-the-corpus) for why: routing it
+into `Spam` unexcluded would let the classifier train on its own past verdicts.
 
 The `FCRDNS_RESULT_EQUALS: none` rule is here mainly to show the syntax — see
 [its own doc](matchers/fcrdns-result-equals.md) before using it standalone like this in
@@ -271,6 +279,29 @@ rhythms:
 
 Both share the same per-folder UID cursor, so nothing gets recorded twice. Files older than
 `classifierCorpusRetentionDays` days are pruned once a day.
+
+### Excluding a folder from the corpus
+
+`classifierExcludedFolders` skips a folder (matched by name, anywhere in the tree) entirely —
+neither `SPAM` nor `HAM`. This matters most if a
+[`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) rule moves its own verdicts
+into a dedicated folder (e.g. `"SpamML"`, or a `"Spam/ML"` subfolder) rather than straight into
+`classifierSpamFolderName`:
+
+- **Without exclusion, that folder would be actively mislabeled**, not just ignored: since its
+  name doesn't match `classifierSpamFolderName`, the scanner would label everything in it `HAM`
+  — poisoning the corpus with spam classified as legitimate mail, worse than not learning from it
+  at all.
+- It also breaks a feedback loop: without exclusion, the classifier would eventually train on its
+  own past verdicts, letting an early mistake reinforce itself. A rule whose action moves mail
+  into `classifierSpamFolderName` directly doesn't have this problem — a human- or
+  protocol-verified rule (SPF/DKIM/DMARC/`FROM_*`) landing mail in Spam is still a genuine,
+  independent signal worth learning from; it's specifically the classifier grading its own
+  homework that's excluded here.
+
+```json
+{ "classifierExcludedFolders": ["SpamML"] }
+```
 
 ### Subject classifier training
 

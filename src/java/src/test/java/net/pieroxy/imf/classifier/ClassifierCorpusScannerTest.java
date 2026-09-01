@@ -70,7 +70,7 @@ public class ClassifierCorpusScannerTest {
 
     // Le scan fréquent (à chaque cycle) capture le spam...
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
-      new ClassifierCorpusScanner(mailbox, store, "Spam").scanSpamFolderNow(new ClassifierScanState());
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of()).scanSpamFolderNow(new ClassifierScanState());
     }
 
     // ...avant que l'utilisateur ne le supprime le soir, comme dans le scénario réel.
@@ -88,7 +88,7 @@ public class ClassifierCorpusScannerTest {
     fixture.appendMessage(message("Weekly team sync", "colleague@example.com"), "Archive");
 
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
-      new ClassifierCorpusScanner(mailbox, store, "Spam").scanSpamFolderNow(new ClassifierScanState());
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of()).scanSpamFolderNow(new ClassifierScanState());
     }
 
     assertTrue("scanSpamFolderNow ne doit toucher qu'au dossier Spam", store.readAll().isEmpty());
@@ -101,7 +101,7 @@ public class ClassifierCorpusScannerTest {
     fixture.appendMessage(message("Weekly team sync", "colleague@example.com"), "Archive");
 
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
-      new ClassifierCorpusScanner(mailbox, store, "Spam").scan(new ClassifierScanState(), LocalDate.now());
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of()).scan(new ClassifierScanState(), LocalDate.now());
     }
 
     List<ClassifierExample> examples = store.readAll();
@@ -115,11 +115,28 @@ public class ClassifierCorpusScannerTest {
     ClassifierScanState state = new ClassifierScanState(); // même état partagé entre les deux scans, comme dans MailAccount
 
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
-      new ClassifierCorpusScanner(mailbox, store, "Spam").scanSpamFolderNow(state);
-      new ClassifierCorpusScanner(mailbox, store, "Spam").scan(state, LocalDate.now());
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of()).scanSpamFolderNow(state);
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of()).scan(state, LocalDate.now());
     }
 
     assertEquals("le scan quotidien ne doit pas re-capturer ce que le scan fréquent a déjà vu",
         1, store.readAll().size());
+  }
+
+  @Test
+  public void excludedFoldersAreSkippedEntirelyNeitherSpamNorHam() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
+    // "SpamML" ne s'appelle pas "Spam" : sans exclusion, il serait scanné par le scan complet
+    // et étiqueté HAM à tort (pire que ne pas apprendre dessus — ça empoisonnerait le corpus).
+    fixture.appendMessage(message("Buy cheap stuff now", "spammer@bad.example.com"), "SpamML");
+    fixture.appendMessage(message("Weekly team sync", "colleague@example.com"), "Archive");
+
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of("SpamML")).scan(new ClassifierScanState(), LocalDate.now());
+    }
+
+    List<ClassifierExample> examples = store.readAll();
+    assertEquals("seul Archive doit être capturé, SpamML est exclu", 1, examples.size());
+    assertEquals("Weekly team sync", examples.get(0).getSubject());
   }
 }

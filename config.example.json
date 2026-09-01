@@ -11,6 +11,7 @@
       "username": "me@example.com",
       "password": "secret",
       "runEvery": 300,
+      "classifierExcludedFolders": ["SpamML"],
       "rules": [
         {
           "matcher": { "type": "SPF_RESULT_EQUALS", "key": "fail" },
@@ -36,7 +37,7 @@
         },
         {
           "matcher": { "type": "SUBJECT_CLASSIFIER_EQUALS", "key": ">0.99" },
-          "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
+          "action": { "type": "MOVE_TO_AND_READ", "key": "SpamML" }
         }
       ]
     }

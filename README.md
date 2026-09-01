@@ -49,11 +49,19 @@ Spam verdict.
 
 It also enables classifier corpus collection (`classifierCorpusRetentionDays`) and adds one
 [`SUBJECT_CLASSIFIER_EQUALS`](docs/matchers/subject-classifier-equals.md) rule at a `>0.99`
-threshold, pre-marked read like the protocol-verified signals above. It does nothing at all
-until a model has actually been trained, which requires **at least 50 examples of each class**
-(`SPAM`/`HAM`) — see [Classifier corpus collection](docs/README.md#classifier-corpus-collection).
-That threshold isn't just about having *some* data: a model trained on too few examples tends to
-produce artificially extreme scores (a word seen once on one side of the split can swing a score
-to 0.99 on its own, not because it's a genuinely reliable pattern) — 50 gives `>0.99` a fairer
-chance of meaning what it says before this rule starts acting on it.
+threshold, pre-marked read like the protocol-verified signals above — but routed to `SpamML`,
+a folder of its own, rather than straight into `Spam`. `classifierExcludedFolders` then excludes
+that folder from corpus collection: without it, `SpamML` would be scanned like any other folder
+and, not being named `Spam`, mislabeled `HAM` — poisoning the corpus with spam classified as
+legitimate mail. It also keeps the classifier from ever training on its own past verdicts, unlike
+the protocol-verified rules above, whose Spam verdicts stay perfectly fine to learn from. See
+[Excluding a folder from the corpus](docs/README.md#excluding-a-folder-from-the-corpus).
+
+This rule does nothing at all until a model has actually been trained, which requires **at
+least 50 examples of each class** (`SPAM`/`HAM`) — see
+[Classifier corpus collection](docs/README.md#classifier-corpus-collection). That threshold
+isn't just about having *some* data: a model trained on too few examples tends to produce
+artificially extreme scores (a word seen once on one side of the split can swing a score to 0.99
+on its own, not because it's a genuinely reliable pattern) — 50 gives `>0.99` a fairer chance of
+meaning what it says before this rule starts acting on it.
 

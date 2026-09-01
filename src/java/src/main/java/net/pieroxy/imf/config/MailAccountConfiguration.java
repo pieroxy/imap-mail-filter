@@ -18,6 +18,13 @@ public class MailAccountConfiguration {
    * Outlook...). Défaut : "Spam" si absent/vide.
    */
   private String classifierSpamFolderName;
+  /**
+   * Noms de dossiers (n'importe où dans l'arbre, en plus d'INBOX et imf-rules/ qui le sont
+   * déjà toujours) à exclure complètement du corpus classifieur : ni SPAM ni HAM, ignorés.
+   * Utile par exemple pour un dossier dédié aux verdicts du classifieur lui-même (ex: "SpamML"
+   * ou "Spam/ML"), pour qu'il ne s'auto-alimente pas en exemples d'entraînement.
+   */
+  private List<String> classifierExcludedFolders;
 
   private List<MailFilterRuleConfiguration> rules;
 
@@ -68,6 +75,14 @@ public class MailAccountConfiguration {
 
   public void setClassifierSpamFolderName(String classifierSpamFolderName) {
     this.classifierSpamFolderName = classifierSpamFolderName;
+  }
+
+  public List<String> getClassifierExcludedFolders() {
+    return classifierExcludedFolders;
+  }
+
+  public void setClassifierExcludedFolders(List<String> classifierExcludedFolders) {
+    this.classifierExcludedFolders = classifierExcludedFolders;
   }
 
   public List<MailFilterRuleConfiguration> getRules() {

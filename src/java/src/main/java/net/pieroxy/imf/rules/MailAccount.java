@@ -17,6 +17,7 @@ import net.pieroxy.imf.scheduling.BackoffLoop;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,6 +40,7 @@ public class MailAccount implements Runnable {
   private final ClassifierCorpusStore classifierCorpusStore;
   private final SubjectClassifierTrainer subjectClassifierTrainer;
   private final String classifierSpamFolderName;
+  private final List<String> classifierExcludedFolders;
   private final ImapMailboxFactory mailboxFactory;
   private LocalDate lastSkeletonEnsureDate;
 
@@ -58,6 +60,8 @@ public class MailAccount implements Runnable {
     this.subjectClassifierTrainer = new SubjectClassifierTrainer(classifierCorpusStore);
     String spamFolderName = config.getClassifierSpamFolderName();
     this.classifierSpamFolderName = (spamFolderName == null || spamFolderName.isBlank()) ? "Spam" : spamFolderName;
+    this.classifierExcludedFolders = config.getClassifierExcludedFolders() != null
+        ? config.getClassifierExcludedFolders() : List.of();
     this.mailboxFactory = mailboxFactory;
   }
 
@@ -118,7 +122,8 @@ public class MailAccount implements Runnable {
   private void scanSpamFolderForClassifierCorpus(ImapMailbox mailbox) {
     ClassifierScanState state = classifierScanStateStore.load();
     try {
-      new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName).scanSpamFolderNow(state);
+      new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName, classifierExcludedFolders)
+          .scanSpamFolderNow(state);
       classifierScanStateStore.save(state);
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Classifier corpus spam scan failed for account " + config.getDisplayName(), e);
@@ -155,8 +160,8 @@ public class MailAccount implements Runnable {
 
     boolean caughtUpToday;
     try {
-      boolean moreWorkPending = new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName)
-          .scan(state, today);
+      boolean moreWorkPending = new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName,
+          classifierExcludedFolders).scan(state, today);
       caughtUpToday = !moreWorkPending;
       if (caughtUpToday) {
         state.setLastScanDate(today.toString());

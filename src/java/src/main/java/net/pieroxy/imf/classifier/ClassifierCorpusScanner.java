@@ -10,9 +10,12 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Parcourt les dossiers du compte, hors INBOX et l'arbre imf-rules/ (interne à l'outil, pas du
@@ -29,6 +32,15 @@ import java.util.logging.Logger;
  * méthodes partagent le même {@link ClassifierScanState} (par dossier), donc pas de double
  * comptage : ce que le scan fréquent a déjà vu, le scan quotidien le retrouve simplement à
  * jour et n'y refait rien.
+ * <p>
+ * Des dossiers supplémentaires (n'importe où dans l'arbre) peuvent être exclus du scan via
+ * excludedFolderNames — ni SPAM ni HAM, complètement ignorés, comme INBOX/imf-rules le sont
+ * déjà. Utile notamment pour un dossier dédié aux verdicts du classifieur lui-même (ex: une
+ * règle SUBJECT_CLASSIFIER_EQUALS qui déplace vers "SpamML" plutôt que "Spam") : sans
+ * exclusion, ce dossier serait scanné comme n'importe quel autre et, ne portant pas le nom
+ * configuré pour Spam, étiqueté HAM à tort — pire que ne pas apprendre dessus, ça empoisonnerait
+ * le corpus avec du spam classé légitime. L'exclure évite aussi la boucle de rétroaction (le
+ * classifieur s'entraînant sur ses propres verdicts passés).
  */
 public class ClassifierCorpusScanner {
   private final static Logger LOGGER = Logger.getLogger(ClassifierCorpusScanner.class.getName());
@@ -46,12 +58,20 @@ public class ClassifierCorpusScanner {
   private final ImapMailbox mailbox;
   private final ClassifierCorpusStore corpusStore;
   private final String spamFolderName;
+  private final Set<String> excludedFolderNames;
   private int messagesProcessed;
 
-  public ClassifierCorpusScanner(ImapMailbox mailbox, ClassifierCorpusStore corpusStore, String spamFolderName) {
+  public ClassifierCorpusScanner(ImapMailbox mailbox, ClassifierCorpusStore corpusStore, String spamFolderName,
+                                  List<String> excludedFolderNames) {
     this.mailbox = mailbox;
     this.corpusStore = corpusStore;
     this.spamFolderName = spamFolderName;
+    // Set (pas List) : la liste d'exclusion peut compter plusieurs entrées, autant faire de
+    // isExcluded() une recherche O(1) plutôt qu'un balayage — pas cher à faire une fois à la
+    // construction. Normalisé en minuscules pour garder la comparaison insensible à la casse
+    // sans refaire un stream à chaque appel.
+    this.excludedFolderNames = excludedFolderNames == null ? Set.of()
+        : excludedFolderNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).collect(Collectors.toUnmodifiableSet());
   }
 
   /** @return true si le plafond a été atteint (il reste du travail pour le prochain appel). */
@@ -88,7 +108,7 @@ public class ClassifierCorpusScanner {
       if (enforceBudget && messagesProcessed >= MAX_MESSAGES_PER_SCAN) return true;
 
       String name = folder.getName();
-      if ("INBOX".equalsIgnoreCase(name) || LEARNING_ROOT_FOLDER.equalsIgnoreCase(name)) continue;
+      if ("INBOX".equalsIgnoreCase(name) || LEARNING_ROOT_FOLDER.equalsIgnoreCase(name) || isExcluded(name)) continue;
 
       int type = folder.getType();
       if ((type & Folder.HOLDS_MESSAGES) != 0 && shouldScan.test(folder)) {
@@ -99,6 +119,10 @@ public class ClassifierCorpusScanner {
       }
     }
     return enforceBudget && messagesProcessed >= MAX_MESSAGES_PER_SCAN;
+  }
+
+  private boolean isExcluded(String folderName) {
+    return excludedFolderNames.contains(folderName.toLowerCase(Locale.ROOT));
   }
 
   private void scanFolder(Folder folder, ClassifierScanState state, List<ClassifierExample> newExamples) {
