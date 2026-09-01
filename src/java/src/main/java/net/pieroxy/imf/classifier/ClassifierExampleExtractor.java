@@ -27,6 +27,7 @@ public final class ClassifierExampleExtractor {
 
   public static ClassifierExample extract(Message message, ClassifierLabel label, Instant fetchDate) throws MessagingException {
     ClassifierExample example = new ClassifierExample();
+    example.setMessageId(headerValue(message, "Message-ID"));
     example.setFetchDate(DateTimeFormatter.ISO_INSTANT.format(fetchDate));
     example.setMailDate(message.getSentDate() != null
         ? DateTimeFormatter.ISO_INSTANT.format(message.getSentDate().toInstant())

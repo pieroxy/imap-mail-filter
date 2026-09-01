@@ -92,6 +92,17 @@ public class ClassifierExampleExtractorTest {
     assertNull(example.getReturnPathMismatch());
     assertNull(example.getReplyToDomain());
     assertNull(example.getReplyToMismatch());
+    assertNull(example.getMessageId());
+  }
+
+  @Test
+  public void extractsMessageId() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.addHeader("Message-ID", "<abc123@example.com>");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertEquals("<abc123@example.com>", example.getMessageId());
   }
 
   @Test

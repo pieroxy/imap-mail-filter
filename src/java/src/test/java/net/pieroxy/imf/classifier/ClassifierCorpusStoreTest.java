@@ -34,6 +34,13 @@ public class ClassifierCorpusStoreTest {
     return e;
   }
 
+  private static ClassifierExample example(String subject, ClassifierLabel label, String messageId, String fetchDate) {
+    ClassifierExample e = example(subject, label);
+    e.setMessageId(messageId);
+    e.setFetchDate(fetchDate);
+    return e;
+  }
+
   private File dayFile(String accountKey, LocalDate day) {
     return new File(new File(new File(tmp.getRoot(), "classifier-corpus"), accountKey),
         "classifier-" + day + ".json.lz4");
@@ -94,6 +101,60 @@ public class ClassifierCorpusStoreTest {
     store.pruneOlderThan(LocalDate.of(2026, 9, 30));
 
     assertTrue(dayFile("account", old).exists());
+  }
+
+  @Test
+  public void readAllReturnsExamplesAcrossMultipleDayFiles() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tmp.getRoot().getAbsolutePath(), "account", 30);
+    store.append(LocalDate.of(2026, 9, 29), Arrays.asList(example("first", ClassifierLabel.HAM)));
+    store.append(LocalDate.of(2026, 9, 30), Arrays.asList(example("second", ClassifierLabel.SPAM)));
+
+    assertEquals(2, store.readAll().size());
+  }
+
+  /**
+   * Le scénario réel : un message auto-classé SPAM par le scan (rapide) du dossier Spam, puis
+   * déplacé à la main par l'utilisateur qui le juge légitime — recapturé, cette fois HAM, par le
+   * scan quotidien complet qui suit. Un déplacement IMAP change l'UID du message, donc rien
+   * n'empêche cette double capture avec le même Message-ID mais des labels contradictoires ;
+   * readAll() doit ne garder que le verdict le plus récent (fetchDate le plus tardif).
+   */
+  @Test
+  public void readAllKeepsOnlyTheLatestVerdictForTheSameMessageId() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tmp.getRoot().getAbsolutePath(), "account", 30);
+    store.append(LocalDate.of(2026, 9, 29),
+        Arrays.asList(example("Hello", ClassifierLabel.SPAM, "<msg-1@example.com>", "2026-09-29T08:00:00Z")));
+    store.append(LocalDate.of(2026, 9, 30),
+        Arrays.asList(example("Hello", ClassifierLabel.HAM, "<msg-1@example.com>", "2026-09-30T08:00:00Z")));
+
+    List<ClassifierExample> all = store.readAll();
+
+    assertEquals(1, all.size());
+    assertEquals(ClassifierLabel.HAM, all.get(0).getLabel());
+  }
+
+  @Test
+  public void readAllKeepsTheEarlierExampleIfItsFetchDateIsActuallyLater() throws Exception {
+    // Vérifie que c'est bien fetchDate qui décide, pas l'ordre de lecture des fichiers.
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tmp.getRoot().getAbsolutePath(), "account", 30);
+    store.append(LocalDate.of(2026, 9, 29),
+        Arrays.asList(example("Hello", ClassifierLabel.HAM, "<msg-1@example.com>", "2026-09-30T08:00:00Z")));
+    store.append(LocalDate.of(2026, 9, 30),
+        Arrays.asList(example("Hello", ClassifierLabel.SPAM, "<msg-1@example.com>", "2026-09-29T08:00:00Z")));
+
+    List<ClassifierExample> all = store.readAll();
+
+    assertEquals(1, all.size());
+    assertEquals(ClassifierLabel.HAM, all.get(0).getLabel());
+  }
+
+  @Test
+  public void readAllNeverDedupesExamplesWithoutAMessageId() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tmp.getRoot().getAbsolutePath(), "account", 30);
+    store.append(LocalDate.of(2026, 9, 30), Arrays.asList(
+        example("first", ClassifierLabel.SPAM), example("second", ClassifierLabel.HAM)));
+
+    assertEquals(2, store.readAll().size());
   }
 
   /** Relit directement le fichier compressé : vérifie le format réellement persisté sur disque. */

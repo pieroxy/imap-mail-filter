@@ -9,6 +9,7 @@ import java.util.List;
  * avec From), étiqueté SPAM/HAM d'après le dossier IMAP d'où il vient.
  */
 public class ClassifierExample {
+  private String messageId;
   private String fetchDate;
   private String mailDate;
   private List<String> from;
@@ -26,6 +27,22 @@ public class ClassifierExample {
   private String replyToDomain;
   private Boolean replyToMismatch;
   private ClassifierLabel label;
+
+  /**
+   * Header Message-ID brut ; null si absent (rare, mail malformé). Identifie le même message
+   * à travers un déplacement IMAP (qui lui donne un nouvel UID dans le dossier de destination,
+   * donc invisible au suivi par UID) — voir {@code ClassifierCorpusStore#readAll()}, qui
+   * déduplique dessus pour ne garder que le dernier verdict d'un message vu deux fois avec des
+   * labels contradictoires (ex: auto-classé SPAM par le scan du dossier Spam, puis déplacé à la
+   * main par l'utilisateur qui le juge légitime).
+   */
+  public String getMessageId() {
+    return messageId;
+  }
+
+  public void setMessageId(String messageId) {
+    this.messageId = messageId;
+  }
 
   public String getFetchDate() {
     return fetchDate;

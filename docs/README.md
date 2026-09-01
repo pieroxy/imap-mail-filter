@@ -291,8 +291,7 @@ rhythms:
   being emptied out from under the scanner, and walking the whole account tree every cycle would
   be wasteful.
 
-Both share the same per-folder UID cursor, so nothing gets recorded twice. Files older than
-`classifierCorpusRetentionDays` days are pruned once a day.
+Files older than `classifierCorpusRetentionDays` days are pruned once a day.
 
 ### Excluding a folder from the corpus
 
@@ -319,10 +318,9 @@ into a dedicated folder (e.g. `"SpamML"`, or a `"Spam/ML"` subfolder) rather tha
 
 ### Subject classifier training
 
-Once a day, right after a full scan completes (not gated separately — same cycle, same IMAP
-connection), IMF (re)trains a subject-only spam classifier
-([`DocumentCategorizerME`](https://opennlp.apache.org/), Naive Bayes) on the entire retained
-corpus, and writes it to `classifier-corpus/<displayName>/subject-model.bin`. Training is
+Once a day, right after a full scan completes, IMF (re)trains a subject-only spam classifier
+(Naive Bayes) on the entire retained corpus, and writes it to
+`classifier-corpus/<displayName>/subject-model.bin`. Training is
 skipped — logged, not an error — until there are **at least 50 examples of each class** (`SPAM`
 and `HAM`); a lopsided or too-small corpus produces a model that hasn't learned anything useful,
 so IMF doesn't bother writing one yet.
@@ -355,15 +353,12 @@ download, so no per-message data (sender, IP, subject...) ever leaves the box. E
 | `refreshHours` | How often to re-download (minimum enforced: 1 hour). |
 | `score` | 0 (ok) to 1 (spam): the value attributed to anything found in this list. |
 
-Every list present in `reputationLists` is downloaded and refreshed on this schedule,
-whether or not a matcher currently references it — simpler to reason about than trying to
-lazily activate only referenced lists, and it means a list is warm and ready before you wire a
-rule to it. A signal is available from the very first message: the last downloaded copy is
-cached locally and reloaded before any network activity happens.
+Every list present in `reputationLists` is downloaded and refreshed on this schedule, whether or
+not a matcher currently references it. A signal is available from the very first message: the
+last downloaded copy is cached locally and reloaded before any network activity happens.
 
 A list only actually re-downloads once `refreshHours` has genuinely elapsed since its last
-successful download. Every download attempt, success or failure, is
-logged.
+successful download. Every download attempt, success or failure, is logged.
 
 Blank lines are ignored; `#` or `;` start a comment, either as a whole line or trailing after an
 entry (e.g. Spamhaus DROP publishes `1.10.16.0/20 ; SBL256894` — the `; SBL256894` reference is
@@ -371,38 +366,11 @@ stripped, not treated as part of the entry). A single malformed entry is skipped
 than failing the whole list. If a refresh fails (the source is down, network issue...), IMF keeps
 serving the last successfully downloaded copy indefinitely, rather than losing the signal.
 
-The example above is a real, working source: [Spamhaus DROP](https://www.spamhaus.org/drop/drop.txt)
-is a free, no-registration list of netblocks entirely hijacked or leased by professional
-spam/cybercrime operations. The [starter config](../config.example.json) also declares a second,
-independent IP source — [FireHOL's `blocklist_de_mail`](https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/blocklist_de_mail.ipset),
-IPs reported attacking mail/Postfix servers in the last 48 hours — and combines the two via `AND`/`OR`
-(see [Rule evaluation order](#rule-evaluation-order)) into a confidence tier: both lists agreeing
-routes to Spam pre-marked read, only one matching routes to Spam left unread for review — the
-same pattern already used there for DMARC/FCrDNS. Worth doing specifically because the two lists
-use different detection methods (known hijacked infrastructure vs. recently-observed abuse
-reports), so agreement between them is a meaningfully stronger signal than either alone; two
-lists that substantially overlap (e.g. one that's itself an aggregate including the other)
-wouldn't give you that.
-
-For domain reputation (`DOMAIN` type), the starter config declares three more, all free:
-[HaGeZi's TIF mini](https://github.com/hagezi/dns-blocklists) and the
-[Blocklist Project](https://github.com/blocklistproject/Lists)'s phishing list — two independently
-maintained malware/phishing/scam domain feeds, combined via the same `AND`/`OR` agreement pattern
-as the IP lists above — and
-[disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains),
-a community list of throwaway-mail providers (`tempmail.com`-style). That one is a different
-*kind* of signal, not "malicious" so much as "anonymous" — used on its own, but routed to Spam
-left unread rather than pre-marked read, since it's a newer, less battle-tested signal here.
-
-A fourth domain list, [HaGeZi's NRD7](https://github.com/hagezi/nrd) (domains registered in the
-last 7 days), is also used standalone, same reasoning as disposable-email-domains: a brand new
-domain isn't proof of anything, but it's unusual enough for legitimate mail to warrant landing
-unread rather than an outright verdict. Worth knowing before enabling it: **it's a much bigger
-list than the others here** — ~2.5 million entries, ~40 MB, versus a few hundred thousand and a
-few MB for everything else in this section — kept as a plain in-memory set, so it costs
-noticeably more RAM and takes longer to parse on every refresh than the others. A trie (domains
-sharing structure label by label, rather than one flat hash set) would use that space far more
-efficiently; not done yet, see [Roadmap](../README.md#roadmap).
+See [Starter configuration](../README.md#starter-configuration) for the five free sources wired
+up by default (two IP feeds combined via `AND`/`OR`, two domain feeds likewise, plus one
+disposable-email list) and why. See
+[Reputation list pairing rationale](IMPLEMENTATION-DETAILS.md#reputation-list-pairing-andor-rationale)
+for the design reasoning if you're adding your own.
 
 See [`IP_REPUTATION_EQUALS`](matchers/ip-reputation-equals.md) and
 [`FROM_DOMAIN_REPUTATION_EQUALS`](matchers/from-domain-reputation-equals.md) for how a matcher

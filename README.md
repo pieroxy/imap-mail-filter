@@ -65,7 +65,9 @@ A few things worth understanding before you dive in:
 
 ## Documentation
 
-See [docs/](docs/README.md) for how IMF works, the configuration reference, and a dedicated page for every matcher and action. New here? Start with the [quick start guide](docs/quickstart.md): download the jar, try it, then run it as a systemd service.
+* New here? [Quick start guide](docs/quickstart.md) — download the jar, try it, then run it as a systemd service.
+* [docs/](docs/README.md) — how IMF works, the configuration reference, a dedicated page for every matcher and action.
+* [`docs/IMPLEMENTATION-DETAILS.md`](docs/IMPLEMENTATION-DETAILS.md) — digging into the code? The "why" behind a few non-obvious internals.
 
 ## Starter configuration
 

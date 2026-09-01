@@ -19,7 +19,9 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -60,8 +62,9 @@ public class ClassifierCorpusStore {
 
   /**
    * Tous les exemples actuellement conservés (donc déjà dans la fenêtre de rétention si
-   * pruneOlderThan a été appelé avant), tous fichiers journaliers confondus. Utilisé par
-   * {@link SubjectClassifierTrainer} pour (ré)entraîner sur tout ce qui est retenu.
+   * pruneOlderThan a été appelé avant), tous fichiers journaliers confondus, dédupliqués par
+   * Message-ID (voir {@link #dedupeByMessageId}). Utilisé par {@link SubjectClassifierTrainer}
+   * pour (ré)entraîner sur tout ce qui est retenu.
    */
   public List<ClassifierExample> readAll() {
     File[] files = accountFolder.listFiles();
@@ -72,7 +75,47 @@ public class ClassifierCorpusStore {
         all.addAll(read(f));
       }
     }
-    return all;
+    return dedupeByMessageId(all);
+  }
+
+  /**
+   * Un même message peut être capturé deux fois avec des labels contradictoires : auto-classé
+   * SPAM au scan (rapide, chaque cycle) du dossier Spam, puis déplacé à la main par
+   * l'utilisateur qui le juge légitime — vu à nouveau, cette fois HAM, par le scan quotidien
+   * complet qui suit. Un déplacement IMAP donne un nouvel UID au message dans le dossier de
+   * destination (le suivi par UID par dossier ne voit donc pas "le même message"), donc rien
+   * n'empêche cette double capture en amont — la corriger ici, à la lecture, est plus simple
+   * que de la prévenir au scan (pas besoin de relire tout le corpus existant à chaque append).
+   * Pour un Message-ID vu plusieurs fois, seul l'exemple au fetchDate le plus récent (donc le
+   * verdict le plus à jour, celui qui reflète où l'utilisateur a fini par ranger le message) est
+   * gardé — les deux se neutraliseraient sinon au lieu d'enseigner quoi que ce soit. Les
+   * exemples sans Message-ID (rare, mail malformé) ne peuvent pas être rapprochés de façon
+   * fiable : gardés tels quels, jamais dédupliqués entre eux.
+   */
+  private static List<ClassifierExample> dedupeByMessageId(List<ClassifierExample> examples) {
+    Map<String, ClassifierExample> latestById = new LinkedHashMap<>();
+    List<ClassifierExample> withoutId = new ArrayList<>();
+    for (ClassifierExample example : examples) {
+      String id = example.getMessageId();
+      if (id == null) {
+        withoutId.add(example);
+        continue;
+      }
+      ClassifierExample existing = latestById.get(id);
+      if (existing == null || isAfter(example.getFetchDate(), existing.getFetchDate())) {
+        latestById.put(id, example);
+      }
+    }
+    List<ClassifierExample> result = new ArrayList<>(latestById.values());
+    result.addAll(withoutId);
+    return result;
+  }
+
+  /** fetchDate est formaté en ISO-8601 UTC (DateTimeFormatter.ISO_INSTANT) : comparable lexicographiquement. */
+  private static boolean isAfter(String a, String b) {
+    if (a == null) return false;
+    if (b == null) return true;
+    return a.compareTo(b) > 0;
   }
 
   /** Chemin du modèle de classification de sujet entraîné pour ce compte. */
