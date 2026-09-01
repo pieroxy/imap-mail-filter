@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -83,6 +84,117 @@ public class ClassifierExampleExtractorTest {
     assertNull(example.getIp());
     assertNull(example.getFromDisplayName());
     assertNull(example.getToDisplayName());
+    assertFalse(example.isReply());
+    assertNull(example.getPrecedence());
+    assertNull(example.getListId());
+    assertFalse(example.isListUnsubscribePresent());
+    assertNull(example.getReturnPathDomain());
+    assertNull(example.getReturnPathMismatch());
+    assertNull(example.getReplyToDomain());
+    assertNull(example.getReplyToMismatch());
+  }
+
+  @Test
+  public void detectsReplyViaInReplyToHeader() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.addHeader("In-Reply-To", "<original-msg-id@example.com>");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertTrue(example.isReply());
+  }
+
+  @Test
+  public void detectsReplyViaReferencesHeaderAlone() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.addHeader("References", "<msg1@example.com> <msg2@example.com>");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertTrue(example.isReply());
+  }
+
+  @Test
+  public void extractsPrecedenceAndListIdRawValues() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.addHeader("Precedence", "bulk");
+    message.addHeader("List-Id", "Weekly Newsletter <newsletter.example.com>");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertEquals("bulk", example.getPrecedence());
+    assertEquals("Weekly Newsletter <newsletter.example.com>", example.getListId());
+  }
+
+  @Test
+  public void detectsListUnsubscribePresence() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.addHeader("List-Unsubscribe", "<mailto:unsub@example.com>");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertTrue(example.isListUnsubscribePresent());
+  }
+
+  @Test
+  public void detectsReturnPathDomainMismatchFromFrom() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("alice@example.com"));
+    message.addHeader("Return-Path", "<bounce@spammy.example.net>");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.SPAM, Instant.now());
+
+    assertEquals("spammy.example.net", example.getReturnPathDomain());
+    assertEquals(Boolean.TRUE, example.getReturnPathMismatch());
+  }
+
+  @Test
+  public void noReturnPathMismatchWhenDomainsAgree() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("alice@example.com"));
+    message.addHeader("Return-Path", "<bounce@example.com>");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertEquals(Boolean.FALSE, example.getReturnPathMismatch());
+  }
+
+  @Test
+  public void emptyReturnPathIsTreatedAsAbsent() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("alice@example.com"));
+    message.addHeader("Return-Path", "<>"); // bounce sans retour
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertNull(example.getReturnPathDomain());
+    assertNull(example.getReturnPathMismatch());
+  }
+
+  @Test
+  public void detectsReplyToDomainMismatchFromFrom() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("alice@example.com"));
+    message.addHeader("Reply-To", "Support <support@spammy.example.net>");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.SPAM, Instant.now());
+
+    assertEquals("spammy.example.net", example.getReplyToDomain());
+    assertEquals(Boolean.TRUE, example.getReplyToMismatch());
+  }
+
+  @Test
+  public void mismatchIsNullRatherThanFalseWhenFromHasMultipleAddresses() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.addFrom(new InternetAddress[]{
+        new InternetAddress("alice@example.com"), new InternetAddress("bob@example.com")
+    });
+    message.addHeader("Reply-To", "support@example.com");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertEquals("example.com", example.getReplyToDomain());
+    assertNull("indéterminable (plusieurs From), pas 'pas de mismatch'", example.getReplyToMismatch());
   }
 
   @Test
