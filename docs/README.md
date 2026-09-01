@@ -382,8 +382,17 @@ same pattern already used there for DMARC/FCrDNS. Worth doing specifically becau
 use different detection methods (known hijacked infrastructure vs. recently-observed abuse
 reports), so agreement between them is a meaningfully stronger signal than either alone; two
 lists that substantially overlap (e.g. one that's itself an aggregate including the other)
-wouldn't give you that. For domain reputation (`DOMAIN` type), no equally well-known free source
-is bundled here yet — bring your own list, or a `file://` one you maintain by hand.
+wouldn't give you that.
+
+For domain reputation (`DOMAIN` type), the starter config declares three more, all free:
+[HaGeZi's TIF mini](https://github.com/hagezi/dns-blocklists) and the
+[Blocklist Project](https://github.com/blocklistproject/Lists)'s phishing list — two independently
+maintained malware/phishing/scam domain feeds, combined via the same `AND`/`OR` agreement pattern
+as the IP lists above — and
+[disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains),
+a community list of throwaway-mail providers (`tempmail.com`-style). That last one is a different
+*kind* of signal, not "malicious" so much as "anonymous" — used on its own, but routed to Spam
+left unread rather than pre-marked read, since it's a newer, less battle-tested signal here.
 
 See [`IP_REPUTATION_EQUALS`](matchers/ip-reputation-equals.md) and
 [`FROM_DOMAIN_REPUTATION_EQUALS`](matchers/from-domain-reputation-equals.md) for how a matcher

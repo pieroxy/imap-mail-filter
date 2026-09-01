@@ -17,6 +17,27 @@
       "url": "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/blocklist_de_mail.ipset",
       "refreshHours": 24,
       "score": 1.0
+    },
+    {
+      "id": "hagezi-tif-mini",
+      "type": "DOMAIN",
+      "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/tif.mini-onlydomains.txt",
+      "refreshHours": 24,
+      "score": 1.0
+    },
+    {
+      "id": "blocklist-project-phishing",
+      "type": "DOMAIN",
+      "url": "https://blocklistproject.github.io/Lists/alt-version/phishing-nl.txt",
+      "refreshHours": 24,
+      "score": 1.0
+    },
+    {
+      "id": "disposable-email-domains",
+      "type": "DOMAIN",
+      "url": "https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf",
+      "refreshHours": 24,
+      "score": 1.0
     }
   ],
   "configurations": [
@@ -89,6 +110,30 @@
               { "type": "IP_REPUTATION_EQUALS", "listIds": ["blocklist-de-mail"], "key": ">0.5" }
             ]
           },
+          "action": { "type": "MOVE_TO", "key": "Spam" }
+        },
+        {
+          "matcher": {
+            "type": "AND",
+            "children": [
+              { "type": "FROM_DOMAIN_REPUTATION_EQUALS", "listIds": ["hagezi-tif-mini"], "key": ">0.5" },
+              { "type": "FROM_DOMAIN_REPUTATION_EQUALS", "listIds": ["blocklist-project-phishing"], "key": ">0.5" }
+            ]
+          },
+          "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
+        },
+        {
+          "matcher": {
+            "type": "OR",
+            "children": [
+              { "type": "FROM_DOMAIN_REPUTATION_EQUALS", "listIds": ["hagezi-tif-mini"], "key": ">0.5" },
+              { "type": "FROM_DOMAIN_REPUTATION_EQUALS", "listIds": ["blocklist-project-phishing"], "key": ">0.5" }
+            ]
+          },
+          "action": { "type": "MOVE_TO", "key": "Spam" }
+        },
+        {
+          "matcher": { "type": "FROM_DOMAIN_REPUTATION_EQUALS", "listIds": ["disposable-email-domains"], "key": ">0.5" },
           "action": { "type": "MOVE_TO", "key": "Spam" }
         }
       ]

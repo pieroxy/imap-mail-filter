@@ -69,43 +69,31 @@ See [docs/](docs/README.md) for how IMF works, the configuration reference, and 
 ## Starter configuration
 
 [`config.example.json`](config.example.json) is a reasonable config to start from: SPF, DKIM,
-DMARC, and FCrDNS all enabled, with sane logging. Copy it to your `dataFolder` as `config.json`
-and fill in `host`/`username`/`password`.
+DMARC, FCrDNS, and reputation lists all enabled, with sane logging. Copy it to your `dataFolder`
+as `config.json` and fill in `host`/`username`/`password`. What it does:
 
-It deliberately only sends mail to Spam on the strong signals — SPF `fail`, DKIM `fail`, and
-DMARC `fail` — pre-marked read. `FCRDNS_RESULT_EQUALS` is intentionally **not** used standalone:
-it's the weakest of the four (see [its doc](docs/matchers/fcrdns-result-equals.md)), so it's
-only combined with SPF `softfail` via `AND`, as corroboration rather than a trigger on its own —
-and that combined rule leaves the message unread, for manual review rather than an outright
-Spam verdict.
+* **SPF/DKIM/DMARC `fail`** → Spam, pre-marked read — the strong, protocol-verified signals.
+* **SPF `softfail` + FCrDNS `fail`/`none`** (`AND`) → Spam, left unread for review.
+  [`FCRDNS_RESULT_EQUALS`](docs/matchers/fcrdns-result-equals.md) is the weakest of the four, so
+  it's never used standalone here, only as corroboration.
+* **Subject classifier** (`SUBJECT_CLASSIFIER_EQUALS >0.99`) → `SpamML` (its own folder, not
+  `Spam`), pre-marked read. Does nothing until trained on **at least 50 examples of each class**
+  — see [Classifier corpus collection](docs/README.md#classifier-corpus-collection).
+  `classifierExcludedFolders` keeps `SpamML` out of corpus collection — otherwise it'd get
+  scanned and mislabeled `HAM`, and the classifier would train on its own past verdicts. See
+  [Excluding a folder from the corpus](docs/README.md#excluding-a-folder-from-the-corpus).
+* **IP reputation** — [Spamhaus DROP](https://www.spamhaus.org/drop/drop.txt) and
+  [FireHOL's `blocklist_de_mail`](https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/blocklist_de_mail.ipset),
+  two independent feeds (different methodologies, so agreement means more than either alone):
+  both match → Spam pre-marked read; only one → Spam left unread.
+* **Domain reputation** — same `AND`/`OR` pattern, with
+  [HaGeZi's TIF mini](https://github.com/hagezi/dns-blocklists) and the
+  [Blocklist Project](https://github.com/blocklistproject/Lists)'s phishing list.
+* **Disposable email domains** — a
+  [community list](https://github.com/disposable-email-domains/disposable-email-domains) of
+  throwaway providers, used standalone → Spam left unread. A different *kind* of signal:
+  anonymous, not necessarily malicious.
 
-It also enables classifier corpus collection (`classifierCorpusRetentionDays`) and adds one
-[`SUBJECT_CLASSIFIER_EQUALS`](docs/matchers/subject-classifier-equals.md) rule at a `>0.99`
-threshold, pre-marked read like the protocol-verified signals above — but routed to `SpamML`,
-a folder of its own, rather than straight into `Spam`. `classifierExcludedFolders` then excludes
-that folder from corpus collection: without it, `SpamML` would be scanned like any other folder
-and, not being named `Spam`, mislabeled `HAM` — poisoning the corpus with spam classified as
-legitimate mail. It also keeps the classifier from ever training on its own past verdicts, unlike
-the protocol-verified rules above, whose Spam verdicts stay perfectly fine to learn from. See
-[Excluding a folder from the corpus](docs/README.md#excluding-a-folder-from-the-corpus).
-
-This rule does nothing at all until a model has actually been trained, which requires **at
-least 50 examples of each class** (`SPAM`/`HAM`) — see
-[Classifier corpus collection](docs/README.md#classifier-corpus-collection). That threshold
-isn't just about having *some* data: a model trained on too few examples tends to produce
-artificially extreme scores (a word seen once on one side of the split can swing a score to 0.99
-on its own, not because it's a genuinely reliable pattern) — 50 gives `>0.99` a fairer chance of
-meaning what it says before this rule starts acting on it.
-
-Finally, `reputationLists` declares two independent, free IP sources: [Spamhaus DROP](https://www.spamhaus.org/drop/drop.txt)
-(netblocks entirely hijacked or controlled by professional spam/cybercrime operations) and
-[FireHOL's `blocklist_de_mail`](https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/blocklist_de_mail.ipset)
-(IPs reported attacking mail/Postfix servers in the last 48 hours) — different methodologies, so
-they rarely flag the same IP for the same reason, which makes "both agree" a meaningfully
-stronger signal than either alone. Two
-[`IP_REPUTATION_EQUALS`](docs/matchers/ip-reputation-equals.md) rules, same tiered pattern as
-DMARC/FCrDNS above: `AND` (both lists match) routes to Spam pre-marked read; `OR` (only one
-does) routes to Spam left unread, for manual review. See
-[Reputation lists](docs/README.md#reputation-lists) for how these are downloaded (once for the
-whole process, refreshed periodically, never queried live per message).
+See [Reputation lists](docs/README.md#reputation-lists) for how these are downloaded (once for
+the whole process, refreshed periodically, never queried live per message).
 

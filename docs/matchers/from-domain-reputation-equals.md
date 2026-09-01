@@ -35,3 +35,23 @@ Not learnable by example, for the same reason.
   "action": { "type": "MOVE_TO", "key": "Spam" }
 }
 ```
+
+## Requiring agreement between independent lists
+
+Same pattern as [`IP_REPUTATION_EQUALS`](ip-reputation-equals.md#requiring-agreement-between-independent-lists):
+`listIds` on one matcher already takes the worst score across the lists it names, which is fine
+for redundant mirrors but means one list alone is enough to match. To require agreement between
+independently-maintained sources instead, use two separate `FROM_DOMAIN_REPUTATION_EQUALS`
+nodes combined with `AND`/`OR` — see the [starter config](../../config.example.json), which does
+exactly this with [HaGeZi's TIF mini](https://github.com/hagezi/dns-blocklists) and the
+[Blocklist Project](https://github.com/blocklistproject/Lists)'s phishing list: both agreeing
+routes to Spam pre-marked read, only one matching routes to Spam left unread for review.
+
+## Not every domain list means "malicious"
+
+The starter config also uses this matcher standalone against
+[disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains)
+— a list of throwaway-mail providers, not a malware/phishing feed. Being on it doesn't mean the
+sender is malicious, just that mail from it is anonymous and easily re-created; treat it as a
+weaker, different *kind* of signal than the malicious-domain lists above (the starter config
+routes it to Spam left unread, never pre-marked read, for that reason).
