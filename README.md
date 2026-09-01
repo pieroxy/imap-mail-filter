@@ -47,6 +47,7 @@ A few things worth understanding before you dive in:
 
 * Feed the classifier more than just the subject — sender, recipient, IP.
 * Simple web UI to edit more complex rules.
+* Trie-based storage for domain reputation lists — huge lists like NRD7 (~2.5M entries) currently sit in a flat in-memory set; a trie sharing structure label-by-label would use far less RAM.
 * More matchers:
     * Recipient-based: TO_EQUALS/CC_EQUALS/recipient-domain matching
     * Subject: CONTAINS, MATCHES (regex)
@@ -93,6 +94,10 @@ as `config.json` and fill in `host`/`username`/`password`. What it does:
   [community list](https://github.com/disposable-email-domains/disposable-email-domains) of
   throwaway providers, used standalone → Spam left unread. A different *kind* of signal:
   anonymous, not necessarily malicious.
+* **Newly registered domains** — [HaGeZi's NRD7](https://github.com/hagezi/nrd), domains
+  registered in the last 7 days, standalone → Spam left unread. Same reasoning as disposable
+  domains: unusual, not proof. Heads up: this one's ~2.5M entries/~40MB, much bigger than
+  everything else here — see [Reputation lists](docs/README.md#reputation-lists).
 
 See [Reputation lists](docs/README.md#reputation-lists) for how these are downloaded (once for
 the whole process, refreshed periodically, never queried live per message).

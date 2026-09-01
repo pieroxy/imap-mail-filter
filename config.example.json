@@ -38,6 +38,13 @@
       "url": "https://raw.githubusercontent.com/disposable-email-domains/disposable-email-domains/master/disposable_email_blocklist.conf",
       "refreshHours": 24,
       "score": 1.0
+    },
+    {
+      "id": "hagezi-nrd7",
+      "type": "DOMAIN",
+      "url": "https://cdn.jsdelivr.net/gh/hagezi/nrd@latest/domains/nrd7.txt",
+      "refreshHours": 24,
+      "score": 1.0
     }
   ],
   "configurations": [
@@ -134,6 +141,10 @@
         },
         {
           "matcher": { "type": "FROM_DOMAIN_REPUTATION_EQUALS", "listIds": ["disposable-email-domains"], "key": ">0.5" },
+          "action": { "type": "MOVE_TO", "key": "Spam" }
+        },
+        {
+          "matcher": { "type": "FROM_DOMAIN_REPUTATION_EQUALS", "listIds": ["hagezi-nrd7"], "key": ">0.5" },
           "action": { "type": "MOVE_TO", "key": "Spam" }
         }
       ]

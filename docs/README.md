@@ -390,9 +390,19 @@ For domain reputation (`DOMAIN` type), the starter config declares three more, a
 maintained malware/phishing/scam domain feeds, combined via the same `AND`/`OR` agreement pattern
 as the IP lists above — and
 [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains),
-a community list of throwaway-mail providers (`tempmail.com`-style). That last one is a different
+a community list of throwaway-mail providers (`tempmail.com`-style). That one is a different
 *kind* of signal, not "malicious" so much as "anonymous" — used on its own, but routed to Spam
 left unread rather than pre-marked read, since it's a newer, less battle-tested signal here.
+
+A fourth domain list, [HaGeZi's NRD7](https://github.com/hagezi/nrd) (domains registered in the
+last 7 days), is also used standalone, same reasoning as disposable-email-domains: a brand new
+domain isn't proof of anything, but it's unusual enough for legitimate mail to warrant landing
+unread rather than an outright verdict. Worth knowing before enabling it: **it's a much bigger
+list than the others here** — ~2.5 million entries, ~40 MB, versus a few hundred thousand and a
+few MB for everything else in this section — kept as a plain in-memory set, so it costs
+noticeably more RAM and takes longer to parse on every refresh than the others. A trie (domains
+sharing structure label by label, rather than one flat hash set) would use that space far more
+efficiently; not done yet, see [Roadmap](../README.md#roadmap).
 
 See [`IP_REPUTATION_EQUALS`](matchers/ip-reputation-equals.md) and
 [`FROM_DOMAIN_REPUTATION_EQUALS`](matchers/from-domain-reputation-equals.md) for how a matcher

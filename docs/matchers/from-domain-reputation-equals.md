@@ -49,9 +49,14 @@ routes to Spam pre-marked read, only one matching routes to Spam left unread for
 
 ## Not every domain list means "malicious"
 
-The starter config also uses this matcher standalone against
-[disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains)
-— a list of throwaway-mail providers, not a malware/phishing feed. Being on it doesn't mean the
-sender is malicious, just that mail from it is anonymous and easily re-created; treat it as a
-weaker, different *kind* of signal than the malicious-domain lists above (the starter config
-routes it to Spam left unread, never pre-marked read, for that reason).
+The starter config also uses this matcher standalone against two lists that aren't
+malware/phishing feeds — being on either doesn't mean the sender is malicious, just unusual
+enough to warrant a look, so both route to Spam left unread rather than pre-marked read:
+
+- [disposable-email-domains](https://github.com/disposable-email-domains/disposable-email-domains)
+  — throwaway-mail providers, anonymous and easily re-created.
+- [HaGeZi's NRD7](https://github.com/hagezi/nrd) — domains registered in the last 7 days. A
+  brand new domain emailing you out of nowhere is unusual; it's also, by definition, not proof
+  of anything on its own. **Much bigger than the other lists here** (~2.5M entries, ~40MB) — see
+  [Reputation lists](../README.md#reputation-lists) for the memory/refresh cost before enabling
+  it.
