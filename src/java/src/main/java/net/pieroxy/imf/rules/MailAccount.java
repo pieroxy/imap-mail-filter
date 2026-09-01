@@ -4,6 +4,7 @@ import net.pieroxy.imf.classifier.ClassifierCorpusScanner;
 import net.pieroxy.imf.classifier.ClassifierCorpusStore;
 import net.pieroxy.imf.classifier.ClassifierScanState;
 import net.pieroxy.imf.classifier.ClassifierScanStateStore;
+import net.pieroxy.imf.classifier.HeaderClassifierTrainer;
 import net.pieroxy.imf.classifier.SubjectClassifierTrainer;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 import net.pieroxy.imf.learning.LearnedRulesStore;
@@ -11,6 +12,7 @@ import net.pieroxy.imf.learning.RuleLearner;
 import net.pieroxy.imf.mail.ImapMailbox;
 import net.pieroxy.imf.mail.ImapMailboxConnection;
 import net.pieroxy.imf.mail.ImapMailboxFactory;
+import net.pieroxy.imf.rules.matchers.HeaderClassifierContext;
 import net.pieroxy.imf.rules.matchers.SubjectClassifierContext;
 import net.pieroxy.imf.scheduling.BackoffLoop;
 
@@ -39,6 +41,7 @@ public class MailAccount implements Runnable {
   private final ClassifierScanStateStore classifierScanStateStore;
   private final ClassifierCorpusStore classifierCorpusStore;
   private final SubjectClassifierTrainer subjectClassifierTrainer;
+  private final HeaderClassifierTrainer headerClassifierTrainer;
   private final String classifierSpamFolderName;
   private final List<String> classifierExcludedFolders;
   private final ImapMailboxFactory mailboxFactory;
@@ -58,6 +61,7 @@ public class MailAccount implements Runnable {
     this.classifierScanStateStore = new ClassifierScanStateStore(dataFolder, config.getDisplayName());
     this.classifierCorpusStore = new ClassifierCorpusStore(dataFolder, config.getDisplayName(), classifierCorpusRetentionDays);
     this.subjectClassifierTrainer = new SubjectClassifierTrainer(classifierCorpusStore);
+    this.headerClassifierTrainer = new HeaderClassifierTrainer(classifierCorpusStore);
     String spamFolderName = config.getClassifierSpamFolderName();
     this.classifierSpamFolderName = (spamFolderName == null || spamFolderName.isBlank()) ? "Spam" : spamFolderName;
     this.classifierExcludedFolders = config.getClassifierExcludedFolders() != null
@@ -72,6 +76,7 @@ public class MailAccount implements Runnable {
     // without context by MatcherType.getImplementation(). This holds because this thread is
     // dedicated to this account for the whole lifetime of the process (see SubjectClassifierContext).
     SubjectClassifierContext.set(classifierCorpusStore.getModelFile());
+    HeaderClassifierContext.set(classifierCorpusStore.getHeaderModelFile());
     LOGGER.info("Starting account " + config.getDisplayName());
     // Builds the Matcher/Action tree right away rather than waiting for the first message:
     // RuleCatalog is normally lazy (see inspect()), but some matchers (like
@@ -185,6 +190,12 @@ public class MailAccount implements Runnable {
         subjectClassifierTrainer.train();
       } catch (Exception e) {
         LOGGER.log(Level.WARNING, "Subject classifier training failed for account " + config.getDisplayName(), e);
+      }
+      // Separate try/catch: a failure training one classifier must not skip the other.
+      try {
+        headerClassifierTrainer.train();
+      } catch (Exception e) {
+        LOGGER.log(Level.WARNING, "Header classifier training failed for account " + config.getDisplayName(), e);
       }
     }
   }

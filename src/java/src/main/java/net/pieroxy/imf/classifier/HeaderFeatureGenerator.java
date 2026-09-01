@@ -1,0 +1,115 @@
+package net.pieroxy.imf.classifier;
+
+import opennlp.tools.doccat.FeatureGenerator;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Structured features from a {@link ClassifierExample}'s headers — not a bag-of-words. Doccat's
+ * default is to tokenize free text ({@code opennlp.tools.doccat.BagOfWordsFeatureGenerator}, one
+ * word = one feature); here almost none of the signal is free text, it's already-parsed facts
+ * (a domain, a boolean, a header's raw value), so each one becomes its own named feature instead
+ * of being flattened into a text blob and re-tokenized.
+ * <p>
+ * Doccat's {@link FeatureGenerator} contract is {@code extractFeatures(String[] text, Map
+ * extraInformation)} — the {@code text} array is for token-based generators, unused here; the
+ * actual input travels through {@code extraInformation} under {@link #EXAMPLE_KEY}, set by
+ * {@link HeaderClassifierTrainer} (training, from the corpus) and by {@code HeaderClassifierMatcher}
+ * (inference, from a live message via {@link ClassifierExampleExtractor}) alike — same
+ * extraction code either way, so training and matching can never disagree on how a field is
+ * derived.
+ * <p>
+ * Every single-valued field always emits exactly one feature, using {@link #ABSENT} as an
+ * explicit sentinel when the underlying header is missing — never silently skipped. Absence is
+ * itself a signal (e.g. "no Reply-To at all" is different from "Reply-To agrees with From"), and
+ * skipping it would conflate "not examined" with "false" in a model that has no way to tell the
+ * two apart otherwise, since doccat's features are presence-based, not numerically valued.
+ */
+public class HeaderFeatureGenerator implements FeatureGenerator {
+  public static final String EXAMPLE_KEY = "example";
+  private static final String ABSENT = "(absent)";
+
+  @Override
+  public Collection<String> extractFeatures(String[] text, Map<String, Object> extraInformation) {
+    Object raw = extraInformation == null ? null : extraInformation.get(EXAMPLE_KEY);
+    if (!(raw instanceof ClassifierExample example)) {
+      return List.of();
+    }
+
+    List<String> features = new ArrayList<>();
+    features.add("fromDomain=" + orAbsent(singleDomain(example.getFrom())));
+    for (String domain : distinctDomains(example.getTo())) {
+      features.add("toDomain=" + domain);
+    }
+    if (example.getTo() == null || example.getTo().isEmpty()) {
+      features.add("toDomain=" + ABSENT);
+    }
+    for (String word : words(example.getFromDisplayName())) {
+      features.add("fromNameWord=" + word);
+    }
+    for (String word : words(example.getToDisplayName())) {
+      features.add("toNameWord=" + word);
+    }
+    features.add("ipPrefix=" + orAbsent(ipPrefix(example.getIp())));
+    features.add("reply=" + example.isReply());
+    features.add("listUnsubscribe=" + example.isListUnsubscribePresent());
+    features.add("precedence=" + orAbsent(example.getPrecedence()));
+    features.add("listId=" + orAbsent(example.getListId()));
+    features.add("returnPathDomain=" + orAbsent(example.getReturnPathDomain()));
+    features.add("replyToDomain=" + orAbsent(example.getReplyToDomain()));
+    features.add("returnPathMismatch=" + triState(example.getReturnPathMismatch()));
+    features.add("replyToMismatch=" + triState(example.getReplyToMismatch()));
+    return features;
+  }
+
+  private static String orAbsent(String value) {
+    return value == null || value.isBlank() ? ABSENT : value;
+  }
+
+  private static String triState(Boolean value) {
+    return value == null ? "unknown" : value.toString();
+  }
+
+  /** Only when the list has exactly one address — same convention as FromDomainMatcher/SpfIdentityExtractor: an ambiguous From shouldn't silently pick one. */
+  private static String singleDomain(List<String> addresses) {
+    return addresses != null && addresses.size() == 1 ? domainOf(addresses.get(0)) : null;
+  }
+
+  private static Set<String> distinctDomains(List<String> addresses) {
+    Set<String> domains = new LinkedHashSet<>();
+    if (addresses != null) {
+      for (String address : addresses) {
+        String domain = domainOf(address);
+        if (domain != null) {
+          domains.add(domain);
+        }
+      }
+    }
+    return domains;
+  }
+
+  private static String domainOf(String address) {
+    if (address == null) return null;
+    int at = address.lastIndexOf('@');
+    if (at < 0 || at >= address.length() - 1) return null;
+    return address.substring(at + 1).toLowerCase(Locale.ROOT);
+  }
+
+  private static List<String> words(String joinedNames) {
+    if (joinedNames == null || joinedNames.isBlank()) return List.of();
+    return List.of(joinedNames.toLowerCase(Locale.ROOT).split("\\s+"));
+  }
+
+  /** First 3 octets: a raw IP is essentially unique to one sender (no generalization value), but a /24-ish prefix can still catch a recurring subnet/ISP block. */
+  private static String ipPrefix(String ip) {
+    if (ip == null) return null;
+    String[] parts = ip.split("\\.", -1);
+    return parts.length == 4 ? parts[0] + "." + parts[1] + "." + parts[2] : null;
+  }
+}

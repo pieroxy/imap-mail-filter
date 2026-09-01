@@ -19,6 +19,7 @@ configurable rules to new mail: move it, mark it read, or both. Rules can be wri
 - [Classifier corpus collection](#classifier-corpus-collection)
   - [Excluding a folder from the corpus](#excluding-a-folder-from-the-corpus)
   - [Subject classifier training](#subject-classifier-training)
+  - [Header classifier training](#header-classifier-training)
 - [Reputation lists](#reputation-lists)
 
 ## Running IMF
@@ -180,6 +181,7 @@ A rule is a `matcher` + an `action`. When a matcher matches a message, its actio
 | [`DMARC_POLICY_EQUALS`](matchers/dmarc-policy-equals.md) | Match the sender domain's published DMARC policy. |
 | [`FCRDNS_RESULT_EQUALS`](matchers/fcrdns-result-equals.md) | Match a live-evaluated reverse DNS (FCrDNS) result on the connecting IP. |
 | [`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) | Match when a locally-trained model scores the subject above/below a threshold. |
+| [`HEADER_CLASSIFIER_EQUALS`](matchers/header-classifier-equals.md) | Match when a locally-trained model scores a message's headers above/below a threshold. |
 | [`IP_REPUTATION_EQUALS`](matchers/ip-reputation-equals.md) | Match when the connecting IP's reputation score (from downloaded lists) crosses a threshold. |
 | [`FROM_DOMAIN_REPUTATION_EQUALS`](matchers/from-domain-reputation-equals.md) | Same as above, on the `From:` domain against domain reputation lists. |
 | [`AND`](matchers/and.md) | Composite: all children must match. |
@@ -296,6 +298,7 @@ Everything IMF persists lives under `dataFolder`, one file/folder per account (k
 | `classifier-corpus/<displayName>-scan-state.json` | Per-folder UID cursor for corpus scanning. |
 | `classifier-corpus/<displayName>/classifier-YYYY-MM-DD.json.lz4` | One compressed file per day of collected corpus data. |
 | `classifier-corpus/<displayName>/subject-model.bin` | Trained subject classifier model (see below). Absent until enough data has been collected. |
+| `classifier-corpus/<displayName>/header-model.bin` | Trained header classifier model (see below). Absent until enough data has been collected. |
 
 ## Classifier corpus collection
 
@@ -319,7 +322,8 @@ Files older than `classifierCorpusRetentionDays` days are pruned once a day.
 
 `classifierExcludedFolders` skips a folder (matched by name, anywhere in the tree) entirely —
 neither `SPAM` nor `HAM`. This matters most if a
-[`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) rule moves its own verdicts
+[`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) or
+[`HEADER_CLASSIFIER_EQUALS`](matchers/header-classifier-equals.md) rule moves its own verdicts
 into a dedicated folder (e.g. `"SpamML"`, or a `"Spam/ML"` subfolder) rather than straight into
 `classifierSpamFolderName`:
 
@@ -350,6 +354,20 @@ so IMF doesn't bother writing one yet.
 Use [`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) in a rule to actually
 act on this — see its doc for the config format (a probability threshold like `">0.9"`, not a
 value to match) and how it behaves before a model exists.
+
+### Header classifier training
+
+Same rhythm as the subject classifier above, but a separate model over a different set of
+features — derived from headers (sender/recipient domains, `In-Reply-To`, `List-Id`,
+`Precedence`, `Return-Path`/`Reply-To` alignment with `From`...) rather than the `Subject:` text
+— trained and written independently to
+`classifier-corpus/<displayName>/header-model.bin`. Same minimum (**at least 50 examples of each
+class**) before it bothers writing a model.
+
+Use [`HEADER_CLASSIFIER_EQUALS`](matchers/header-classifier-equals.md) in a rule to act on this.
+Nothing ties the two classifiers together — either can be used alone, together, or compared
+against each other (e.g. via `keepProcessing`, see
+[Rule evaluation order](#rule-evaluation-order)).
 
 ## Reputation lists
 

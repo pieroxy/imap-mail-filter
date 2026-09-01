@@ -9,6 +9,7 @@ import net.pieroxy.imf.rules.matchers.implementations.FromAddressMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromDomainMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromDomainReputationMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromExactMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.HeaderClassifierMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.IpReputationMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.OrMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SpfResultMatcher;
@@ -37,6 +38,10 @@ public enum MatcherType {
   // learning here doesn't come from an example dropped in imf-rules/, but from the corpus
   // collected by ClassifierCorpusScanner and retrained by SubjectClassifierTrainer.
   SUBJECT_CLASSIFIER_EQUALS(SubjectClassifierMatcher::new, false),
+  // Same reasoning as SUBJECT_CLASSIFIER_EQUALS, different corpus features (headers, not the
+  // subject text) and a different underlying model (Maxent on structured features rather than
+  // Naive Bayes bag-of-words) — see HeaderClassifierTrainer/HeaderFeatureGenerator.
+  HEADER_CLASSIFIER_EQUALS(HeaderClassifierMatcher::new, false),
   // Not learnable either: reputation comes from downloaded external lists (see
   // net.pieroxy.imf.reputation.ReputationRegistry), not from an example dropped in imf-rules/.
   IP_REPUTATION_EQUALS(IpReputationMatcher::new, false),

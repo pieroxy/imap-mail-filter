@@ -121,6 +121,11 @@ public class ClassifierCorpusStore {
     return new File(accountFolder, "subject-model.bin");
   }
 
+  /** Path to the trained header classification model for this account (see {@code HeaderClassifierTrainer}) — separate file, separate model from the subject one above. */
+  public File getHeaderModelFile() {
+    return new File(accountFolder, "header-model.bin");
+  }
+
   /** Deletes files dated more than keepDays days before today. No effect if keepDays<=0. */
   public void pruneOlderThan(LocalDate today) {
     if (keepDays <= 0) return;
