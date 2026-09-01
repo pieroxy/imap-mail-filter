@@ -18,40 +18,39 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
- * Parcourt les dossiers du compte, hors INBOX et l'arbre imf-rules/ (interne à l'outil, pas du
- * courrier organisé par l'utilisateur), pour construire le corpus d'entraînement : le dossier
- * Spam d'un côté, tout le reste (Sent/Trash/Archive/...) comme exemples confirmés non-spam de
- * l'autre. Ne fetche que les nouveaux messages depuis le dernier scan (par dossier, via UID),
- * pour ne jamais retélécharger tout l'historique à chaque passage.
+ * Walks the account's folders, excluding INBOX and the imf-rules/ tree (internal to the tool,
+ * not mail organized by the user), to build the training corpus: the Spam folder on one side,
+ * everything else (Sent/Trash/Archive/...) as confirmed non-spam examples on the other. Only
+ * fetches new messages since the last scan (per folder, via UID), so the whole history is never
+ * re-downloaded on every pass.
  * <p>
- * Deux rythmes de scan différents, exposés par deux méthodes séparées : {@link #scan} (tout
- * l'arbre, une fois par jour — voir MailAccount) et {@link #scanSpamFolderNow} (juste Spam, à
- * chaque cycle). La raison : Spam est le seul dossier qu'un utilisateur peut vider avant le
- * prochain scan quotidien (ex: purge manuelle du soir) — s'il n'était scanné qu'une fois par
- * jour, ce qui y est passé pourrait disparaître avant d'avoir jamais été capturé. Les deux
- * méthodes partagent le même {@link ClassifierScanState} (par dossier), donc pas de double
- * comptage : ce que le scan fréquent a déjà vu, le scan quotidien le retrouve simplement à
- * jour et n'y refait rien.
+ * Two different scan rhythms, exposed as two separate methods: {@link #scan} (the whole tree,
+ * once a day — see MailAccount) and {@link #scanSpamFolderNow} (just Spam, every cycle). The
+ * reason: Spam is the one folder a user might empty out before the next daily scan (e.g. a
+ * manual purge every evening) — if it were only scanned once a day, whatever passed through it
+ * could disappear before ever being captured. Both methods share the same
+ * {@link ClassifierScanState} (per folder), so there's no double counting: what the frequent
+ * scan already saw, the daily scan simply finds up to date and does nothing further with.
  * <p>
- * Des dossiers supplémentaires (n'importe où dans l'arbre) peuvent être exclus du scan via
- * excludedFolderNames — ni SPAM ni HAM, complètement ignorés, comme INBOX/imf-rules le sont
- * déjà. Utile notamment pour un dossier dédié aux verdicts du classifieur lui-même (ex: une
- * règle SUBJECT_CLASSIFIER_EQUALS qui déplace vers "SpamML" plutôt que "Spam") : sans
- * exclusion, ce dossier serait scanné comme n'importe quel autre et, ne portant pas le nom
- * configuré pour Spam, étiqueté HAM à tort — pire que ne pas apprendre dessus, ça empoisonnerait
- * le corpus avec du spam classé légitime. L'exclure évite aussi la boucle de rétroaction (le
- * classifieur s'entraînant sur ses propres verdicts passés).
+ * Additional folders (anywhere in the tree) can be excluded from the scan via
+ * excludedFolderNames — neither SPAM nor HAM, entirely ignored, just like INBOX/imf-rules
+ * already are. Useful in particular for a folder dedicated to the classifier's own verdicts
+ * (e.g. a SUBJECT_CLASSIFIER_EQUALS rule that moves mail to "SpamML" rather than "Spam"):
+ * without exclusion, that folder would be scanned like any other and, not carrying the name
+ * configured for Spam, wrongly labeled HAM — worse than not learning from it at all, it would
+ * poison the corpus with spam classified as legitimate. Excluding it also avoids the feedback
+ * loop (the classifier training on its own past verdicts).
  */
 public class ClassifierCorpusScanner {
   private final static Logger LOGGER = Logger.getLogger(ClassifierCorpusScanner.class.getName());
   private final static String LEARNING_ROOT_FOLDER = "imf-rules";
   /**
-   * Plafond de messages traités par appel à scan(). Sur un compte utilisé depuis des années,
-   * le tout premier passage peut représenter des milliers de messages à travers tous les
-   * dossiers ; sans plafond, un seul cycle pourrait monopoliser la connexion IMAP du compte
-   * (et donc retarder d'autant le traitement normal de l'INBOX) pendant très longtemps.
-   * scan() rend la main dès que ce total est atteint ; MailAccount relance alors au cycle
-   * suivant (pas le lendemain) tant qu'il reste du retard à rattraper.
+   * Cap on messages processed per call to scan(). On an account used for years, the very first
+   * pass can represent thousands of messages across all folders; without a cap, a single cycle
+   * could monopolize the account's IMAP connection (and thus delay normal INBOX processing by
+   * as much) for a very long time. scan() returns as soon as this total is reached; MailAccount
+   * then relaunches it on the next cycle (not the next day) as long as there's backlog left to
+   * catch up on.
    */
   private final static int MAX_MESSAGES_PER_SCAN = 500;
 
@@ -63,25 +62,24 @@ public class ClassifierCorpusScanner {
   private int messagesProcessed;
 
   /**
-   * @param accountLabel displayName (ou login si absent — voir {@link net.pieroxy.imf.rules.MailAccount}) du
-   *                      compte scanné, pour préfixer chaque ligne de log ({@code "Classifier corpus [name] ..."})
-   *                      et s'y retrouver dans les logs d'une instance qui surveille plusieurs comptes.
+   * @param accountLabel displayName (or login if absent — see {@link net.pieroxy.imf.rules.MailAccount}) of
+   *                      the scanned account, used to prefix every log line ({@code "Classifier corpus [name] ..."})
+   *                      so they're easy to tell apart in the logs of an instance watching several accounts.
    */
   public ClassifierCorpusScanner(ImapMailbox mailbox, ClassifierCorpusStore corpusStore, String spamFolderName,
                                   List<String> excludedFolderNames, String accountLabel) {
     this.mailbox = mailbox;
     this.corpusStore = corpusStore;
     this.spamFolderName = spamFolderName;
-    // Set (pas List) : la liste d'exclusion peut compter plusieurs entrées, autant faire de
-    // isExcluded() une recherche O(1) plutôt qu'un balayage — pas cher à faire une fois à la
-    // construction. Normalisé en minuscules pour garder la comparaison insensible à la casse
-    // sans refaire un stream à chaque appel.
+    // Set (not List): the exclusion list can hold several entries, so isExcluded() may as well
+    // be an O(1) lookup rather than a scan — cheap to do once at construction. Normalized to
+    // lowercase so the comparison stays case-insensitive without re-doing a stream on every call.
     this.excludedFolderNames = excludedFolderNames == null ? Set.of()
         : excludedFolderNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).collect(Collectors.toUnmodifiableSet());
     this.logPrefix = "Classifier corpus [" + accountLabel + "] ";
   }
 
-  /** @return true si le plafond a été atteint (il reste du travail pour le prochain appel). */
+  /** @return true if the cap was reached (there's leftover work for the next call). */
   public boolean scan(ClassifierScanState state, LocalDate today) throws MessagingException, IOException {
     LOGGER.info(logPrefix + "scan starting");
     List<ClassifierExample> newExamples = new ArrayList<>();
@@ -95,10 +93,10 @@ public class ClassifierCorpusScanner {
   }
 
   /**
-   * Scan ciblé du seul dossier Spam, à appeler à chaque cycle (pas de plafond : un seul
-   * dossier, jamais assez volumineux pour justifier d'étaler le travail sur plusieurs cycles).
-   * Silencieux quand il n'y a rien de nouveau — appelé potentiellement toutes les minutes, pas
-   * la peine de logger "scan starting/complete" à chaque fois.
+   * Targeted scan of just the Spam folder, to be called every cycle (no cap: a single folder,
+   * never large enough to justify spreading the work over several cycles). Silent when there's
+   * nothing new — potentially called every minute, no need to log "scan starting/complete"
+   * every time.
    */
   public void scanSpamFolderNow(ClassifierScanState state) throws MessagingException, IOException {
     List<ClassifierExample> newExamples = new ArrayList<>();
@@ -138,9 +136,9 @@ public class ClassifierCorpusScanner {
     try {
       long uidValidity = mailbox.getUidValidity(folder);
       ClassifierScanState.FolderProgress progress = state.getFolderProgress(fullName);
-      // uidValidity différente de celle stockée (ou jamais scanné) : les anciens UID ne
-      // veulent plus rien dire, on repart de 0 pour ce dossier (contrairement à l'INBOX, on
-      // veut ici tout l'historique existant, pas seulement ce qui arrive après le scan).
+      // uidValidity differs from the stored one (or never scanned): the old UIDs no longer mean
+      // anything, so start over from 0 for this folder (unlike INBOX, here we want the whole
+      // existing history, not just what arrives after the scan).
       long lastUid = (progress != null && progress.getUidValidity() == uidValidity) ? progress.getLastUid() : 0;
 
       Message[] messages = mailbox.getMessagesSince(folder, lastUid);

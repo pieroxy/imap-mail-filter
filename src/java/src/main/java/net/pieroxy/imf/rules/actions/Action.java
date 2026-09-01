@@ -17,8 +17,8 @@ public abstract class Action {
   private Logger logger = Logger.getLogger(Action.class.getName());
 
   /**
-   * Construit récursivement l'arbre d'actions décrit par la config (les actions
-   * composites comme AND/OR référencent d'autres actions via leurs "children").
+   * Recursively builds the action tree described by the config (composite actions like AND/OR
+   * reference other actions via their "children").
    */
   public static Action build(MailFilterRuleActionConfiguration config) {
     Action action = config.getType().getImplementation();
@@ -36,8 +36,8 @@ public abstract class Action {
     String name = Action.class.getName() + "." + config.getType()
             + (config.getKey() != null ? "[" + config.getKey() + "]" : "");
     this.logger = Logger.getLogger(name);
-    // Défaut = INFO : WARNING (erreurs) et INFO (action appliquée) doivent être visibles sans
-    // configuration explicite ; seul le détail DEBUG est un opt-in par nœud.
+    // Default = INFO: WARNING (errors) and INFO (action applied) must be visible without any
+    // explicit configuration; only the DEBUG-level detail is an opt-in per node.
     this.logger.setLevel(LogLevels.parse(config.getLogLevel(), Level.INFO));
   }
   protected MailFilterRuleActionConfiguration getConfig() {
@@ -51,9 +51,9 @@ public abstract class Action {
   }
 
   /**
-   * Représentation compacte de l'arbre de cette action pour les logs de démarrage (voir
-   * {@link net.pieroxy.imf.rules.RuleCatalog#logRules}), ex: {@code MOVE_TO(Work)} ou, pour un
-   * composite comme {@code MOVE_TO_AND_READ}, {@code MOVE_TO_AND_READ(READ(),MOVE_TO(Work))}.
+   * Compact representation of this action's tree for the startup logs (see
+   * {@link net.pieroxy.imf.rules.RuleCatalog#logRules}), e.g. {@code MOVE_TO(Work)} or, for a
+   * composite like {@code MOVE_TO_AND_READ}, {@code MOVE_TO_AND_READ(READ(),MOVE_TO(Work))}.
    */
   public String describe() {
     String type = config.getType().name();
@@ -63,7 +63,7 @@ public abstract class Action {
     return type + "(" + (config.getKey() != null ? config.getKey() : "") + ")";
   }
 
-  /** Logger propre à ce noeud de config, dont le niveau suit son logLevel (INFO par défaut). */
+  /** This config node's own logger, whose level follows its logLevel (INFO by default). */
   public Logger getLogger() {
     return logger;
   }

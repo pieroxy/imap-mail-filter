@@ -14,8 +14,8 @@ public enum ActionType {
   MOVE_TO(MoveToAction::new, true),
   READ(ReadAction::new, false),
   /**
-   * Pas de classe dédiée : c'est un AND(MOVE_TO, READ) construit à la volée, pour rester
-   * apprenable (les composites eux-mêmes ne le sont pas) sans dupliquer MoveToAction/ReadAction.
+   * No dedicated class: this is an AND(MOVE_TO, READ) built on the fly, to stay learnable
+   * (composites themselves aren't) without duplicating MoveToAction/ReadAction.
    */
   MOVE_TO_AND_READ(() -> new AndAction() {
     @Override
@@ -31,10 +31,9 @@ public enum ActionType {
       readConfig.setType(READ);
       readConfig.setLogLevel(config.getLogLevel());
 
-      // READ avant MOVE_TO : MoveToAction copie le message avec ses flags actuels, donc \Seen
-      // doit déjà être posé au moment de la copie pour se retrouver sur le message dans le
-      // dossier cible (le poser après la copie n'affecterait que la source, sur le point
-      // d'être supprimée).
+      // READ before MOVE_TO: MoveToAction copies the message with its current flags, so \Seen
+      // must already be set at copy time to end up on the message in the target folder (setting
+      // it after the copy would only affect the source, which is about to be deleted).
       setChildren(Arrays.asList(Action.build(readConfig), Action.build(moveToConfig)));
     }
   }, true),
@@ -54,8 +53,8 @@ public enum ActionType {
   }
 
   /**
-   * Types "feuille" pour lesquels l'apprentissage de règle par l'exemple (dossiers imf-rules/)
-   * a un sens. Les composites (AND/OR) en sont exclus : réservés à la config manuelle.
+   * "Leaf" types for which learning a rule by example (imf-rules/ folders) makes sense.
+   * Composites (AND/OR) are excluded: reserved for manual config.
    */
   public static List<ActionType> learnableValues() {
     return Arrays.stream(values()).filter(t -> t.learnable).collect(Collectors.toList());

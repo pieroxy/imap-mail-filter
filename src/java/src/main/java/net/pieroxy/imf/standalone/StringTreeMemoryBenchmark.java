@@ -16,12 +16,12 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Banc d'essai mémoire hors process principal : charge un fichier lz4-compressé (comme
- * {@code dataFolder/reputation/<id>.txt.lz4}) dans un {@code HashSet<String>} classique, mesure
- * l'empreinte mémoire, puis fait pareil avec {@link StringTree} et compare — pour juger si un
- * arbre de caractères vaut le coup sur une liste de réputation donnée avant de l'adopter en
- * production. Usage :
- * <pre>java -cp imf-core-*.jar net.pieroxy.imf.standalone.StringTreeMemoryBenchmark &lt;fichier.txt.lz4&gt;</pre>
+ * Memory benchmark outside the main process: loads an lz4-compressed file (like
+ * {@code dataFolder/reputation/<id>.txt.lz4}) into a plain {@code HashSet<String>}, measures the
+ * memory footprint, then does the same with {@link StringTree} and compares — to judge whether a
+ * character tree is worth it for a given reputation list before adopting it in production.
+ * Usage:
+ * <pre>java -cp imf-core-*.jar net.pieroxy.imf.standalone.StringTreeMemoryBenchmark &lt;file.txt.lz4&gt;</pre>
  */
 public final class StringTreeMemoryBenchmark {
   private StringTreeMemoryBenchmark() {}
@@ -39,14 +39,14 @@ public final class StringTreeMemoryBenchmark {
     System.out.println("Baseline (before loading anything): " + format(baseline));
 
     Set<String> flatSet = new HashSet<>(lines);
-    lines = null; // ne doit pas fausser la mesure de flatSet lui-même
+    lines = null; // must not skew the measurement of flatSet itself
     long afterFlatSet = usedMemory();
     System.out.println("HashSet<String> (" + flatSet.size() + " entries): "
         + format(afterFlatSet - baseline) + " above baseline (" + format(afterFlatSet) + " total)");
 
     StringTree tree = new StringTree();
     tree.addAll(flatSet);
-    flatSet = null; // discarde le Set<String> d'origine avant de re-mesurer
+    flatSet = null; // discard the original Set<String> before re-measuring
     long afterTree = usedMemory();
     System.out.println("StringTree (" + tree.size() + " entries), HashSet discarded: "
         + format(afterTree - baseline) + " above baseline (" + format(afterTree) + " total)");
@@ -71,7 +71,7 @@ public final class StringTreeMemoryBenchmark {
     return lines;
   }
 
-  /** Force le GC (deux passes, avec une courte pause pour le laisser vraiment finir) puis renvoie la mémoire heap utilisée. */
+  /** Forces the GC (two passes, with a short pause to let it actually finish) then returns the heap memory used. */
   private static long usedMemory() {
     Runtime rt = Runtime.getRuntime();
     for (int i = 0; i < 2; i++) {

@@ -4,9 +4,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Etat persistant du scan du corpus classifieur : date du dernier scan réussi (pour ne
- * scanner qu'une fois par jour) et, par dossier IMAP, le dernier UID traité (pour ne
- * refetcher que les nouveaux messages d'un scan à l'autre).
+ * Persistent state of the classifier corpus scan: date of the last successful scan (so it only
+ * scans once a day) and, per IMAP folder, the last processed UID (so only new messages are
+ * re-fetched from one scan to the next).
  */
 public class ClassifierScanState {
   private String lastScanDate;
@@ -35,7 +35,7 @@ public class ClassifierScanState {
     folders.put(folderFullName, progress);
   }
 
-  /** uidValidity==0 signifie "jamais scanné" (un serveur IMAP ne renvoie jamais 0). */
+  /** uidValidity==0 means "never scanned" (an IMAP server never returns 0). */
   public static class FolderProgress {
     private long uidValidity;
     private long lastUid;

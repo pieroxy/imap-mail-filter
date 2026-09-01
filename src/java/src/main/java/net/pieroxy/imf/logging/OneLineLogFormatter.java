@@ -10,11 +10,10 @@ import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
 
 /**
- * Formate chaque entrée de log sur une seule ligne : horodatage, ID aléatoire de
- * l'instance (généré une fois au démarrage du process, pour repérer immédiatement dans les
- * logs si deux instances tournent en même temps), niveau et origine (classe/méthode)
- * alignés sur largeur fixe (tronqués par la gauche s'ils dépassent, pour toujours garder la
- * partie la plus signifiante), puis le message.
+ * Formats each log entry on a single line: timestamp, random instance ID (generated once at
+ * process startup, to immediately spot in the logs if two instances are running at the same
+ * time), level and origin (class/method) aligned to a fixed width (truncated from the left if
+ * they overflow, to always keep the most significant part), then the message.
  */
 public final class OneLineLogFormatter extends Formatter {
   private static final DateTimeFormatter TIMESTAMP_FORMAT =

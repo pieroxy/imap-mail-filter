@@ -40,8 +40,8 @@ public class SubjectClassifierTrainerTest {
 
     new SubjectClassifierTrainer(store).train();
 
-    assertFalse("pas assez d'exemples (5 < " + SubjectClassifierTrainer.MIN_EXAMPLES_PER_CLASS
-        + " par classe) : aucun modèle ne doit être écrit", store.getModelFile().exists());
+    assertFalse("not enough examples (5 < " + SubjectClassifierTrainer.MIN_EXAMPLES_PER_CLASS
+        + " per class): no model should be written", store.getModelFile().exists());
   }
 
   @Test
@@ -49,13 +49,13 @@ public class SubjectClassifierTrainerTest {
     ClassifierCorpusStore store = new ClassifierCorpusStore(tmp.getRoot().getAbsolutePath(), "account", 30);
     List<ClassifierExample> examples = new ArrayList<>();
     for (int i = 0; i < 50; i++) {
-      examples.add(example("spam subject " + i, ClassifierLabel.SPAM)); // beaucoup de spam, aucun ham
+      examples.add(example("spam subject " + i, ClassifierLabel.SPAM)); // lots of spam, no ham
     }
     store.append(LocalDate.now(), examples);
 
     new SubjectClassifierTrainer(store).train();
 
-    assertFalse("un total élevé ne suffit pas : il faut le minimum des DEUX classes", store.getModelFile().exists());
+    assertFalse("a high total isn't enough: the minimum is required for BOTH classes", store.getModelFile().exists());
   }
 
   @Test
@@ -72,8 +72,8 @@ public class SubjectClassifierTrainerTest {
 
     File modelFile = store.getModelFile();
     assertTrue(modelFile.isFile());
-    assertTrue("le fichier temporaire ne doit pas traîner après un renommage atomique réussi",
+    assertTrue("the temp file must not linger after a successful atomic rename",
         !new File(modelFile.getParentFile(), modelFile.getName() + ".tmp").exists());
-    new DoccatModel(modelFile); // ne doit pas lever : le fichier écrit doit être un modèle valide
+    new DoccatModel(modelFile); // must not throw: the written file must be a valid model
   }
 }

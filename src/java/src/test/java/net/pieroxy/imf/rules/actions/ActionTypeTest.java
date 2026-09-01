@@ -25,8 +25,8 @@ public class ActionTypeTest {
 
   @Test
   public void moveToAndReadRunsReadBeforeMoveTo() {
-    // Ordre important : MoveToAction copie le message avec ses flags actuels, donc READ doit
-    // s'exécuter avant, pour que \Seen soit déjà posé au moment de la copie vers la cible.
+    // Order matters: MoveToAction copies the message with its current flags, so READ must run
+    // first, so that \Seen is already set by the time the copy to the target happens.
     MailFilterRuleActionConfiguration config = new MailFilterRuleActionConfiguration();
     config.setType(ActionType.MOVE_TO_AND_READ);
     config.setKey("Target");
@@ -36,8 +36,8 @@ public class ActionTypeTest {
     assertTrue(action instanceof AndAction);
     List<Action> children = action.getChildren();
     assertEquals(2, children.size());
-    assertTrue("READ doit s'exécuter en premier", children.get(0) instanceof ReadAction);
-    assertTrue("MOVE_TO doit s'exécuter en second", children.get(1) instanceof MoveToAction);
+    assertTrue("READ must run first", children.get(0) instanceof ReadAction);
+    assertTrue("MOVE_TO must run second", children.get(1) instanceof MoveToAction);
     assertEquals("Target", children.get(1).getConfig().getKey());
   }
 }

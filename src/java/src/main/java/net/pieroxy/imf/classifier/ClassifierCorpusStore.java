@@ -28,12 +28,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Stocke le corpus classifieur dans un fichier JSON compressé lz4 par jour
- * (classifier-YYYY-MM-DD.json.lz4), un dossier par compte. Fusionne avec le fichier du jour
- * s'il existe déjà (reprise après interruption en cours de journée) et écrit atomiquement
- * (fichier temporaire puis renommage), comme {@code LogRotator}, pour ne jamais laisser une
- * archive tronquée en cas de coupure brutale. keepDays&lt;=0 désactive la purge des archives
- * trop anciennes.
+ * Stores the classifier corpus in an lz4-compressed JSON file per day
+ * (classifier-YYYY-MM-DD.json.lz4), one folder per account. Merges with the day's file if it
+ * already exists (resuming after an interruption mid-day) and writes atomically (temp file then
+ * rename), like {@code LogRotator}, so an archive is never left truncated on an abrupt outage.
+ * keepDays&lt;=0 disables pruning of old archives.
  */
 public class ClassifierCorpusStore {
   private final static Logger LOGGER = Logger.getLogger(ClassifierCorpusStore.class.getName());
@@ -61,10 +60,10 @@ public class ClassifierCorpusStore {
   }
 
   /**
-   * Tous les exemples actuellement conservés (donc déjà dans la fenêtre de rétention si
-   * pruneOlderThan a été appelé avant), tous fichiers journaliers confondus, dédupliqués par
-   * Message-ID (voir {@link #dedupeByMessageId}). Utilisé par {@link SubjectClassifierTrainer}
-   * pour (ré)entraîner sur tout ce qui est retenu.
+   * All examples currently retained (so already within the retention window if pruneOlderThan
+   * was called beforehand), across all daily files, deduplicated by Message-ID (see
+   * {@link #dedupeByMessageId}). Used by {@link SubjectClassifierTrainer} to (re)train on
+   * everything that's retained.
    */
   public List<ClassifierExample> readAll() {
     File[] files = accountFolder.listFiles();
@@ -79,18 +78,17 @@ public class ClassifierCorpusStore {
   }
 
   /**
-   * Un même message peut être capturé deux fois avec des labels contradictoires : auto-classé
-   * SPAM au scan (rapide, chaque cycle) du dossier Spam, puis déplacé à la main par
-   * l'utilisateur qui le juge légitime — vu à nouveau, cette fois HAM, par le scan quotidien
-   * complet qui suit. Un déplacement IMAP donne un nouvel UID au message dans le dossier de
-   * destination (le suivi par UID par dossier ne voit donc pas "le même message"), donc rien
-   * n'empêche cette double capture en amont — la corriger ici, à la lecture, est plus simple
-   * que de la prévenir au scan (pas besoin de relire tout le corpus existant à chaque append).
-   * Pour un Message-ID vu plusieurs fois, seul l'exemple au fetchDate le plus récent (donc le
-   * verdict le plus à jour, celui qui reflète où l'utilisateur a fini par ranger le message) est
-   * gardé — les deux se neutraliseraient sinon au lieu d'enseigner quoi que ce soit. Les
-   * exemples sans Message-ID (rare, mail malformé) ne peuvent pas être rapprochés de façon
-   * fiable : gardés tels quels, jamais dédupliqués entre eux.
+   * The same message can be captured twice with contradictory labels: auto-classified SPAM by
+   * the (fast, every-cycle) Spam folder scan, then moved out by hand by a user who judges it
+   * legitimate — seen again, this time HAM, by the full daily scan that follows. An IMAP move
+   * gives the message a new UID in the destination folder (so per-folder UID tracking doesn't
+   * see "the same message"), so nothing upstream prevents this double capture — fixing it here,
+   * at read time, is simpler than preventing it at scan time (no need to re-read the whole
+   * existing corpus on every append). For a Message-ID seen several times, only the example with
+   * the most recent fetchDate (i.e. the most up-to-date verdict, the one reflecting where the
+   * user ended up filing the message) is kept — otherwise the two would cancel each other out
+   * instead of teaching anything. Examples without a Message-ID (rare, malformed mail) can't be
+   * reliably matched up: kept as is, never deduplicated against each other.
    */
   private static List<ClassifierExample> dedupeByMessageId(List<ClassifierExample> examples) {
     Map<String, ClassifierExample> latestById = new LinkedHashMap<>();
@@ -111,19 +109,19 @@ public class ClassifierCorpusStore {
     return result;
   }
 
-  /** fetchDate est formaté en ISO-8601 UTC (DateTimeFormatter.ISO_INSTANT) : comparable lexicographiquement. */
+  /** fetchDate is formatted as ISO-8601 UTC (DateTimeFormatter.ISO_INSTANT): lexicographically comparable. */
   private static boolean isAfter(String a, String b) {
     if (a == null) return false;
     if (b == null) return true;
     return a.compareTo(b) > 0;
   }
 
-  /** Chemin du modèle de classification de sujet entraîné pour ce compte. */
+  /** Path to the trained subject classification model for this account. */
   public File getModelFile() {
     return new File(accountFolder, "subject-model.bin");
   }
 
-  /** Supprime les fichiers datés de plus de keepDays jours avant today. Sans effet si keepDays<=0. */
+  /** Deletes files dated more than keepDays days before today. No effect if keepDays<=0. */
   public void pruneOlderThan(LocalDate today) {
     if (keepDays <= 0) return;
     File[] files = accountFolder.listFiles();

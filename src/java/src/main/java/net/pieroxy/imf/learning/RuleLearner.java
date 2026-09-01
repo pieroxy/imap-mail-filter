@@ -18,10 +18,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Règle par l'exemple : l'utilisateur dépose un message dans
- * imf-rules/&lt;MATCHER_TYPE&gt;/&lt;ACTION_TYPE&gt;/&lt;clé&gt; (ex: imf-rules/FROM_EQUALS/MOVE_TO/Spam)
- * pour créer la règle "si &lt;MATCHER_TYPE&gt; extrait du message matche, alors &lt;ACTION_TYPE&gt;(&lt;clé&gt;)".
- * Les types composites (AND/OR) sont exclus : réservés à la config manuelle.
+ * Rule by example: the user drops a message into
+ * imf-rules/&lt;MATCHER_TYPE&gt;/&lt;ACTION_TYPE&gt;/&lt;key&gt; (e.g. imf-rules/FROM_EQUALS/MOVE_TO/Spam)
+ * to create the rule "if &lt;MATCHER_TYPE&gt; extracted from the message matches, then &lt;ACTION_TYPE&gt;(&lt;key&gt;)".
+ * Composite types (AND/OR) are excluded: reserved for manual config.
  */
 public class RuleLearner {
   private final static Logger LOGGER = Logger.getLogger(RuleLearner.class.getName());
@@ -36,7 +36,7 @@ public class RuleLearner {
     this.store = store;
   }
 
-  /** Crée l'arborescence de dossiers "prête à l'emploi" (le niveau clé, ex: "Spam", reste à créer par l'utilisateur). */
+  /** Creates the "ready to use" folder tree (the key level, e.g. "Spam", is left for the user to create). */
   public void ensureFolderSkeleton() throws MessagingException {
     mailbox.getOrCreateFolder(ROOT_FOLDER, DONE_FOLDER);
     for (MatcherType matcherType : MatcherType.learnableValues()) {
@@ -46,7 +46,7 @@ public class RuleLearner {
     }
   }
 
-  /** @return true si au moins une nouvelle règle a été apprise pendant cet appel. */
+  /** @return true if at least one new rule was learned during this call. */
   public boolean learnFromExamples() throws MessagingException {
     boolean learnedSomething = false;
     for (MatcherType matcherType : MatcherType.learnableValues()) {
@@ -107,8 +107,8 @@ public class RuleLearner {
       }
 
       if (!example.isSet(Flags.Flag.DELETED)) {
-        // L'action n'a ni déplacé ni supprimé le message d'exemple : on le range quand même
-        // pour ne pas réapprendre la même règle en boucle à chaque cycle.
+        // The action neither moved nor deleted the example message: file it away anyway so the
+        // same rule isn't relearned in a loop on every cycle.
         moveToDone(example);
       }
       return learned;

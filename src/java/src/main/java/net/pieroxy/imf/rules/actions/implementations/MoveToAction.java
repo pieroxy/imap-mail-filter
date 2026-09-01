@@ -9,9 +9,9 @@ import javax.mail.MessagingException;
 import javax.mail.Store;
 
 /**
- * Copie le message dans le dossier cible (créé s'il n'existe pas) puis le marque \Deleted
- * dans le dossier source ; la suppression effective a lieu à la fermeture (expunge) du
- * dossier source par l'appelant.
+ * Copies the message into the target folder (created if it doesn't exist) then marks it
+ * \Deleted in the source folder; the actual deletion happens when the caller closes (expunges)
+ * the source folder.
  */
 public class MoveToAction extends Action {
   @Override

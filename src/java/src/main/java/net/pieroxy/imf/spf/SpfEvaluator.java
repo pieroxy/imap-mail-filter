@@ -9,25 +9,24 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Évaluateur SPF (RFC 7208) : vérifie qu'une IP est autorisée à envoyer du courrier pour un
- * domaine donné, en interrogeant le DNS via un {@link SpfDnsResolver} injecté.
+ * SPF evaluator (RFC 7208): checks whether an IP is authorized to send mail on behalf of a
+ * given domain, by querying DNS through an injected {@link SpfDnsResolver}.
  * <p>
- * Couvre les mécanismes {@code all}, {@code ip4}, {@code ip6}, {@code a}, {@code mx},
- * {@code include} et le modificateur {@code redirect}. Ne supporte pas les macros
- * ({@code %{...}}) : un terme qui en contient est ignoré (log fine) plutôt que de faire
- * échouer toute l'évaluation, car elles sont surtout utilisées dans {@code exp=} (jamais lu
- * ici) et très rarement ailleurs en pratique. {@code ptr} est délibérément ignoré (jamais
- * matché) comme le recommande la RFC, pour éviter une résolution DNS inverse coûteuse et peu
- * fiable.
+ * Covers the {@code all}, {@code ip4}, {@code ip6}, {@code a}, {@code mx}, {@code include}
+ * mechanisms and the {@code redirect} modifier. Does not support macros ({@code %{...}}): a
+ * term containing one is skipped (fine log) rather than failing the whole evaluation, since
+ * they're mostly used in {@code exp=} (never read here) and very rarely used elsewhere in
+ * practice. {@code ptr} is deliberately ignored (never matched), as recommended by the RFC, to
+ * avoid an expensive and unreliable reverse DNS resolution.
  * <p>
- * Deux natures d'erreur distinctes : {@link SpfDnsException} (échec DNS temporaire, ex.
- * timeout) donne {@link SpfResult#TEMPERROR} ; un record malformé, un budget de lookups
- * dépassé, ou un "include"/"redirect" vers un domaine sans SPF ({@link SpfPermErrorException})
- * donne {@link SpfResult#PERMERROR} — retenter plus tard ne changerait rien dans ce cas.
+ * Two distinct kinds of error: {@link SpfDnsException} (a temporary DNS failure, e.g. timeout)
+ * yields {@link SpfResult#TEMPERROR}; a malformed record, an exceeded lookup budget, or an
+ * "include"/"redirect" pointing to a domain without SPF ({@link SpfPermErrorException}) yields
+ * {@link SpfResult#PERMERROR} — retrying later wouldn't change anything in that case.
  */
 public class SpfEvaluator {
-  // RFC 7208 §4.6.4 : au-delà de 10 mécanismes/modificateurs déclenchant une requête DNS
-  // (include, a, mx, ptr, exists, redirect), l'évaluation doit s'arrêter en PermError.
+  // RFC 7208 §4.6.4: beyond 10 mechanisms/modifiers that trigger a DNS query (include, a, mx,
+  // ptr, exists, redirect), evaluation must stop with a PermError.
   private static final int MAX_DNS_LOOKUPS = 10;
   private static final int MAX_RECURSION_DEPTH = 10;
   private static final int MAX_MX_HOSTS_CHECKED = 10;
@@ -44,17 +43,17 @@ public class SpfEvaluator {
     this.resolver = resolver;
   }
 
-  /** @return le résultat SPF pour {@code ip} envoyant du courrier au nom de {@code domain}. */
+  /** @return the SPF result for {@code ip} sending mail on behalf of {@code domain}. */
   public SpfResult evaluate(String ip, String domain) {
     return evaluate(ip, domain, defaultLogger);
   }
 
   /**
-   * Comme {@link #evaluate(String, String)}, mais journalise (niveau FINE) le détail de
-   * l'évaluation — record SPF trouvé, mécanisme par mécanisme, résultat final — sur le logger
-   * donné plutôt que sur celui, propre à cette classe, utilisé par défaut. Permet à l'appelant
-   * (typiquement un matcher, dont le niveau de log se configure par règle via le champ JSON
-   * {@code logLevel}) de rendre cette trace visible sans toucher à la configuration globale.
+   * Like {@link #evaluate(String, String)}, but logs the evaluation details (FINE level) — the
+   * SPF record found, mechanism by mechanism, final result — to the given logger instead of the
+   * class's own default one. Lets the caller (typically a matcher, whose log level is
+   * configured per rule via the {@code logLevel} JSON field) make this trace visible without
+   * touching the global logging configuration.
    */
   public SpfResult evaluate(String ip, String domain, Logger logger) {
     if (ip == null || domain == null || domain.isBlank()) return SpfResult.NONE;
@@ -96,7 +95,7 @@ public class SpfEvaluator {
     String[] terms = spfRecord.trim().split("\\s+");
     String redirect = null;
 
-    for (int i = 1; i < terms.length; i++) { // terms[0] est "v=spf1"
+    for (int i = 1; i < terms.length; i++) { // terms[0] is "v=spf1"
       String term = terms[i];
       if (term.isEmpty()) continue;
 
@@ -104,7 +103,7 @@ public class SpfEvaluator {
       if (eq > 0 && "+-~?".indexOf(term.charAt(0)) < 0) {
         String name = term.substring(0, eq);
         if (name.equalsIgnoreCase("redirect")) redirect = term.substring(eq + 1);
-        // exp= et tout autre modificateur inconnu : ignorés (RFC 7208 §6).
+        // exp= and any other unknown modifier: ignored (RFC 7208 §6).
         continue;
       }
 
@@ -130,7 +129,7 @@ public class SpfEvaluator {
         case "mx" -> matchesMx(ip, arg != null ? arg : domain, cidr1, cidr2, lookupCount);
         case "include" -> matchesInclude(ip, arg, lookupCount, depth, logger);
         case "exists" -> matchesExists(arg, lookupCount);
-        case "ptr" -> false; // délibérément non supporté, voir javadoc de la classe
+        case "ptr" -> false; // deliberately unsupported, see the class javadoc
         default -> throw new SpfPermErrorException("Unsupported SPF mechanism: " + name);
       };
       logger.fine(() -> "mechanism " + term + " -> " + (matched ? "match (" + qualifier.getCode() + ")" : "no match"));
@@ -143,7 +142,7 @@ public class SpfEvaluator {
       String redirectTarget = redirect;
       logger.fine(() -> "No mechanism matched, following redirect=" + redirectTarget);
       SpfResult redirected = check(ip, redirect, lookupCount, depth + 1, logger);
-      // RFC 7208 §6.1 : si le domaine de redirection n'a pas de record SPF, c'est un PermError.
+      // RFC 7208 §6.1: if the redirect target domain has no SPF record, that's a PermError.
       if (redirected == SpfResult.NONE) throw new SpfPermErrorException("redirect=" + redirect + " has no SPF record");
       return redirected;
     }
@@ -180,7 +179,7 @@ public class SpfEvaluator {
       try {
         if (isInCidr(ip, InetAddress.getByName(candidate), prefix)) return true;
       } catch (UnknownHostException ignored) {
-        // ne devrait pas arriver : candidate vient du resolver, déjà un littéral valide
+        // shouldn't happen: candidate comes from the resolver, already a valid literal
       }
     }
     return false;
@@ -209,9 +208,9 @@ public class SpfEvaluator {
     if (includedDomain == null) throw new SpfPermErrorException("include mechanism without a value");
     if (++lookupCount[0] > MAX_DNS_LOOKUPS) throw new SpfPermErrorException("Too many DNS lookups evaluating SPF record");
     SpfResult included = check(ip, includedDomain, lookupCount, depth + 1, logger);
-    // RFC 7208 §5.2 : seul un "pass" du domaine inclus fait matcher le "include" ; fail/
-    // softfail/neutral font continuer sur le mécanisme suivant ; none/permerror invalident
-    // tout le record englobant.
+    // RFC 7208 §5.2: only a "pass" from the included domain makes the "include" match; fail/
+    // softfail/neutral make evaluation continue to the next mechanism; none/permerror
+    // invalidate the whole enclosing record.
     return switch (included) {
       case PASS -> true;
       case FAIL, SOFTFAIL, NEUTRAL -> false;
@@ -239,7 +238,7 @@ public class SpfEvaluator {
   private static boolean isInCidr(InetAddress ip, InetAddress network, int prefixLength) {
     byte[] ipBytes = ip.getAddress();
     byte[] netBytes = network.getAddress();
-    if (ipBytes.length != netBytes.length) return false; // familles différentes (v4 vs v6)
+    if (ipBytes.length != netBytes.length) return false; // different address families (v4 vs v6)
     if (prefixLength < 0 || prefixLength > ipBytes.length * 8) return false;
 
     int fullBytes = prefixLength / 8;

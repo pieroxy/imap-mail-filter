@@ -3,10 +3,10 @@ package net.pieroxy.imf.dkim;
 import java.util.List;
 
 /**
- * Résultat détaillé d'une vérification DKIM : le résultat agrégé (voir {@link DkimVerifier}),
- * plus les domaines ({@code d=}) de chaque signature qui a effectivement vérifié avec succès.
- * Ce détail sert au calcul de l'alignment DKIM d'un DMARC (RFC 7489 §3.1.2), qui a besoin de
- * savoir *quel* domaine a signé, pas seulement s'il y en a un qui a réussi.
+ * Detailed result of a DKIM verification: the aggregate result (see {@link DkimVerifier}), plus
+ * the domains ({@code d=}) of every signature that actually verified successfully. This detail
+ * feeds a DMARC's DKIM alignment computation (RFC 7489 §3.1.2), which needs to know *which*
+ * domain signed, not just whether one succeeded.
  */
 public record DkimVerification(DkimResult result, List<String> passingDomains) {
 }

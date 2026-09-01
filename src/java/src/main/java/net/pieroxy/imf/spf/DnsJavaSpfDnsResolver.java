@@ -16,8 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Implémentation de {@link SpfDnsResolver} basée sur dnsjava, utilisant le résolveur DNS
- * du système (typiquement celui configuré dans /etc/resolv.conf).
+ * {@link SpfDnsResolver} implementation backed by dnsjava, using the system's DNS resolver
+ * (typically the one configured in /etc/resolv.conf).
  */
 public class DnsJavaSpfDnsResolver implements SpfDnsResolver {
   private final Resolver resolver;
@@ -86,8 +86,8 @@ public class DnsJavaSpfDnsResolver implements SpfDnsResolver {
       lookup.setResolver(resolver);
       Record[] answers = lookup.run();
       int result = lookup.getResult();
-      // HOST_NOT_FOUND (NXDOMAIN) et TYPE_NOT_FOUND (NODATA) sont des réponses DNS normales
-      // signifiant "rien de ce type ici", pas des échecs : on renvoie une liste vide.
+      // HOST_NOT_FOUND (NXDOMAIN) and TYPE_NOT_FOUND (NODATA) are normal DNS answers meaning
+      // "nothing of this type here", not failures: return an empty list.
       if (result == Lookup.HOST_NOT_FOUND || result == Lookup.TYPE_NOT_FOUND) {
         return new Record[0];
       }

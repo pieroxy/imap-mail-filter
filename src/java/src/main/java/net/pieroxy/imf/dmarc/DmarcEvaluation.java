@@ -1,10 +1,10 @@
 package net.pieroxy.imf.dmarc;
 
 /**
- * Résultat détaillé d'une évaluation DMARC : le verdict pass/fail/none/... (voir
- * {@link DmarcResult}, utilisé par {@code DMARC_RESULT_EQUALS}), et la politique publiée par le
- * domaine (voir {@link DmarcPolicy}, utilisée par {@code DMARC_POLICY_EQUALS}) — les deux issus
- * du même record DNS, calculés en un seul passage par {@link DmarcEvaluator#evaluateDetailed}.
+ * Detailed result of a DMARC evaluation: the pass/fail/none/... verdict (see {@link DmarcResult},
+ * used by {@code DMARC_RESULT_EQUALS}), and the policy published by the domain (see
+ * {@link DmarcPolicy}, used by {@code DMARC_POLICY_EQUALS}) — both derived from the same DNS
+ * record, computed in a single pass by {@link DmarcEvaluator#evaluateDetailed}.
  */
 public record DmarcEvaluation(DmarcResult result, DmarcPolicy policy) {
 }

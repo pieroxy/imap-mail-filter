@@ -11,9 +11,9 @@ import java.util.Arrays;
 import java.util.Optional;
 
 /**
- * Comme {@link FromExactMatcher}, mais ne compare que l'adresse mail elle-même
- * (ex: "jdupont@hotmail.com"), sans le nom affiché ("Jean Dupont <jdupont@hotmail.com>"),
- * et de façon insensible à la casse.
+ * Like {@link FromExactMatcher}, but only compares the email address itself
+ * (e.g. "jdupont@hotmail.com"), without the display name ("Jean Dupont <jdupont@hotmail.com>"),
+ * case-insensitively.
  */
 public class FromAddressMatcher extends Matcher {
   @Override

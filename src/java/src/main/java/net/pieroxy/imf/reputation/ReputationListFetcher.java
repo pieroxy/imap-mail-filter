@@ -11,9 +11,9 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 /**
- * Récupère le contenu brut d'une liste : {@code file://} pour un fichier local, {@code http(s)://}
- * sinon. Rien d'autre que le contenu de la liste elle-même ne part jamais sur le réseau — aucune
- * IP/domaine de message n'est envoyé, contrairement à une API de réputation interrogée en direct.
+ * Fetches the raw content of a list: {@code file://} for a local file, {@code http(s)://}
+ * otherwise. Nothing but the list's own content ever goes over the network — no message
+ * IP/domain is ever sent, unlike a reputation API queried live.
  */
 final class ReputationListFetcher {
   private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()

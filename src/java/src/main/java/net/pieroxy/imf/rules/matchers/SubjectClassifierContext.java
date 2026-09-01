@@ -3,15 +3,15 @@ package net.pieroxy.imf.rules.matchers;
 import java.io.File;
 
 /**
- * Fait connaître à {@link net.pieroxy.imf.rules.matchers.implementations.SubjectClassifierMatcher}
- * le fichier modèle du compte pour lequel il tourne. Un matcher est construit par
- * {@code MatcherType.getImplementation()} sans aucun contexte (juste un constructeur vide),
- * donc il n'y a pas d'autre moyen de lui faire savoir "de quel compte" il s'agit.
+ * Lets {@link net.pieroxy.imf.rules.matchers.implementations.SubjectClassifierMatcher} know the
+ * model file for the account it's running for. A matcher is built by
+ * {@code MatcherType.getImplementation()} with no context at all (just an empty constructor),
+ * so there's no other way to tell it "which account" it belongs to.
  * <p>
- * Ça tient avec un simple ThreadLocal parce que chaque compte tourne sur un thread dédié et
- * permanent pour toute la durée de vie du process (voir {@code MailAccount}) : ce n'est pas
- * du contexte de requête éphémère, c'est un vrai 1:1 thread/compte, posé une fois par
- * {@code MailAccount.run()} avant tout traitement sur ce thread.
+ * A plain ThreadLocal works here because each account runs on its own dedicated thread for the
+ * whole lifetime of the process (see {@code MailAccount}): this isn't ephemeral request-scoped
+ * context, it's a genuine 1:1 thread/account mapping, set once by {@code MailAccount.run()}
+ * before any processing happens on that thread.
  */
 public final class SubjectClassifierContext {
   private static final ThreadLocal<File> MODEL_FILE = new ThreadLocal<>();

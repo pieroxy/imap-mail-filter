@@ -6,34 +6,34 @@ import javax.mail.MessagingException;
 import java.util.List;
 
 /**
- * Abstraction sur l'accès à un compte IMAP : découple le reste du code des détails de
- * connexion (javax.mail Session/Store), et permet de le remplacer par un faux objet dans
- * les tests. Combine le suivi de l'INBOX par UID et un accès générique à l'arborescence de
- * dossiers, utilisé par l'apprentissage de règles (imf-rules/).
+ * Abstraction over access to an IMAP account: decouples the rest of the code from connection
+ * details (javax.mail Session/Store), and lets it be swapped for a fake in tests. Combines UID
+ * tracking of the INBOX with generic access to the folder tree, used by rule learning
+ * (imf-rules/).
  */
 public interface ImapMailbox extends AutoCloseable {
   long getUidValidity() throws MessagingException;
 
   long getUidNext() throws MessagingException;
 
-  /** Messages de l'INBOX dont l'UID est strictement supérieur à lastUid, triés par UID croissant. */
+  /** INBOX messages whose UID is strictly greater than lastUid, sorted by ascending UID. */
   Message[] getMessagesSince(long lastUid) throws MessagingException;
 
   long getUid(Message message) throws MessagingException;
 
-  /** Résout le dossier désigné par ce chemin (un segment par niveau), en le créant si besoin. */
+  /** Resolves the folder designated by this path (one segment per level), creating it if needed. */
   Folder getOrCreateFolder(String... pathSegments) throws MessagingException;
 
-  /** Racine de l'arborescence de dossiers du compte, pour une énumération générique. */
+  /** Root of the account's folder tree, for generic enumeration. */
   Folder getRootFolder() throws MessagingException;
 
-  /** Sous-dossiers directs de parent, dans l'ordre renvoyé par le serveur. */
+  /** Direct subfolders of parent, in the order returned by the server. */
   List<Folder> listSubfolders(Folder parent) throws MessagingException;
 
   /**
-   * Variantes génériques (n'importe quel dossier, pas seulement l'INBOX) des méthodes de suivi
-   * par UID ci-dessus, utilisées par le scan du corpus classifieur. Ouvrent le dossier en
-   * lecture seule si besoin (jamais \Seen posé juste en le parcourant).
+   * Generic variants (any folder, not just the INBOX) of the UID-tracking methods above, used
+   * by the classifier corpus scan. Open the folder read-only if needed (never sets \Seen just
+   * by walking it).
    */
   long getUidValidity(Folder folder) throws MessagingException;
 
@@ -41,13 +41,13 @@ public interface ImapMailbox extends AutoCloseable {
 
   long getUid(Folder folder, Message message) throws MessagingException;
 
-  /** Ferme folder sans expunge (lecture seule, rien à purger). */
+  /** Closes folder without expunging (read-only, nothing to purge). */
   void closeReadOnly(Folder folder) throws MessagingException;
 
-  /** Tous les messages de folder (l'ouvre en lecture/écriture si nécessaire). */
+  /** All messages in folder (opens it read/write if needed). */
   Message[] getAllMessages(Folder folder) throws MessagingException;
 
-  /** Ferme folder en purgeant (expunge) les messages marqués \Deleted. */
+  /** Closes folder, expunging messages marked \Deleted. */
   void closeAndExpunge(Folder folder) throws MessagingException;
 
   @Override

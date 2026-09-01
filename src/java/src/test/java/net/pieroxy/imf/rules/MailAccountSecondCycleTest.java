@@ -9,7 +9,7 @@ public class MailAccountSecondCycleTest extends AbstractMailAccountTest {
   @Test
   public void aSecondCycleDoesNotReapplyRulesToAlreadyProcessedMail() throws Exception {
     MailAccount account = accountWith(moveToSpamOnDomain("spammy.example.com"));
-    account.processMessages(); // établit le curseur UID avant tout dépôt de courrier
+    account.processMessages(); // establishes the UID cursor before any mail is dropped
 
     fixture.appendMessage(messageFrom("first@spammy.example.com"), "INBOX");
     account.processMessages();
@@ -17,7 +17,7 @@ public class MailAccountSecondCycleTest extends AbstractMailAccountTest {
     account.processMessages();
 
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
-      // Les deux messages spammy ont été déplacés : un par cycle, jamais retraité deux fois.
+      // Both spammy messages were moved: one per cycle, never reprocessed twice.
       assertEquals(2, mailbox.getAllMessages(mailbox.getOrCreateFolder("Spam")).length);
     }
   }

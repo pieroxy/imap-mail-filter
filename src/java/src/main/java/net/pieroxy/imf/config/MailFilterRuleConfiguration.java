@@ -4,11 +4,11 @@ public class MailFilterRuleConfiguration {
   private MailFilterRuleMatcherConfiguration matcher;
   private MailFilterRuleActionConfiguration action;
   /**
-   * Par défaut (false), la première règle qui matche arrête l'évaluation pour ce message — voir
-   * Rule.applyFirstMatching(). À true, son action s'exécute quand même, mais l'évaluation
-   * continue sur les règles suivantes comme si celle-ci n'avait pas matché : utile pour une
-   * règle qui se contente d'observer/journaliser (ex: comparer un nouveau classifieur à
-   * l'ancien) sans jamais empêcher les règles réelles de s'appliquer ensuite.
+   * By default (false), the first rule that matches stops evaluation for this message — see
+   * Rule.applyFirstMatching(). When true, its action still runs, but evaluation continues on to
+   * the following rules as if this one hadn't matched: useful for a rule that only
+   * observes/logs (e.g. comparing a new classifier against the old one) without ever blocking
+   * the real rules that would otherwise apply afterward.
    */
   private boolean keepProcessing;
 

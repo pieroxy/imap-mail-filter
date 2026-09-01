@@ -14,8 +14,8 @@ import java.util.OptionalDouble;
 import java.util.Set;
 
 /**
- * Comme {@link IpReputationMatcher}, mais sur le domaine de l'adresse {@code From:} plutôt que
- * l'IP connectante, contre des listes de type {@code DOMAIN}.
+ * Like {@link IpReputationMatcher}, but on the domain of the {@code From:} address rather than
+ * the connecting IP, against {@code DOMAIN}-type lists.
  */
 public class FromDomainReputationMatcher extends Matcher {
   private final ReputationRegistry registry;
@@ -26,7 +26,7 @@ public class FromDomainReputationMatcher extends Matcher {
     this(ReputationRegistryHolder.get());
   }
 
-  /** Visible pour les tests : permet d'injecter un registre sans téléchargement réel. */
+  /** Visible for tests: allows injecting a registry with no real download. */
   FromDomainReputationMatcher(ReputationRegistry registry) {
     this.registry = registry;
   }

@@ -3,9 +3,8 @@ package net.pieroxy.imf.rules.actions;
 import javax.mail.Message;
 
 /**
- * Doublure de test : pas d'implémentation d'Action réelle qui réussit actuellement
- * (MoveToAction est un stub qui renvoie toujours false), donc nécessaire pour tester
- * le court-circuit de AndAction/OrAction.
+ * Test double: there's currently no real Action implementation that succeeds (MoveToAction is a
+ * stub that always returns false), so this is needed to test AndAction/OrAction short-circuiting.
  */
 class StubAction extends Action {
   private final boolean result;

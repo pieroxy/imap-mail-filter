@@ -6,8 +6,8 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 
 /**
- * Exécute les actions enfants dans l'ordre, en s'arrêtant à la première qui échoue.
- * Sans enfant, un AND réussit par convention (vacuous truth).
+ * Runs the child actions in order, stopping at the first one that fails. With no children, an
+ * AND succeeds by convention (vacuous truth).
  */
 public class AndAction extends Action {
   @Override

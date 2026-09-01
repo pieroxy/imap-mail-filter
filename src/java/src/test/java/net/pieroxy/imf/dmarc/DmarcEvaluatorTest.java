@@ -42,17 +42,17 @@ public class DmarcEvaluatorTest {
             .withTxt("_dmarc.example.com", "v=DMARC1; p=reject");
     DmarcEvaluator evaluator = new DmarcEvaluator(resolver);
 
-    // SPF a réussi, mais pour un domaine sans rapport avec le From affiché : pas aligné.
+    // SPF passed, but for a domain unrelated to the displayed From: not aligned.
     assertEquals(DmarcResult.FAIL, evaluator.evaluate("example.com", true, "totally-unrelated.net", List.of()));
   }
 
   @Test
   public void relaxedAlignmentMatchesOrganizationalDomain() {
     FakeDmarcDnsResolver resolver = new FakeDmarcDnsResolver()
-            .withTxt("_dmarc.news.example.com", "v=DMARC1; p=reject"); // aspf=r par défaut
+            .withTxt("_dmarc.news.example.com", "v=DMARC1; p=reject"); // aspf=r by default
     DmarcEvaluator evaluator = new DmarcEvaluator(resolver);
 
-    // spfDomain a un sous-domaine différent, mais le même domaine organisationnel.
+    // spfDomain has a different subdomain, but the same organizational domain.
     assertEquals(DmarcResult.PASS, evaluator.evaluate("news.example.com", true, "example.com", List.of()));
   }
 
@@ -75,7 +75,7 @@ public class DmarcEvaluatorTest {
   @Test
   public void fallsBackToOrganizationalDomainRecord() {
     FakeDmarcDnsResolver resolver = new FakeDmarcDnsResolver()
-            .withTxt("_dmarc.example.com", "v=DMARC1; p=reject"); // rien à _dmarc.sub.example.com
+            .withTxt("_dmarc.example.com", "v=DMARC1; p=reject"); // nothing at _dmarc.sub.example.com
     DmarcEvaluator evaluator = new DmarcEvaluator(resolver);
 
     assertEquals(DmarcResult.PASS, evaluator.evaluate("sub.example.com", true, "example.com", List.of()));
@@ -127,8 +127,8 @@ public class DmarcEvaluatorTest {
   public void noRecordAtAllYieldsUnpublishedPolicyNotNone() {
     DmarcEvaluator evaluator = new DmarcEvaluator(new FakeDmarcDnsResolver());
 
-    // "unpublished" (aucun DMARC) est volontairement distinct de "none" (p=none, un choix
-    // actif du domaine) : ne pas les confondre.
+    // "unpublished" (no DMARC at all) is deliberately distinct from "none" (p=none, an active
+    // choice by the domain): don't conflate them.
     assertEquals(DmarcPolicy.UNPUBLISHED, evaluator.evaluateDetailed("example.com", true, "example.com", List.of(), Logger.getLogger("test")).policy());
   }
 
@@ -153,7 +153,7 @@ public class DmarcEvaluatorTest {
   @Test
   public void subdomainFallsBackToPWhenSpIsAbsent() {
     FakeDmarcDnsResolver resolver = new FakeDmarcDnsResolver()
-            .withTxt("_dmarc.example.com", "v=DMARC1; p=reject"); // pas de sp=
+            .withTxt("_dmarc.example.com", "v=DMARC1; p=reject"); // no sp=
     DmarcEvaluator evaluator = new DmarcEvaluator(resolver);
 
     assertEquals(DmarcPolicy.REJECT, evaluator.evaluateDetailed("news.example.com", true, "example.com", List.of(), Logger.getLogger("test")).policy());

@@ -63,7 +63,7 @@ public class DkimVerifierTest {
   @Test
   public void unknownSigningDomainDoesNotPass() throws Exception {
     DkimTestSigner.SignedMessage signed = DkimTestSigner.sign("sel1", "example.com", defaultHeaders(), "Hello world\r\n");
-    // Le retriever ne connaît pas ce sélecteur/domaine : impossible de retrouver la clé publique.
+    // The retriever doesn't know about this selector/domain: the public key can't be found.
     FakeDkimPublicKeyRecordRetriever retriever = new FakeDkimPublicKeyRecordRetriever();
 
     assertNotEquals(DkimResult.PASS, verify(signed.rawMessage, retriever));
@@ -72,8 +72,8 @@ public class DkimVerifierTest {
   @Test
   public void oneValidSignatureAmongMultipleIsEnoughToPass() throws Exception {
     DkimTestSigner.SignedMessage validSigned = DkimTestSigner.sign("sel1", "example.com", defaultHeaders(), "Hello world\r\n");
-    // Une deuxième signature, cassée (mauvais domaine, clé introuvable pour le retriever),
-    // ajoutée avant celle qui est valide : elle ne doit pas empêcher le pass global.
+    // A second signature, broken (wrong domain, key not found by the retriever), added before
+    // the valid one: it must not prevent the overall pass.
     String brokenSignature = "DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=unknown.example; s=sel1; "
             + "h=From:To:Subject; bh=AAAA; b=AAAA\r\n";
     String rawWithTwoSignatures = brokenSignature + validSigned.rawMessage;

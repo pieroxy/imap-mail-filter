@@ -12,21 +12,21 @@ import javax.mail.Store;
 import java.util.Properties;
 
 /**
- * Banc d'essai IMAP réel pour tester {@link net.pieroxy.imf.rules.MailAccount},
- * {@link net.pieroxy.imf.learning.RuleLearner} et {@link net.pieroxy.imf.rules.ManualReprocessor} :
- * démarre un serveur IMAP en mémoire (GreenMail) plutôt que de faire à la main un faux
- * {@code javax.mail.Folder} (classe abstraite avec une quinzaine de méthodes, dont
- * {@code copyMessages} qu'utilisent {@code MoveToAction}/{@code RuleLearner}/{@code
- * ManualReprocessor}) — donne de vrais Folder/Message qui se comportent correctement, et teste
- * par la même occasion le vrai {@link ImapMailboxConnection}.
+ * Real IMAP test fixture for testing {@link net.pieroxy.imf.rules.MailAccount},
+ * {@link net.pieroxy.imf.learning.RuleLearner} and {@link net.pieroxy.imf.rules.ManualReprocessor}:
+ * starts an in-memory IMAP server (GreenMail) rather than hand-rolling a fake
+ * {@code javax.mail.Folder} (an abstract class with about fifteen methods, including
+ * {@code copyMessages}, which {@code MoveToAction}/{@code RuleLearner}/{@code
+ * ManualReprocessor} rely on) — gives real Folder/Message objects that behave correctly, and
+ * exercises the real {@link ImapMailboxConnection} along the way.
  */
 public class GreenMailImapFixture {
   private static final String USERNAME = "test@localhost";
   private static final String PASSWORD = "password";
 
-  // Port dynamique (attribué par l'OS), pas le port de test fixe de GreenMail : plusieurs
-  // instances de cette fixture tournent en parallèle une fois les tests parallélisés (voir
-  // pom.xml), et un port fixe ferait entrer ces instances en conflit entre elles.
+  // Dynamic port (assigned by the OS), not GreenMail's fixed test port: several instances of
+  // this fixture run in parallel once tests are parallelized (see pom.xml), and a fixed port
+  // would make those instances collide with each other.
   private final GreenMail greenMail = new GreenMail(ServerSetupTest.IMAP.dynamicPort());
 
   public void start() {
@@ -38,7 +38,7 @@ public class GreenMailImapFixture {
     greenMail.stop();
   }
 
-  /** Config pointant vers ce serveur, prête à passer à un MailAccount de test. */
+  /** Config pointing at this server, ready to hand to a test MailAccount. */
   public MailAccountConfiguration accountConfig(String displayName) {
     MailAccountConfiguration config = new MailAccountConfiguration();
     config.setDisplayName(displayName);
@@ -50,11 +50,11 @@ public class GreenMailImapFixture {
     return config;
   }
 
-  /** Connexion IMAP en clair (pas de TLS) vers ce serveur — ce que connect() fait normalement via "imaps". */
+  /** Plain (non-TLS) IMAP connection to this server — what connect() normally does via "imaps". */
   public ImapMailboxConnection connectAsImapMailbox() throws MessagingException {
-    // mail.imap.peek : même réglage que ImapMailboxConnection.connect() en production (voir sa
-    // javadoc — ne suffit PAS à lui seul pour message.writeTo(), qui a besoin en plus de
-    // IMAPMessage.setPeek() par message ; voir MailTools.readRawMessageWithoutMarkingSeen()).
+    // mail.imap.peek: same setting as ImapMailboxConnection.connect() in production (see its
+    // javadoc — NOT enough on its own for message.writeTo(), which also needs
+    // IMAPMessage.setPeek() per message; see MailTools.readRawMessageWithoutMarkingSeen()).
     Properties props = new Properties();
     props.setProperty("mail.imap.peek", "true");
     Session session = Session.getDefaultInstance(props);
@@ -63,7 +63,7 @@ public class GreenMailImapFixture {
     return ImapMailboxConnection.forTesting(store);
   }
 
-  /** Dépose message dans le dossier donné (créé si besoin), via IMAP APPEND. */
+  /** Appends message into the given folder (created if needed), via IMAP APPEND. */
   public void appendMessage(Message message, String... folderPath) throws MessagingException {
     try (ImapMailboxConnection mailbox = connectAsImapMailbox()) {
       Folder folder = mailbox.getOrCreateFolder(folderPath);

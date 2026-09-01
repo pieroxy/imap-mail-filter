@@ -24,8 +24,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Teste ManualReprocessor contre un vrai serveur IMAP en mémoire (GreenMail) — mêmes raisons
- * que RuleLearnerTest : moveToDone() a besoin d'un vrai Folder attaché au message.
+ * Tests ManualReprocessor against a real in-memory IMAP server (GreenMail) — same reasons as
+ * RuleLearnerTest: moveToDone() needs a real Folder attached to the message.
  */
 public class ManualReprocessorTest {
   @Rule

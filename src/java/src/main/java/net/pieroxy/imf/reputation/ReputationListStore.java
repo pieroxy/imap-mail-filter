@@ -18,11 +18,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Persiste le contenu brut (texte) de chaque liste, compressé lz4, un fichier par id — même
- * pattern que {@code ClassifierCorpusStore}/{@code LogRotator} : écriture atomique (fichier
- * temporaire puis renommage) pour ne jamais laisser un cache tronqué si le process est
- * interrompu en pleine sauvegarde. Sert de repli quand un refresh échoue : la dernière version
- * qui a marché reste utilisable indéfiniment plutôt que de perdre le signal.
+ * Persists the raw (text) content of each list, lz4-compressed, one file per id — same pattern
+ * as {@code ClassifierCorpusStore}/{@code LogRotator}: atomic write (temp file then rename) so a
+ * cache is never left truncated if the process is interrupted mid-save. Serves as the fallback
+ * when a refresh fails: the last version that worked stays usable indefinitely rather than
+ * losing the signal.
  */
 final class ReputationListStore {
   private static final Logger LOGGER = Logger.getLogger(ReputationListStore.class.getName());
@@ -33,7 +33,7 @@ final class ReputationListStore {
     this.folder = new File(dataFolder, "reputation");
   }
 
-  /** @return le contenu mis en cache, ou null si aucun cache n'existe ou n'a pu être lu. */
+  /** @return the cached content, or null if no cache exists or it couldn't be read. */
   String load(String id) {
     File file = fileFor(id);
     if (!file.isFile()) return null;
@@ -52,11 +52,11 @@ final class ReputationListStore {
   }
 
   /**
-   * Date de dernière écriture du cache pour cet id (millis epoch), ou 0 si aucun cache n'existe
-   * — sert à décider si un refresh réseau est dû (voir {@code ReputationRegistry.start()}), pas
-   * seulement en se fiant à la durée d'exécution du process courant : sans ça, un service qui
-   * redémarre en boucle (crash loop) retéléchargerait à chaque redémarrage, potentiellement à
-   * un rythme bien plus soutenu que refreshHours, jusqu'à se faire bannir de la source distante.
+   * Last write date of the cache for this id (epoch millis), or 0 if no cache exists — used to
+   * decide whether a network refresh is due (see {@code ReputationRegistry.start()}), rather
+   * than just relying on how long the current process has been running: without this, a service
+   * stuck in a restart loop (crash loop) would re-download on every restart, potentially at a
+   * rate far higher than refreshHours, until it gets banned by the remote source.
    */
   long lastModified(String id) {
     return fileFor(id).lastModified();

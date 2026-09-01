@@ -1,8 +1,8 @@
 package net.pieroxy.imf.dmarc;
 
 /**
- * Échec temporaire de résolution DNS (timeout, SERVFAIL...) lors de la recherche d'un record
- * DMARC. Se traduit par {@link DmarcResult#TEMPERROR} dans {@link DmarcEvaluator}.
+ * Temporary DNS resolution failure (timeout, SERVFAIL...) while looking up a DMARC record.
+ * Translates to {@link DmarcResult#TEMPERROR} in {@link DmarcEvaluator}.
  */
 public class DmarcDnsException extends Exception {
   public DmarcDnsException(String message) {

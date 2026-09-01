@@ -20,7 +20,7 @@ public class FcrdnsEvaluatorTest {
   public void failsWhenPtrDoesNotForwardConfirm() {
     FakeFcrdnsDnsResolver resolver = new FakeFcrdnsDnsResolver()
             .withPtr("203.0.113.10", "mail.example.com")
-            .withA("mail.example.com", "198.51.100.1"); // pas la même IP
+            .withA("mail.example.com", "198.51.100.1"); // not the same IP
     FcrdnsEvaluator evaluator = new FcrdnsEvaluator(resolver);
 
     assertEquals(FcrdnsResult.FAIL, evaluator.evaluate("203.0.113.10"));
@@ -29,7 +29,7 @@ public class FcrdnsEvaluatorTest {
   @Test
   public void failsWhenPtrHostnameHasNoForwardRecordAtAll() {
     FakeFcrdnsDnsResolver resolver = new FakeFcrdnsDnsResolver()
-            .withPtr("203.0.113.10", "mail.example.com"); // pas de A pour mail.example.com
+            .withPtr("203.0.113.10", "mail.example.com"); // no A record for mail.example.com
     FcrdnsEvaluator evaluator = new FcrdnsEvaluator(resolver);
 
     assertEquals(FcrdnsResult.FAIL, evaluator.evaluate("203.0.113.10"));
@@ -57,7 +57,7 @@ public class FcrdnsEvaluatorTest {
   public void ipv6PtrForwardConfirmsViaAaaa() {
     FakeFcrdnsDnsResolver resolver = new FakeFcrdnsDnsResolver()
             .withPtr("2001:db8::1", "mail.example.com")
-            .withAaaa("mail.example.com", "2001:0db8:0000:0000:0000:0000:0000:0001"); // même IP, notation différente
+            .withAaaa("mail.example.com", "2001:0db8:0000:0000:0000:0000:0000:0001"); // same IP, different notation
     FcrdnsEvaluator evaluator = new FcrdnsEvaluator(resolver);
 
     assertEquals(FcrdnsResult.PASS, evaluator.evaluate("2001:db8::1"));

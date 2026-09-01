@@ -113,11 +113,11 @@ public class ClassifierCorpusStoreTest {
   }
 
   /**
-   * Le scénario réel : un message auto-classé SPAM par le scan (rapide) du dossier Spam, puis
-   * déplacé à la main par l'utilisateur qui le juge légitime — recapturé, cette fois HAM, par le
-   * scan quotidien complet qui suit. Un déplacement IMAP change l'UID du message, donc rien
-   * n'empêche cette double capture avec le même Message-ID mais des labels contradictoires ;
-   * readAll() doit ne garder que le verdict le plus récent (fetchDate le plus tardif).
+   * The real-world scenario: a message auto-labeled SPAM by the (fast) Spam folder scan, then
+   * moved out by hand by the user who judges it legitimate — recaptured, this time HAM, by the
+   * next full daily scan. An IMAP move changes the message's UID, so nothing prevents this
+   * double capture with the same Message-ID but contradictory labels; readAll() must keep only
+   * the most recent verdict (the latest fetchDate).
    */
   @Test
   public void readAllKeepsOnlyTheLatestVerdictForTheSameMessageId() throws Exception {
@@ -135,7 +135,7 @@ public class ClassifierCorpusStoreTest {
 
   @Test
   public void readAllKeepsTheEarlierExampleIfItsFetchDateIsActuallyLater() throws Exception {
-    // Vérifie que c'est bien fetchDate qui décide, pas l'ordre de lecture des fichiers.
+    // Checks that it's really fetchDate that decides, not the order files are read in.
     ClassifierCorpusStore store = new ClassifierCorpusStore(tmp.getRoot().getAbsolutePath(), "account", 30);
     store.append(LocalDate.of(2026, 9, 29),
         Arrays.asList(example("Hello", ClassifierLabel.HAM, "<msg-1@example.com>", "2026-09-30T08:00:00Z")));
@@ -157,7 +157,7 @@ public class ClassifierCorpusStoreTest {
     assertEquals(2, store.readAll().size());
   }
 
-  /** Relit directement le fichier compressé : vérifie le format réellement persisté sur disque. */
+  /** Reads the compressed file directly: checks the format actually persisted to disk. */
   private List<ClassifierExample> readCompressedFile(File file) throws Exception {
     try (LZ4FrameInputStream in = new LZ4FrameInputStream(new FileInputStream(file))) {
       String json = new String(in.readAllBytes(), StandardCharsets.UTF_8);

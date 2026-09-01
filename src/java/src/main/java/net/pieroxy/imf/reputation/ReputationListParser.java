@@ -8,20 +8,20 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 /**
- * Parse le contenu brut d'une liste téléchargée (une entrée par ligne, lignes vides ignorées)
- * en {@link ReputationList} exploitable. "#" ou ";" démarrent un commentaire, en tête de ligne
- * ou en fin de ligne — ex: Spamhaus DROP (https://www.spamhaus.org/drop/drop.txt) publie
- * {@code 1.10.16.0/20 ; SBL256894}, où {@code ; SBL256894} doit être ignoré sans invalider toute
- * la ligne. Une entrée invalide est ignorée (avec un warning) plutôt que de faire échouer le
- * chargement de toute la liste pour une seule ligne malformée — une liste externe peut évoluer
- * sans prévenir.
+ * Parses the raw content of a downloaded list (one entry per line, blank lines ignored) into a
+ * usable {@link ReputationList}. "#" or ";" start a comment, either at the start of a line or
+ * trailing after an entry — e.g. Spamhaus DROP (https://www.spamhaus.org/drop/drop.txt) publishes
+ * {@code 1.10.16.0/20 ; SBL256894}, where {@code ; SBL256894} must be ignored without
+ * invalidating the whole line. An invalid entry is skipped (with a warning) rather than failing
+ * the whole list load over a single malformed line — an external list can change format without
+ * notice.
  */
 final class ReputationListParser {
   private static final Logger LOGGER = Logger.getLogger(ReputationListParser.class.getName());
 
   private ReputationListParser() {}
 
-  /** validCount/invalidCount comptent les lignes (pas les entrées finales : un domaine dupliqué compte deux fois côté lignes, une seule fois dans la liste chargée) — voir {@link ReputationRegistry} pour le log de stats/timing qui s'en sert. */
+  /** validCount/invalidCount count lines (not final entries: a duplicate domain counts twice on the line side, once in the loaded list) — see {@link ReputationRegistry} for the stats/timing log that uses it. */
   record ParseResult(ReputationList list, int validCount, int invalidCount) {}
 
   static ParseResult parse(String id, ReputationListType type, String content) {

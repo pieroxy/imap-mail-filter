@@ -3,11 +3,11 @@ package net.pieroxy.imf.config;
 import net.pieroxy.imf.reputation.ReputationListType;
 
 /**
- * Une entrée de {@code reputationLists} dans la config globale (voir {@link Configuration}) :
- * une source de réputation à télécharger et rafraîchir périodiquement, jamais interrogée en
- * direct par message. {@code score} (0=ok, 1=spam) est la valeur attribuée à toute IP/domaine
- * trouvé dans cette liste ; quand un matcher référence plusieurs listes, le score retenu est le
- * pire (max) parmi celles qui contiennent la valeur testée.
+ * An entry of {@code reputationLists} in the global config (see {@link Configuration}): a
+ * reputation source to download and refresh periodically, never queried live per message.
+ * {@code score} (0=ok, 1=spam) is the value attributed to any IP/domain found in this list;
+ * when a matcher references several lists, the score kept is the worst (max) among those that
+ * contain the tested value.
  */
 public class ReputationListConfig {
   private String id;
@@ -32,7 +32,7 @@ public class ReputationListConfig {
     this.type = type;
   }
 
-  /** http(s):// pour un téléchargement distant, ou file:// pour un fichier local. */
+  /** http(s):// for a remote download, or file:// for a local file. */
   public String getUrl() {
     return url;
   }

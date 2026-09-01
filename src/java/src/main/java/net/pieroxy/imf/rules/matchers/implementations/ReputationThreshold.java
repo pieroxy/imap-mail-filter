@@ -4,9 +4,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Parse une clé de config du style {@code ">0.5"}/{@code "<=0.2"} et teste un score contre elle
- * — même format que {@link SubjectClassifierMatcher}, partagé par {@link IpReputationMatcher}
- * et {@link FromDomainReputationMatcher}.
+ * Parses a config key like {@code ">0.5"}/{@code "<=0.2"} and tests a score against it — same
+ * format as {@link SubjectClassifierMatcher}, shared by {@link IpReputationMatcher} and
+ * {@link FromDomainReputationMatcher}.
  */
 final class ReputationThreshold {
   private static final Pattern PATTERN = Pattern.compile("(>=|<=|>|<)\\s*([0-9]*\\.?[0-9]+)");

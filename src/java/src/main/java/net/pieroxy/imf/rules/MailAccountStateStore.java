@@ -11,8 +11,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Persiste l'état de progression (dernier UID traité) d'un compte sur disque, dans un
- * fichier JSON par compte nommé d'après sa clé (le displayName).
+ * Persists an account's progress state (last processed UID) to disk, in a per-account JSON file
+ * named after its key (the displayName).
  */
 public class MailAccountStateStore {
   private final static Logger LOGGER = Logger.getLogger(MailAccountStateStore.class.getName());

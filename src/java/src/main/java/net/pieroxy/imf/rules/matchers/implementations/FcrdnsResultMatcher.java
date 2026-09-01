@@ -12,14 +12,13 @@ import javax.mail.MessagingException;
 import java.util.Optional;
 
 /**
- * Compare le résultat d'un contrôle FCrDNS (Forward-Confirmed reverse DNS) à la clé configurée :
- * {@code pass}, {@code fail}, {@code none}, ou {@code temperror}. Insensible à la casse.
+ * Compares the result of an FCrDNS (Forward-Confirmed reverse DNS) check against the configured
+ * key: {@code pass}, {@code fail}, {@code none}, or {@code temperror}. Case-insensitive.
  * <p>
- * Contrairement à {@link SpfResultMatcher}/{@link DkimResultMatcher}/{@link DmarcResultMatcher},
- * ce n'est pas un standard d'authentification de domaine — il ne dit rien sur le domaine
- * expéditeur ({@code From:}/{@code Return-Path}), seulement si l'IP qui s'est connectée a un
- * reverse DNS cohérent et forward-confirmé. Voir {@link FcrdnsEvaluator} pour le détail et ses
- * limites.
+ * Unlike {@link SpfResultMatcher}/{@link DkimResultMatcher}/{@link DmarcResultMatcher}, this
+ * isn't a domain authentication standard — it says nothing about the sender domain
+ * ({@code From:}/{@code Return-Path}), only whether the connecting IP has a consistent,
+ * forward-confirmed reverse DNS. See {@link FcrdnsEvaluator} for details and its limitations.
  */
 public class FcrdnsResultMatcher extends Matcher {
   private final FcrdnsEvaluator evaluator;
@@ -28,7 +27,7 @@ public class FcrdnsResultMatcher extends Matcher {
     this(new FcrdnsEvaluator(new DnsJavaFcrdnsDnsResolver()));
   }
 
-  /** Visible pour les tests : permet d'injecter un évaluateur sans résolution DNS réelle. */
+  /** Visible for tests: allows injecting an evaluator with no real DNS resolution. */
   FcrdnsResultMatcher(FcrdnsEvaluator evaluator) {
     this.evaluator = evaluator;
   }

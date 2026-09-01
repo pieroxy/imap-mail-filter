@@ -35,8 +35,8 @@ public class SubjectClassifierMatcherTest {
 
   @After
   public void clearContext() {
-    // Le contexte est un ThreadLocal (voir SubjectClassifierContext) : le thread de test est
-    // réutilisé d'un test à l'autre, donc il faut nettoyer pour ne pas fuiter entre les tests.
+    // The context is a ThreadLocal (see SubjectClassifierContext): the test thread is reused
+    // from one test to the next, so it must be cleared to avoid leaking between tests.
     SubjectClassifierContext.set(null);
   }
 
@@ -77,8 +77,8 @@ public class SubjectClassifierMatcherTest {
   @Test
   public void doesNotMatchWhenMessageHasNoSubject() throws Exception {
     SubjectClassifierMatcher matcher = matcherFor(">0.5");
-    // Pas de contexte positionné du tout : si le check du subject ne court-circuitait pas
-    // avant, ça planterait plutôt que de renvoyer notMatched().
+    // No context set at all: if the subject check didn't short-circuit first, this would blow
+    // up instead of returning notMatched().
     MimeMessage message = new MimeMessage(session);
 
     assertFalse(matcher.matches(message).matched());
@@ -87,11 +87,11 @@ public class SubjectClassifierMatcherTest {
   @Test
   public void announcesInactiveStateAssoonAsConfiguredNotAtFirstMessage() throws Exception {
     SubjectClassifierContext.set(tmp.newFile("does-not-exist.bin"));
-    tmp.getRoot().listFiles((dir, name) -> name.equals("does-not-exist.bin"))[0].delete(); // le fichier ne doit pas exister
+    tmp.getRoot().listFiles((dir, name) -> name.equals("does-not-exist.bin"))[0].delete(); // the file must not exist
 
-    // setConfig() logge sur SON logger propre (dérivé de la config), pas encore accessible
-    // avant construction : on capture donc via la racine, qui reçoit tout par propagation
-    // (comportement par défaut tant que rien n'appelle setUseParentHandlers(false)).
+    // setConfig() logs on ITS OWN logger (derived from the config), not accessible yet before
+    // construction: so we capture via the root logger, which receives everything by propagation
+    // (the default behavior as long as nothing calls setUseParentHandlers(false)).
     List<LogRecord> records = new ArrayList<>();
     Handler capture = new Handler() {
       @Override public void publish(LogRecord record) { records.add(record); }
@@ -101,12 +101,12 @@ public class SubjectClassifierMatcherTest {
     Logger root = Logger.getLogger("");
     root.addHandler(capture);
     try {
-      matcherFor(">0.5"); // le check + log doit arriver ici, pas au premier matches()
+      matcherFor(">0.5"); // the check + log must happen here, not on the first matches() call
     } finally {
       root.removeHandler(capture);
     }
 
-    assertTrue("l'état doit être annoncé dès la construction, pas au premier message reçu",
+    assertTrue("the state must be announced at construction time, not on the first message received",
         records.stream().anyMatch(r -> r.getMessage() != null && r.getMessage().contains("inactive")));
   }
 
@@ -114,7 +114,7 @@ public class SubjectClassifierMatcherTest {
   public void doesNotReannounceInactiveStateOnEveryMessageAfterTheInitialCheck() throws Exception {
     SubjectClassifierContext.set(tmp.newFile("does-not-exist.bin"));
     tmp.getRoot().listFiles((dir, name) -> name.equals("does-not-exist.bin"))[0].delete();
-    SubjectClassifierMatcher matcher = matcherFor(">0.5"); // logge déjà "inactive" une fois ici, non capturé
+    SubjectClassifierMatcher matcher = matcherFor(">0.5"); // already logs "inactive" once here, not captured
 
     List<LogRecord> records = new ArrayList<>();
     Handler capture = new Handler() {
@@ -134,7 +134,7 @@ public class SubjectClassifierMatcherTest {
     }
 
     long inactiveLogs = records.stream().filter(r -> r.getMessage().contains("inactive")).count();
-    assertEquals("déjà annoncé pendant setConfig() : aucun message inspecté ne doit reloguer", 0, inactiveLogs);
+    assertEquals("already announced during setConfig(): no inspected message should re-log it", 0, inactiveLogs);
   }
 
   @Test
@@ -155,7 +155,7 @@ public class SubjectClassifierMatcherTest {
         "Reminder: dentist appointment Friday", "Photos from the weekend trip",
         "Updated schedule for next sprint", "Thanks for the feedback yesterday",
     };
-    for (int i = 0; i < 6; i++) { // 60 exemples par classe : confortablement au-dessus du minimum (50)
+    for (int i = 0; i < 6; i++) { // 60 examples per class: comfortably above the minimum (50)
       for (String s : spamSubjects) examples.add(example(s, ClassifierLabel.SPAM));
       for (String s : hamSubjects) examples.add(example(s, ClassifierLabel.HAM));
     }
@@ -165,15 +165,15 @@ public class SubjectClassifierMatcherTest {
     SubjectClassifierContext.set(store.getModelFile());
 
     SubjectClassifierMatcher confidentSpam = matcherFor(">0.5");
-    assertTrue("un sujet clairement spam doit dépasser le seuil",
+    assertTrue("a clearly spammy subject must cross the threshold",
         confidentSpam.matches(messageWithSubject("Buy cheap viagra now, free money")).matched());
-    assertFalse("un sujet clairement légitime ne doit pas dépasser le seuil",
+    assertFalse("a clearly legitimate subject must not cross the threshold",
         confidentSpam.matches(messageWithSubject("Meeting notes from yesterday's sync")).matched());
 
     SubjectClassifierMatcher confidentHam = matcherFor("<0.5");
-    assertFalse("l'opérateur < s'applique aussi : un sujet spam ne doit pas passer sous le seuil",
+    assertFalse("the < operator applies too: a spammy subject must not fall below the threshold",
         confidentHam.matches(messageWithSubject("Buy cheap viagra now, free money")).matched());
-    assertTrue("un sujet légitime doit passer sous le seuil avec <",
+    assertTrue("a legitimate subject must fall below the threshold with <",
         confidentHam.matches(messageWithSubject("Meeting notes from yesterday's sync")).matched());
   }
 

@@ -10,20 +10,19 @@ import java.util.regex.Pattern;
 import java.util.logging.Logger;
 
 /**
- * Extrait, à partir des headers d'un message déjà reçu, les deux informations dont
- * {@link SpfEvaluator} a besoin : l'IP qui s'est connectée en SMTP, et le domaine expéditeur
- * à vérifier.
+ * Extracts, from the headers of an already-received message, the two pieces of information
+ * {@link SpfEvaluator} needs: the IP that connected over SMTP, and the sender domain to check.
  * <p>
- * Notre serveur IMAP ne fait pas lui-même la vérification SPF (contrairement à un webmail
- * comme Gmail qui l'écrit dans {@code Authentication-Results}) : on la refait nous-mêmes à
- * partir de ce que le MTA qui a reçu le message a inscrit dans le header {@code Received} le
- * plus récent — celui ajouté par notre propre serveur, qui reflète la connexion TCP réelle et
- * est donc la seule source fiable (les {@code Received} plus anciens peuvent avoir été
- * fabriqués par l'expéditeur).
+ * Our IMAP server doesn't perform SPF verification itself (unlike a webmail provider such as
+ * Gmail, which writes it into {@code Authentication-Results}): we redo it ourselves, from
+ * whatever the MTA that received the message wrote into the most recent {@code Received}
+ * header — the one added by our own server, which reflects the real TCP connection and is
+ * therefore the only trustworthy source (older {@code Received} headers may have been forged
+ * by the sender).
  */
 public class SpfIdentityExtractor {
-  // Capture le dernier "[ip]" (IPv4, ou IPv6 avec préfixe optionnel "IPv6:") de la clause
-  // "from" d'un Received, ex: "from host.example.com (host.example.com [203.0.113.9])".
+  // Captures the last "[ip]" (IPv4, or IPv6 with optional "IPv6:" prefix) in the "from" clause
+  // of a Received header, e.g. "from host.example.com (host.example.com [203.0.113.9])".
   private static final Pattern BRACKETED_IP = Pattern.compile("\\[(?:IPv6:)?([0-9a-fA-F:.]+)]", Pattern.CASE_INSENSITIVE);
   private static final Pattern BY_CLAUSE = Pattern.compile("\\sby\\s", Pattern.CASE_INSENSITIVE);
   private static final Logger DEFAULT_LOGGER = Logger.getLogger(SpfIdentityExtractor.class.getName());
@@ -31,12 +30,12 @@ public class SpfIdentityExtractor {
   private SpfIdentityExtractor() {
   }
 
-  /** L'IP qui s'est connectée pour envoyer ce message, lue dans le Received le plus récent. */
+  /** The IP that connected to send this message, read from the most recent Received header. */
   public static Optional<String> extractClientIp(Message message) throws MessagingException {
     return extractClientIp(message, DEFAULT_LOGGER);
   }
 
-  /** Comme {@link #extractClientIp(Message)}, mais journalise (niveau FINE) le header examiné et l'IP trouvée. */
+  /** Like {@link #extractClientIp(Message)}, but logs (FINE level) the examined header and the IP found. */
   public static Optional<String> extractClientIp(Message message, Logger logger) throws MessagingException {
     String[] received = message.getHeader("Received");
     if (received == null || received.length == 0) {
@@ -64,15 +63,15 @@ public class SpfIdentityExtractor {
   }
 
   /**
-   * Le domaine à vérifier vis-à-vis du SPF : celui de l'expéditeur d'enveloppe
-   * ({@code Return-Path}, écrit par le MTA de livraison finale à partir du MAIL FROM SMTP)
-   * si disponible, sinon celui du header {@code From} affiché.
+   * The domain to check against SPF: the envelope sender's ({@code Return-Path}, written by the
+   * final delivering MTA from the SMTP MAIL FROM) if available, otherwise the one from the
+   * displayed {@code From} header.
    */
   public static Optional<String> extractSenderDomain(Message message) throws MessagingException {
     return extractSenderDomain(message, DEFAULT_LOGGER);
   }
 
-  /** Comme {@link #extractSenderDomain(Message)}, mais journalise (niveau FINE) la source retenue. */
+  /** Like {@link #extractSenderDomain(Message)}, but logs (FINE level) which source was used. */
   public static Optional<String> extractSenderDomain(Message message, Logger logger) throws MessagingException {
     Optional<String> fromReturnPath = extractDomainFromReturnPath(message);
     if (fromReturnPath.isPresent()) {

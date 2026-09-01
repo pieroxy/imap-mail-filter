@@ -21,14 +21,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Persiste, par compte, les règles apprises automatiquement en déplaçant des messages
- * d'exemple dans l'arborescence imf-rules/. Fichier séparé de la config manuelle (config.json)
- * pour ne jamais réécrire ce que l'utilisateur édite lui-même.
+ * Persists, per account, the rules automatically learned by moving example messages into the
+ * imf-rules/ tree. A file separate from the manual config (config.json), so as to never
+ * overwrite what the user edits by hand.
  */
 public class LearnedRulesStore {
   private final static Logger LOGGER = Logger.getLogger(LearnedRulesStore.class.getName());
-  // Fichier édité à la main en cas de correction (pas d'UI pour l'instant) : indenté pour
-  // rester lisible/éditable sans avoir à le reformater soi-même.
+  // Hand-edited when corrections are needed (no UI for now): pretty-printed to stay
+  // readable/editable without having to reformat it yourself first.
   private final static Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private final static Type LIST_TYPE = new TypeToken<List<MailFilterRuleConfiguration>>() {}.getType();
 
@@ -59,14 +59,13 @@ public class LearnedRulesStore {
   }
 
   /**
-   * Ajoute la règle si sa clé de matcher n'est pas déjà couverte par une règle équivalente
-   * (même type de matcher, même type+clé d'action). Si une telle règle existe déjà mais avec
-   * une clé de matcher différente, la nouvelle clé est fusionnée dans la règle existante
-   * (matcher.keys) plutôt que d'ajouter une règle entière dupliquée juste pour une clé de
-   * plus — beaucoup de règles apprises partagent la même action (ex: plusieurs expéditeurs
-   * tous envoyés vers Spam). Compacte aussi, au passage, d'éventuels doublons déjà présents
-   * dans le fichier (ex: appris avant que cette fusion n'existe).
-   * @return true si la règle a effectivement été ajoutée ou une clé effectivement fusionnée.
+   * Adds the rule if its matcher key isn't already covered by an equivalent rule (same matcher
+   * type, same action type+key). If such a rule already exists but with a different matcher
+   * key, the new key is merged into the existing rule (matcher.keys) instead of adding a whole
+   * duplicate rule just for one more key — many learned rules share the same action (e.g.
+   * several senders all sent to Spam). Also compacts, in passing, any duplicates already
+   * present in the file (e.g. learned before this merging existed).
+   * @return true if the rule was actually added, or a key actually merged.
    */
   public boolean addIfAbsent(MailFilterRuleConfiguration rule) {
     List<MailFilterRuleConfiguration> rules = load();
@@ -77,7 +76,7 @@ public class LearnedRulesStore {
       if (existing.getMatcher().getType() != rule.getMatcher().getType() || !sameAction(existing, rule)) continue;
       if (hasKey(existing.getMatcher(), newKey)) {
         if (compacted) save(rules);
-        return false; // déjà appris
+        return false; // already learned
       }
 
       mergeKey(existing.getMatcher(), newKey);
@@ -91,10 +90,10 @@ public class LearnedRulesStore {
   }
 
   /**
-   * Fusionne entre elles les règles qui partagent déjà (type de matcher, action) mais
-   * existent en plusieurs exemplaires distincts dans la liste — un fichier écrit avant que la
-   * fusion n'existe, ou tout autre accident, peut en contenir.
-   * @return true si quelque chose a été fusionné (donc si rules a été modifiée).
+   * Merges together rules that already share (matcher type, action) but exist as several
+   * separate entries in the list — a file written before this merging existed, or any other
+   * mishap, can contain some.
+   * @return true if something was merged (i.e. if rules was modified).
    */
   private boolean compact(List<MailFilterRuleConfiguration> rules) {
     boolean changed = false;
@@ -130,7 +129,7 @@ public class LearnedRulesStore {
     return Objects.equals(matcher.getKey(), key);
   }
 
-  /** Convertit key en keys (avec l'ancienne valeur dedans) si besoin, puis y ajoute key. */
+  /** Converts key into keys (with the old value inside) if needed, then adds key to it. */
   private void mergeKey(MailFilterRuleMatcherConfiguration matcher, String key) {
     Set<String> keys = matcher.getKeys();
     if (keys == null) {

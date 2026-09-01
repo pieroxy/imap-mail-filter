@@ -1,11 +1,11 @@
 package net.pieroxy.imf.spf;
 
 /**
- * Erreur permanente d'évaluation SPF : record malformé, mécanisme inconnu, valeur manquante,
- * budget de lookups DNS dépassé (RFC 7208 §4.6.4), ou "include"/"redirect" pointant vers un
- * domaine sans record SPF. Distincte de {@link SpfDnsException} (échec réseau temporaire) :
- * ici, réessayer plus tard ne changerait rien tant que le record SPF n'est pas corrigé.
- * Se traduit par {@link SpfResult#PERMERROR} dans {@link SpfEvaluator}.
+ * A permanent SPF evaluation error: malformed record, unknown mechanism, missing value,
+ * exceeded DNS lookup budget (RFC 7208 §4.6.4), or an "include"/"redirect" pointing to a domain
+ * without an SPF record. Distinct from {@link SpfDnsException} (temporary network failure):
+ * here, retrying later wouldn't change anything until the SPF record itself is fixed.
+ * Translates to {@link SpfResult#PERMERROR} in {@link SpfEvaluator}.
  */
 class SpfPermErrorException extends Exception {
   SpfPermErrorException(String message) {

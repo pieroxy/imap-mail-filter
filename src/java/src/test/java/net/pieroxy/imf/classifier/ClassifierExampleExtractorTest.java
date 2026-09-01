@@ -44,7 +44,7 @@ public class ClassifierExampleExtractorTest {
     assertEquals(sentDate.toInstant().toString(), example.getMailDate());
     assertEquals(fetchDate.toString(), example.getFetchDate());
     assertEquals("Alice", example.getFromDisplayName());
-    assertNull(example.getToDisplayName()); // bob/carol n'ont pas de display name
+    assertNull(example.getToDisplayName()); // bob/carol have no display name
   }
 
   @Test
@@ -174,7 +174,7 @@ public class ClassifierExampleExtractorTest {
   public void emptyReturnPathIsTreatedAsAbsent() throws Exception {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("alice@example.com"));
-    message.addHeader("Return-Path", "<>"); // bounce sans retour
+    message.addHeader("Return-Path", "<>"); // bounce with no return address
 
     ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
 
@@ -205,15 +205,14 @@ public class ClassifierExampleExtractorTest {
     ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
 
     assertEquals("example.com", example.getReplyToDomain());
-    assertNull("indéterminable (plusieurs From), pas 'pas de mismatch'", example.getReplyToMismatch());
+    assertNull("undeterminable (multiple From), not 'no mismatch'", example.getReplyToMismatch());
   }
 
   @Test
   public void extractsIpFromTheLastReceivedHeaderClosestToTheOrigin() throws Exception {
-    // Construit depuis un flux brut (comme un vrai fetch IMAP) plutôt qu'avec addHeader(),
-    // qui préfixe au lieu de préserver l'ordre du message : le relais le plus récent (le
-    // nôtre) apparaît en premier dans un message réel, celui de l'expéditeur d'origine en
-    // dernier.
+    // Built from a raw stream (like a real IMAP fetch) rather than with addHeader(), which
+    // prefixes instead of preserving message order: the most recent relay (ours) appears first
+    // in a real message, the original sender's last.
     String raw = "Received: from relay.example.com (relay.example.com [198.51.100.9]) by mx\r\n"
         + "Received: from origin.example.net (origin.example.net [203.0.113.5]) by relay\r\n"
         + "Subject: test\r\n\r\nbody\r\n";

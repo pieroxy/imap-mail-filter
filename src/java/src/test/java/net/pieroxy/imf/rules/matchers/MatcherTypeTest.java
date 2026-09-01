@@ -22,10 +22,10 @@ public class MatcherTypeTest {
   }
 
   /**
-   * SPF/DKIM/DMARC ne sont pas learnable : leurs clés possibles (pass/fail/softfail/...) sont
-   * un ensemble fixe et déjà documenté, pas une valeur spécifique à découvrir par l'exemple —
-   * et contrairement à FROM_*, la règle apprise ne serait pas propre à l'exemple déposé, elle
-   * s'appliquerait globalement à tout message ayant le même statut.
+   * SPF/DKIM/DMARC aren't learnable: their possible keys (pass/fail/softfail/...) are a fixed,
+   * already-documented set, not a specific value to discover from the example — and unlike
+   * FROM_*, the learned rule wouldn't be specific to the deposited example, it would apply
+   * globally to any message with the same status.
    */
   @Test
   public void protocolResultMatchersAreNotLearnable() {
@@ -37,9 +37,9 @@ public class MatcherTypeTest {
   }
 
   /**
-   * Pas learnable par dépôt d'exemple non plus, mais pour une raison différente des matchers
-   * de protocole ci-dessus : l'apprentissage vient du corpus classifieur (voir
-   * SubjectClassifierTrainer), pas des dossiers imf-rules/.
+   * Not learnable by dropped example either, but for a different reason than the protocol
+   * matchers above: the learning comes from the classifier corpus (see
+   * SubjectClassifierTrainer), not from imf-rules/ folders.
    */
   @Test
   public void subjectClassifierIsNotLearnable() {
@@ -47,8 +47,8 @@ public class MatcherTypeTest {
   }
 
   /**
-   * Pas learnable non plus : la réputation vient de listes externes téléchargées (voir
-   * net.pieroxy.imf.reputation.ReputationRegistry), pas d'un exemple déposé dans imf-rules/.
+   * Not learnable either: reputation comes from downloaded external lists (see
+   * net.pieroxy.imf.reputation.ReputationRegistry), not from an example dropped in imf-rules/.
    */
   @Test
   public void reputationMatchersAreNotLearnable() {

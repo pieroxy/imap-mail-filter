@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Résolveur DNS en mémoire, pour tester {@link SpfEvaluator} sans réseau. */
+/** In-memory DNS resolver, for testing {@link SpfEvaluator} without the network. */
 public class FakeSpfDnsResolver implements SpfDnsResolver {
   private final Map<String, List<String>> txt = new HashMap<>();
   private final Map<String, List<String>> a = new HashMap<>();

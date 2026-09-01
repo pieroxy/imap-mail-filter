@@ -44,9 +44,9 @@ public class IpReputationMatcherTest {
     return new ReputationRegistry(List.of(cfg), dataFolder);
   }
 
-  // Écrit directement dans le cache disque au format attendu par ReputationRegistry
-  // (dataFolder/reputation/<id>.txt.lz4) : ReputationListStore est package-private au paquet
-  // reputation, inaccessible d'ici, donc on reproduit juste l'écriture lz4 elle-même.
+  // Writes directly into the disk cache in the format ReputationRegistry expects
+  // (dataFolder/reputation/<id>.txt.lz4): ReputationListStore is package-private to the
+  // reputation package, inaccessible from here, so we just reproduce the lz4 write itself.
   private void writeCache(String dataFolder, String id, String content) throws Exception {
     File folder = new File(dataFolder, "reputation");
     folder.mkdirs();

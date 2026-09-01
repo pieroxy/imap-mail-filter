@@ -84,9 +84,9 @@ public class SpfResultMatcherTest {
   }
 
   /**
-   * Un header Authentication-Results/Received-SPF n'importe pas d'où il vient (l'expéditeur
-   * peut l'avoir forgé lui-même) : on ne lui fait jamais confiance, la vérification live fait
-   * toujours foi, même quand un tel header prétend le contraire.
+   * An Authentication-Results/Received-SPF header can't be trusted regardless of where it comes
+   * from (the sender could have forged it themselves): it's never trusted, the live check is
+   * always authoritative, even when such a header claims otherwise.
    */
   @Test
   public void ignoresPreexistingAuthenticationResultsHeaderEvenWhenPresent() throws Exception {
@@ -97,7 +97,7 @@ public class SpfResultMatcherTest {
     MimeMessage message = messageWithReceivedAndFrom("198.51.100.1", "spoofed@example.com");
     message.addHeader("Authentication-Results", "mx.forged.example; spf=pass smtp.mailfrom=spoofed@example.com");
 
-    assertTrue(matcher.matches(message).matched()); // "fail" matche : le header pass préexistant est ignoré
+    assertTrue(matcher.matches(message).matched()); // "fail" matches: the pre-existing pass header is ignored
   }
 
   @Test

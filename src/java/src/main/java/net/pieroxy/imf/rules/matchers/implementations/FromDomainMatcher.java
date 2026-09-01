@@ -11,9 +11,9 @@ import java.util.Arrays;
 import java.util.Optional;
 
 /**
- * Comme {@link FromAddressMatcher}, mais ne compare que le nom de domaine de l'adresse
- * (ex: "hotmail.com" pour "jdupont@hotmail.com"), de façon insensible à la casse — utile
- * pour bloquer tout un domaine plutôt qu'une adresse précise.
+ * Like {@link FromAddressMatcher}, but only compares the address's domain name
+ * (e.g. "hotmail.com" for "jdupont@hotmail.com"), case-insensitively — useful for blocking a
+ * whole domain rather than one specific address.
  */
 public class FromDomainMatcher extends Matcher {
   @Override

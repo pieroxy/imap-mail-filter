@@ -14,11 +14,10 @@ import java.util.OptionalDouble;
 import java.util.Set;
 
 /**
- * Compare le score de réputation de l'IP connectante (0=ok, 1=spam, le pire parmi les listes
- * {@code IP_CIDR} référencées par {@code listIds} qui la contiennent) à un seuil
- * ({@code ">0.5"}, {@code "<=0.2"}...). Les listes elles-mêmes sont téléchargées et rafraîchies
- * une fois pour tout le process, jamais interrogées en direct par message — voir
- * {@link ReputationRegistry}.
+ * Compares the connecting IP's reputation score (0=ok, 1=spam, the worst among the
+ * {@code IP_CIDR} lists referenced by {@code listIds} that contain it) against a threshold
+ * ({@code ">0.5"}, {@code "<=0.2"}...). The lists themselves are downloaded and refreshed once
+ * for the whole process, never queried live per message — see {@link ReputationRegistry}.
  */
 public class IpReputationMatcher extends Matcher {
   private final ReputationRegistry registry;
@@ -29,7 +28,7 @@ public class IpReputationMatcher extends Matcher {
     this(ReputationRegistryHolder.get());
   }
 
-  /** Visible pour les tests : permet d'injecter un registre sans téléchargement réel. */
+  /** Visible for tests: allows injecting a registry with no real download. */
   IpReputationMatcher(ReputationRegistry registry) {
     this.registry = registry;
   }

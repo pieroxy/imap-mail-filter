@@ -3,23 +3,23 @@ package net.pieroxy.imf.spf;
 import java.util.List;
 
 /**
- * Abstraction des requêtes DNS dont {@link SpfEvaluator} a besoin. Permet de tester
- * l'algorithme SPF avec des réponses en mémoire, sans réseau ni serveur DNS réel.
+ * Abstraction of the DNS queries {@link SpfEvaluator} needs. Lets the SPF algorithm be tested
+ * with in-memory answers, without any network or real DNS server.
  * <p>
- * Toutes les méthodes renvoient une liste vide quand le domaine ou le type d'enregistrement
- * n'existe pas (NXDOMAIN / NODATA) : ce n'est pas une erreur, c'est un résultat DNS normal.
- * {@link SpfDnsException} est réservée aux échecs temporaires (timeout, SERVFAIL...).
+ * All methods return an empty list when the domain or record type doesn't exist (NXDOMAIN /
+ * NODATA): that's not an error, it's a normal DNS outcome. {@link SpfDnsException} is reserved
+ * for temporary failures (timeout, SERVFAIL...).
  */
 public interface SpfDnsResolver {
-  /** Contenu brut des enregistrements TXT du domaine (chaque record concaténé en une String). */
+  /** Raw content of the domain's TXT records (each record concatenated into one String). */
   List<String> lookupTxt(String domain) throws SpfDnsException;
 
-  /** Adresses IPv4 du domaine, sous forme de littéraux ("1.2.3.4"). */
+  /** IPv4 addresses of the domain, as literals ("1.2.3.4"). */
   List<String> lookupA(String domain) throws SpfDnsException;
 
-  /** Adresses IPv6 du domaine, sous forme de littéraux. */
+  /** IPv6 addresses of the domain, as literals. */
   List<String> lookupAaaa(String domain) throws SpfDnsException;
 
-  /** Noms d'hôtes des enregistrements MX du domaine. */
+  /** Hostnames of the domain's MX records. */
   List<String> lookupMx(String domain) throws SpfDnsException;
 }

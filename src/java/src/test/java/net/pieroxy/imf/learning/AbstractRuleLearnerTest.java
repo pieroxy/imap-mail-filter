@@ -12,12 +12,12 @@ import javax.mail.internet.MimeMessage;
 import java.util.Properties;
 
 /**
- * Fixture et helpers partagés par les tests de {@link RuleLearner} contre un vrai serveur IMAP
- * en mémoire (GreenMail). Une sous-classe par scénario plutôt qu'une seule classe à plusieurs
- * {@code @Test} : chaque {@code @Before}/{@code @After} démarre/arrête son propre serveur
- * GreenMail (le vrai coût, quelques secondes), donc les séparer les fait tourner en parallèle
- * avec le reste (voir {@code parallel=classes} dans pom.xml) plutôt que s'empiler dans une
- * seule classe séquentielle — même raisonnement que {@code AbstractMailAccountTest}.
+ * Fixture and helpers shared by the {@link RuleLearner} tests against a real in-memory IMAP
+ * server (GreenMail). One subclass per scenario rather than a single class with several
+ * {@code @Test} methods: each {@code @Before}/{@code @After} starts/stops its own GreenMail
+ * server (the real cost, a few seconds), so separating them lets them run in parallel with the
+ * rest (see {@code parallel=classes} in pom.xml) instead of stacking up in a single sequential
+ * class — same reasoning as {@code AbstractMailAccountTest}.
  */
 public abstract class AbstractRuleLearnerTest {
   @Rule

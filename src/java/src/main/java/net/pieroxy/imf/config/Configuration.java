@@ -7,9 +7,9 @@ public class Configuration {
   private String dataFolder;
   private String logFile;
   private int keepLogFiles;
-  /** Nombre de jours de fichiers du corpus classifieur à garder (0 ou absent = désactivé). */
+  /** Number of days of classifier corpus files to keep (0 or absent = disabled). */
   private int classifierCorpusRetentionDays;
-  /** Sources de réputation IP/domaine (voir {@link ReputationListConfig}) — absent = fonctionnalité désactivée. */
+  /** IP/domain reputation sources (see {@link ReputationListConfig}) — absent = feature disabled. */
   private List<ReputationListConfig> reputationLists;
 
   public List<MailAccountConfiguration> getConfigurations() {

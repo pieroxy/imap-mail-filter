@@ -62,9 +62,9 @@ public class Runner {
 
   private static void shutdown() {
     logDirectly("Shutting down, interrupting " + accountThreads.size() + " account thread(s)...");
-    // Un cycle IMAP déjà en cours (I/O bloquante socket) ne sera pas interrompu à chaud ;
-    // ceci empêche seulement le déclenchement d'un nouveau cycle et laisse un cycle en cours
-    // se terminer dans la limite du timeout ci-dessous.
+    // An IMAP cycle already in progress (blocking socket I/O) won't be interrupted on the spot;
+    // this only prevents a new cycle from starting and lets an in-progress cycle finish within
+    // the timeout below.
     accountThreads.forEach(Thread::interrupt);
     for (Thread t : accountThreads) {
       try {
@@ -81,11 +81,10 @@ public class Runner {
   }
 
   /**
-   * java.util.logging installe son propre shutdown hook (LogManager) qui réinitialise les
-   * handlers ; l'ordre d'exécution entre hooks concurrents n'est pas garanti, donc un appel à
-   * LOGGER ici peut silencieusement disparaître selon lequel des deux hooks passe en premier.
-   * On écrit donc directement sur stderr et dans le fichier de log, seuls canaux fiables à ce
-   * stade de l'arrêt.
+   * java.util.logging installs its own shutdown hook (LogManager) that resets the handlers; the
+   * execution order between concurrent hooks isn't guaranteed, so a call to LOGGER here could
+   * silently disappear depending on which of the two hooks runs first. So we write directly to
+   * stderr and to the log file, the only reliable channels at this stage of shutdown.
    */
   private static void logDirectly(String message) {
     String line = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + " " + message;
@@ -95,7 +94,7 @@ public class Runner {
       try (FileWriter writer = new FileWriter(logFile, true)) {
         writer.write(line + System.lineSeparator());
       } catch (IOException ignored) {
-        // best effort : rien de plus fiable à faire à ce stade de l'arrêt.
+        // best effort: nothing more reliable to do at this stage of shutdown.
       }
     }
   }

@@ -1,8 +1,8 @@
 package net.pieroxy.imf.rules;
 
 /**
- * Etat persistant d'un compte, utilisé pour ne traiter chaque message qu'une seule fois.
- * uidValidity==0 signifie "jamais initialisé" (un serveur IMAP ne renvoie jamais 0).
+ * Persistent state of an account, used to process each message only once. uidValidity==0 means
+ * "never initialized" (an IMAP server never returns 0).
  */
 public class MailAccountState {
   private long uidValidity;

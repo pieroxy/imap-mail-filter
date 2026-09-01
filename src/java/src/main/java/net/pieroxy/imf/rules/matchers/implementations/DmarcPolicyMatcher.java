@@ -14,22 +14,22 @@ import javax.mail.MessagingException;
 import java.util.Optional;
 
 /**
- * Compare la politique DMARC effective du domaine expéditeur à la clé configurée : {@code none},
- * {@code quarantine}, {@code reject} (valeurs RFC 7489 du tag {@code p=}/{@code sp=}),
- * {@code unpublished} (le domaine n'a aucun DMARC), {@code permerror}, ou {@code temperror}.
- * Insensible à la casse.
+ * Compares the sender domain's effective DMARC policy against the configured key: {@code none},
+ * {@code quarantine}, {@code reject} (RFC 7489 values of the {@code p=}/{@code sp=} tag),
+ * {@code unpublished} (the domain has no DMARC at all), {@code permerror}, or {@code temperror}.
+ * Case-insensitive.
  * <p>
- * Contrairement à {@link DmarcResultMatcher}, ce matcher ne dit rien sur le message précis
- * évalué — juste sur ce que le domaine expéditeur a lui-même publié comme politique. Utile pour
- * graduer la confiance : un {@code DMARC_RESULT_EQUALS: fail} venant d'un domaine en
- * {@code p=reject} est un signal quasi certain de spoofing (le domaine s'est engagé à être
- * strict), alors que le même {@code fail} venant d'un domaine en {@code p=none} peut juste
- * refléter un déploiement SPF/DKIM incomplet côté expéditeur — combinez les deux via {@code AND}
- * pour distinguer les deux cas plutôt que de traiter tous les {@code fail} pareil.
+ * Unlike {@link DmarcResultMatcher}, this matcher says nothing about the specific message being
+ * evaluated — just about what the sender domain itself has published as its policy. Useful to
+ * grade confidence: a {@code DMARC_RESULT_EQUALS: fail} coming from a domain with {@code p=reject}
+ * is a near-certain spoofing signal (the domain committed to being strict), whereas the same
+ * {@code fail} from a domain with {@code p=none} might just reflect an incomplete SPF/DKIM
+ * deployment on the sender's side — combine both via {@code AND} to tell the two cases apart
+ * instead of treating every {@code fail} the same way.
  * <p>
- * {@code unpublished} n'a volontairement pas la même signification que {@code none} : un
- * domaine sans DMARC du tout n'est pas en soi suspect (c'est la norme pour la plupart des
- * petits domaines), alors que {@code p=none} est un choix actif du domaine.
+ * {@code unpublished} deliberately doesn't carry the same meaning as {@code none}: a domain with
+ * no DMARC at all isn't inherently suspicious (it's the norm for most small domains), whereas
+ * {@code p=none} is an active choice made by the domain.
  */
 public class DmarcPolicyMatcher extends Matcher {
   private final DmarcMessageEvaluator evaluator;
@@ -40,7 +40,7 @@ public class DmarcPolicyMatcher extends Matcher {
             new DmarcEvaluator(new DnsJavaDmarcDnsResolver())));
   }
 
-  /** Visible pour les tests : permet d'injecter un évaluateur sans réseau. */
+  /** Visible for tests: allows injecting an evaluator with no network access. */
   DmarcPolicyMatcher(DmarcMessageEvaluator evaluator) {
     this.evaluator = evaluator;
   }

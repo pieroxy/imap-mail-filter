@@ -13,16 +13,16 @@ public class MailAccountConfiguration {
    */
   private int runEvery;
   /**
-   * Nom du dossier IMAP considéré comme spam pour le corpus classifieur (dépend du
-   * fournisseur : "Spam" chez la plupart, "[Gmail]/Spam" chez Gmail, "Junk Email" chez
-   * Outlook...). Défaut : "Spam" si absent/vide.
+   * Name of the IMAP folder considered spam for the classifier corpus (varies by provider:
+   * "Spam" for most, "[Gmail]/Spam" for Gmail, "Junk Email" for Outlook...). Default: "Spam"
+   * if absent/blank.
    */
   private String classifierSpamFolderName;
   /**
-   * Noms de dossiers (n'importe où dans l'arbre, en plus d'INBOX et imf-rules/ qui le sont
-   * déjà toujours) à exclure complètement du corpus classifieur : ni SPAM ni HAM, ignorés.
-   * Utile par exemple pour un dossier dédié aux verdicts du classifieur lui-même (ex: "SpamML"
-   * ou "Spam/ML"), pour qu'il ne s'auto-alimente pas en exemples d'entraînement.
+   * Folder names (anywhere in the tree, in addition to INBOX and imf-rules/ which are always
+   * excluded already) to exclude entirely from the classifier corpus: neither SPAM nor HAM,
+   * ignored. Useful for example for a folder dedicated to the classifier's own verdicts (e.g.
+   * "SpamML" or "Spam/ML"), so it doesn't feed itself training examples.
    */
   private List<String> classifierExcludedFolders;
 

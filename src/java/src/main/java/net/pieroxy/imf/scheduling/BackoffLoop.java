@@ -4,11 +4,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Boucle générique "exécuter / attendre" avec backoff exponentiel sur échec (réinitialisé
- * au prochain succès) et arrêt propre sur interruption. Le premier cycle s'exécute
- * immédiatement (pas d'attente avant le tout premier run) ; l'attente n'intervient qu'entre
- * deux cycles. Ne connaît rien du travail exécuté, ce qui la rend testable indépendamment de
- * tout compte mail.
+ * Generic "run / wait" loop with exponential backoff on failure (reset on the next success) and
+ * clean shutdown on interruption. The first cycle runs immediately (no wait before the very
+ * first run); the wait only happens between cycles. Knows nothing about the work it runs, which
+ * makes it testable independently of any mail account.
  */
 public class BackoffLoop {
   public interface Task {

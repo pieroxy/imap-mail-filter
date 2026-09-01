@@ -11,14 +11,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Rejoue le catalogue de règles sur des messages déposés à la main dans imf-rules/ToProcess
- * (ex: un mail déjà présent dans l'INBOX qu'on veut refaire passer par les règles, après avoir
- * ajouté ou corrigé une règle qui aurait dû s'en occuper). Chaque message y est traité comme
- * s'il venait d'arriver : la première règle qui matche s'applique normalement. S'il reste dans
- * ToProcess une fois le catalogue épuisé — qu'aucune règle n'ait matché, ou que celle qui a
- * matché ne l'ait ni déplacé ni supprimé — il est rangé dans imf-rules/Done (même dossier que
- * {@link net.pieroxy.imf.learning.RuleLearner}), à charge pour l'utilisateur d'y jeter un oeil
- * puisque c'est lui qui a déposé le message à la main.
+ * Replays the rule catalog against messages dropped by hand into imf-rules/ToProcess (e.g. a
+ * mail already sitting in INBOX that you want to run back through the rules, after adding or
+ * fixing a rule that should have caught it). Each message there is treated exactly as if it had
+ * just arrived: the first matching rule applies normally. If it's still in ToProcess once the
+ * catalog is exhausted — whether no rule matched, or the one that did neither moved nor deleted
+ * it — it's filed into imf-rules/Done (the same folder used by
+ * {@link net.pieroxy.imf.learning.RuleLearner}), for the user to take a look at, since they're
+ * the one who dropped the message there by hand.
  */
 public class ManualReprocessor {
   private final static Logger LOGGER = Logger.getLogger(ManualReprocessor.class.getName());
@@ -34,7 +34,7 @@ public class ManualReprocessor {
     this.ruleCatalog = ruleCatalog;
   }
 
-  /** Crée imf-rules/ToProcess si besoin, prêt à recevoir des messages déposés à la main. */
+  /** Creates imf-rules/ToProcess if needed, ready to receive messages dropped by hand. */
   public void ensureFolderSkeleton() throws MessagingException {
     mailbox.getOrCreateFolder(ROOT_FOLDER, TO_PROCESS_FOLDER);
   }
@@ -42,8 +42,8 @@ public class ManualReprocessor {
   public void reprocessPending() throws MessagingException {
     Folder toProcessFolder = mailbox.getOrCreateFolder(ROOT_FOLDER, TO_PROCESS_FOLDER);
     Message[] pending = mailbox.getAllMessages(toProcessFolder);
-    // Silencieux quand il n'y a rien à faire (le cas normal, à chaque cycle) : ne loguer que
-    // quand une action déclenchée à la main a effectivement quelque chose à montrer.
+    // Silent when there's nothing to do (the normal case, every cycle): only log when a
+    // manually-triggered action actually has something to show.
     if (pending.length > 0) {
       LOGGER.info(() -> pending.length + " message(s) found in " + ROOT_FOLDER + "/" + TO_PROCESS_FOLDER + " to reprocess");
     }
@@ -64,9 +64,8 @@ public class ManualReprocessor {
         LOGGER.info(() -> "Message from " + MailTools.describeFromSafely(message) + " was relocated by its matching rule's action");
         return;
       }
-      // Aucune règle n'a matché, ou celle qui a matché n'a pas déplacé/supprimé le message
-      // (ex: une action qui se contente de le marquer) : on le range quand même pour ne pas
-      // le retraiter en boucle à chaque cycle.
+      // No rule matched, or the one that did didn't move/delete the message (e.g. an action
+      // that just marks it): file it anyway so it isn't reprocessed in a loop every cycle.
       moveToDone(message);
       LOGGER.info(() -> (matched ? "Matching rule's action left the message in place; moved" : "No rule matched; moved")
               + " message from " + MailTools.describeFromSafely(message) + " to " + ROOT_FOLDER + "/" + DONE_FOLDER);

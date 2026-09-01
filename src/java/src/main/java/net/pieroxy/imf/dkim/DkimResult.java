@@ -1,9 +1,9 @@
 package net.pieroxy.imf.dkim;
 
 /**
- * Résultat d'une vérification DKIM (RFC 6376), au vocabulaire RFC 8601 §2.7.1. Les noms des
- * constantes correspondent exactement à {@code org.apache.james.jdkim.api.Result.Type}, pour
- * une conversion directe par {@link Enum#valueOf}.
+ * Result of a DKIM verification (RFC 6376), using RFC 8601 §2.7.1 vocabulary. The constant names
+ * match {@code org.apache.james.jdkim.api.Result.Type} exactly, for a direct conversion via
+ * {@link Enum#valueOf}.
  */
 public enum DkimResult {
   NONE,

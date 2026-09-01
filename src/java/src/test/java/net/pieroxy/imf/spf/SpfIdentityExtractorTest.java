@@ -37,10 +37,10 @@ public class SpfIdentityExtractorTest {
 
   @Test
   public void usesOnlyTheTopmostReceivedHeader() throws Exception {
-    // Comme pour un vrai message reçu par IMAP : le Received le plus récent (ajouté par
-    // notre propre serveur) est physiquement en tête du message brut, et getHeader()
-    // préserve cet ordre pour un message parsé depuis ses octets bruts (contrairement à des
-    // appels programmatiques à addHeader(), qui empilent en ordre inverse).
+    // Just like a real message received over IMAP: the most recent Received header (added by
+    // our own server) sits physically at the top of the raw message, and getHeader() preserves
+    // that order for a message parsed from its raw bytes (unlike programmatic addHeader()
+    // calls, which stack in reverse order).
     String raw = "Received: from relay.example.com (relay.example.com [203.0.113.9]) by mx.example.com with ESMTP id 1\r\n"
             + "Received: from spoofed.example.org (spoofed.example.org [10.0.0.1]) by relay.example.com with ESMTP id 2\r\n"
             + "Subject: test\r\n\r\nbody\r\n";

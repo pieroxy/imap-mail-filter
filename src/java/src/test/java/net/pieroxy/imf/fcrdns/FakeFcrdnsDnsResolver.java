@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Résolveur DNS en mémoire, pour tester {@link FcrdnsEvaluator} sans réseau. */
+/** In-memory DNS resolver, for testing {@link FcrdnsEvaluator} without a network. */
 public class FakeFcrdnsDnsResolver implements FcrdnsDnsResolver {
   private final Map<String, List<String>> ptr = new HashMap<>();
   private final Map<String, List<String>> a = new HashMap<>();

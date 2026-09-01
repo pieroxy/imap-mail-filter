@@ -14,11 +14,10 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
 /**
- * Décale les archives existantes (name.N.lz4 -> name.(N+1).lz4), supprime celles qui
- * dépassent keepLogFiles, puis compresse le fichier de log courant en name.1.lz4 et le
- * supprime. N'a aucune dépendance sur java.util.logging, ce qui la rend testable sur de
- * simples fichiers ; LoggingBootstrap se charge de fermer/rouvrir le FileHandler autour
- * de cet appel.
+ * Shifts the existing archives (name.N.lz4 -> name.(N+1).lz4), deletes the ones beyond
+ * keepLogFiles, then compresses the current log file into name.1.lz4 and deletes it. Has no
+ * dependency on java.util.logging, which makes it testable against plain files; LoggingBootstrap
+ * takes care of closing/reopening the FileHandler around this call.
  */
 public final class LogRotator {
   private LogRotator() {}
@@ -47,9 +46,9 @@ public final class LogRotator {
   }
 
   private static void compress(File source, File destination) throws IOException {
-    // Compresse vers un fichier temporaire puis renomme atomiquement : une interruption
-    // brutale (JVM tuée, thread daemon coupé net) pendant l'écriture laisse au pire un
-    // .tmp orphelin, jamais une archive .lz4 tronquée sous son nom définitif.
+    // Compress into a temp file then rename atomically: an abrupt interruption (JVM killed,
+    // daemon thread cut off mid-write) leaves at worst an orphaned .tmp, never a truncated
+    // .lz4 archive under its final name.
     File tmp = new File(destination.getParentFile(), destination.getName() + ".tmp");
     try (InputStream in = new BufferedInputStream(new FileInputStream(source));
         OutputStream out =

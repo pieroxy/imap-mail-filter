@@ -9,11 +9,11 @@ import java.util.Base64;
 import java.util.Map;
 
 /**
- * Signe un message "à la main" (canonicalisation "simple", RFC 6376 §3.4.1 et §3.4.3),
- * indépendamment de la bibliothèque de vérification utilisée en prod ({@code
- * org.apache.james.jdkim}), pour que les tests de {@link DkimVerifier} valident cette
- * bibliothèque tierce contre une signature dont on maîtrise chaque octet — pas seulement un
- * aller-retour interne à la bibliothèque elle-même (qui masquerait un bug commun aux deux).
+ * Signs a message "by hand" ("simple" canonicalization, RFC 6376 §3.4.1 and §3.4.3), independent
+ * of the verification library used in production ({@code org.apache.james.jdkim}), so that
+ * {@link DkimVerifier}'s tests validate that third-party library against a signature whose every
+ * byte we control — not just a round trip internal to the library itself (which would mask a bug
+ * shared by both).
  */
 public class DkimTestSigner {
   public static final class SignedMessage {
@@ -26,7 +26,7 @@ public class DkimTestSigner {
     }
   }
 
-  /** headers doit préserver l'ordre d'insertion (ex: LinkedHashMap). */
+  /** headers must preserve insertion order (e.g. LinkedHashMap). */
   public static SignedMessage sign(String selector, String domain, Map<String, String> headers, String body) throws Exception {
     KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
     keyGen.initialize(2048);
@@ -35,8 +35,9 @@ public class DkimTestSigner {
     String bodyHash = base64(MessageDigest.getInstance("SHA-256").digest(body.getBytes(StandardCharsets.UTF_8)));
     String signedHeaderNames = String.join(":", headers.keySet());
 
-    // Le tag "b=" est présent mais vide au moment de calculer la signature (RFC 6376 §3.7
-    // étape 4), et le header DKIM-Signature lui-même n'a PAS de CRLF final dans l'entrée signée.
+    // The "b=" tag is present but empty at the point of computing the signature (RFC 6376 §3.7
+    // step 4), and the DKIM-Signature header itself does NOT have a trailing CRLF in the signed
+    // input.
     String dkimHeaderPrefix = "DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=" + domain + "; s=" + selector
             + "; h=" + signedHeaderNames + "; bh=" + bodyHash + "; b=";
 

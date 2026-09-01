@@ -1,9 +1,9 @@
 package net.pieroxy.imf.reputation;
 
 /**
- * Un bloc IPv4/CIDR ("1.2.3.0/24", ou "1.2.3.4" traité comme un /32), comme on en trouve dans
- * les listes de type {@link ReputationListType#IP_CIDR}. IPv6 non supporté pour l'instant — une
- * adresse IPv6 ne matchera jamais aucun bloc ici (voir {@link IpReputationList}).
+ * An IPv4/CIDR block ("1.2.3.0/24", or "1.2.3.4" treated as a /32), as found in
+ * {@link ReputationListType#IP_CIDR}-type lists. IPv6 not supported for now — an IPv6 address
+ * will never match any block here (see {@link IpReputationList}).
  */
 final class CidrRange {
   private final long start;
@@ -30,7 +30,7 @@ final class CidrRange {
     return new CidrRange(start, end, prefixLength);
   }
 
-  /** Contrôle "manuel"/de référence, utilisé par les tests — {@link IpTrie} est ce qui sert réellement en production, voir {@link IpReputationList}. */
+  /** "Manual"/reference check, used by tests — {@link IpTrie} is what's actually used in production, see {@link IpReputationList}. */
   boolean contains(long ip) {
     return ip >= start && ip <= end;
   }

@@ -3,10 +3,10 @@ package net.pieroxy.imf.classifier;
 import java.util.List;
 
 /**
- * Un enregistrement du corpus d'entraînement : de quoi nourrir un futur classifieur (subject,
- * from/to avec leur display name, IP d'origine best-effort, quelques en-têtes de plus —
- * In-Reply-To/References, Precedence, List-Id, List-Unsubscribe, cohérence Return-Path/Reply-To
- * avec From), étiqueté SPAM/HAM d'après le dossier IMAP d'où il vient.
+ * A record of the training corpus: whatever might feed a future classifier (subject, from/to
+ * with their display name, best-effort originating IP, a few more headers —
+ * In-Reply-To/References, Precedence, List-Id, List-Unsubscribe, Return-Path/Reply-To
+ * consistency with From), labeled SPAM/HAM based on the IMAP folder it came from.
  */
 public class ClassifierExample {
   private String messageId;
@@ -29,12 +29,12 @@ public class ClassifierExample {
   private ClassifierLabel label;
 
   /**
-   * Header Message-ID brut ; null si absent (rare, mail malformé). Identifie le même message
-   * à travers un déplacement IMAP (qui lui donne un nouvel UID dans le dossier de destination,
-   * donc invisible au suivi par UID) — voir {@code ClassifierCorpusStore#readAll()}, qui
-   * déduplique dessus pour ne garder que le dernier verdict d'un message vu deux fois avec des
-   * labels contradictoires (ex: auto-classé SPAM par le scan du dossier Spam, puis déplacé à la
-   * main par l'utilisateur qui le juge légitime).
+   * Raw Message-ID header; null if absent (rare, malformed mail). Identifies the same message
+   * across an IMAP move (which gives it a new UID in the destination folder, invisible to
+   * UID-based tracking) — see {@code ClassifierCorpusStore#readAll()}, which deduplicates on it
+   * to keep only the latest verdict for a message seen twice with contradictory labels (e.g.
+   * auto-classified SPAM by the Spam folder scan, then moved out by hand by a user who judged it
+   * legitimate).
    */
   public String getMessageId() {
     return messageId;
@@ -76,7 +76,7 @@ public class ClassifierExample {
     this.to = to;
   }
 
-  /** Display name(s) du/des expéditeur(s) ("Alice" pour "Alice &lt;alice@example.com&gt;"), joints par un espace ; null si aucun. */
+  /** Display name(s) of the sender(s) ("Alice" for "Alice &lt;alice@example.com&gt;"), joined by a space; null if none. */
   public String getFromDisplayName() {
     return fromDisplayName;
   }
@@ -85,7 +85,7 @@ public class ClassifierExample {
     this.fromDisplayName = fromDisplayName;
   }
 
-  /** Display name(s) du/des destinataire(s) To, joints par un espace ; null si aucun. */
+  /** Display name(s) of the To recipient(s), joined by a space; null if none. */
   public String getToDisplayName() {
     return toDisplayName;
   }
@@ -110,7 +110,7 @@ public class ClassifierExample {
     this.ip = ip;
   }
 
-  /** In-Reply-To ou References présent : signal HAM fort, une vraie réponse à un fil existant. */
+  /** In-Reply-To or References present: a strong HAM signal, a genuine reply to an existing thread. */
   public boolean isReply() {
     return reply;
   }
@@ -119,7 +119,7 @@ public class ClassifierExample {
     this.reply = reply;
   }
 
-  /** Valeur brute du header Precedence ("bulk", "list", "junk"...) ; null si absent. Vocabulaire fixe, contrairement aux autres valeurs brutes ci-dessous. */
+  /** Raw value of the Precedence header ("bulk", "list", "junk"...); null if absent. Fixed vocabulary, unlike the other raw values below. */
   public String getPrecedence() {
     return precedence;
   }
@@ -128,7 +128,7 @@ public class ClassifierExample {
     this.precedence = precedence;
   }
 
-  /** Valeur brute du header List-Id ; null si absent. Se répète d'un envoi à l'autre pour une même liste, contrairement à un Message-ID. */
+  /** Raw value of the List-Id header; null if absent. Recurs from one mailing to the next for the same list, unlike a Message-ID. */
   public String getListId() {
     return listId;
   }
@@ -145,7 +145,7 @@ public class ClassifierExample {
     this.listUnsubscribePresent = listUnsubscribePresent;
   }
 
-  /** Domaine de Return-Path ; null si absent ou vide (bounce sans retour, "&lt;&gt;"). */
+  /** Domain of Return-Path; null if absent or empty (a bounce with no return address, "&lt;&gt;"). */
   public String getReturnPathDomain() {
     return returnPathDomain;
   }
@@ -154,7 +154,7 @@ public class ClassifierExample {
     this.returnPathDomain = returnPathDomain;
   }
 
-  /** true si le domaine de Return-Path diffère de celui de From ; null si l'un des deux est indéterminable (pas juste "pas de mismatch"). */
+  /** true if the Return-Path domain differs from the From domain; null if either one is undeterminable (not simply "no mismatch"). */
   public Boolean getReturnPathMismatch() {
     return returnPathMismatch;
   }
@@ -163,7 +163,7 @@ public class ClassifierExample {
     this.returnPathMismatch = returnPathMismatch;
   }
 
-  /** Domaine de la première adresse Reply-To ; null si absent ou mal formé. */
+  /** Domain of the first Reply-To address; null if absent or malformed. */
   public String getReplyToDomain() {
     return replyToDomain;
   }
@@ -172,7 +172,7 @@ public class ClassifierExample {
     this.replyToDomain = replyToDomain;
   }
 
-  /** true si le domaine de Reply-To diffère de celui de From ; null si l'un des deux est indéterminable. */
+  /** true if the Reply-To domain differs from the From domain; null if either one is undeterminable. */
   public Boolean getReplyToMismatch() {
     return replyToMismatch;
   }

@@ -6,8 +6,8 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 
 /**
- * Exécute les actions enfants dans l'ordre, en s'arrêtant dès qu'une réussit (fallback chain).
- * Sans enfant, un OR échoue par convention.
+ * Runs the child actions in order, stopping as soon as one succeeds (fallback chain). With no
+ * children, an OR fails by convention.
  */
 public class OrAction extends Action {
   @Override

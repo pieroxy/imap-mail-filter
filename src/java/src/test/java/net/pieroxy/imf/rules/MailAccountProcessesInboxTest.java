@@ -9,7 +9,7 @@ public class MailAccountProcessesInboxTest extends AbstractMailAccountTest {
   @Test
   public void processesNewInboxMailAgainstConfiguredRules() throws Exception {
     MailAccount account = accountWith(moveToSpamOnDomain("spammy.example.com"));
-    account.processMessages(); // premier cycle sur un compte neuf : établit le curseur UID sur "maintenant"
+    account.processMessages(); // first cycle on a brand-new account: sets the UID cursor to "now"
 
     fixture.appendMessage(messageFrom("sender@spammy.example.com"), "INBOX");
     account.processMessages();

@@ -15,18 +15,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Point d'accès partagé par tout le process (pas par compte, contrairement au classifieur) aux
- * listes de réputation configurées. Une liste est téléchargée et rafraîchie dès lors qu'elle
- * est présente dans {@code reputationLists}, indépendamment de tout matcher qui la référence :
- * plus simple à raisonner ("configuré = à jour"), et permet de pré-charger une liste avant de
- * câbler une règle dessus. Jamais de requête par message — tout est en mémoire, voir
+ * Access point shared by the whole process (not per account, unlike the classifier) to the
+ * configured reputation lists. A list is downloaded and refreshed as soon as it's present in
+ * {@code reputationLists}, regardless of whether any matcher references it: simpler to reason
+ * about ("configured means up to date"), and it lets a list be preloaded before a rule is wired
+ * to it. Never a query per message — everything is in memory, see
  * {@link IpReputationList}/{@link DomainReputationList}.
  * <p>
- * Utilisée en base de deux façons : construite (et son cache disque préchargé) tout de suite au
- * démarrage du process pour qu'un signal soit disponible dès le premier message, puis
- * {@link #start()} lance le rafraîchissement périodique en tâche de fond. Voir
- * {@code net.pieroxy.imf.standalone.Runner} et {@link ReputationRegistryHolder} (comment les
- * matchers, construits sans contexte, retrouvent l'instance).
+ * Used in two basic ways: built (with its disk cache preloaded) right away at process startup so
+ * a signal is available from the very first message, then {@link #start()} launches the periodic
+ * background refresh. See {@code net.pieroxy.imf.standalone.Runner} and
+ * {@link ReputationRegistryHolder} (how matchers, built without context, find the instance).
  */
 public final class ReputationRegistry {
   private static final Logger LOGGER = Logger.getLogger(ReputationRegistry.class.getName());
@@ -61,21 +60,20 @@ public final class ReputationRegistry {
     }
   }
 
-  /** Registre sans aucune liste configurée : ipScore/domainScore renvoient toujours vide. */
+  /** A registry with no list configured: ipScore/domainScore always return empty. */
   public static ReputationRegistry empty() {
     return new ReputationRegistry(List.of(), null);
   }
 
   /**
-   * Démarre le rafraîchissement périodique (une tâche par liste, à son propre refreshHours).
-   * Sans effet si aucune liste n'est configurée, ou déjà démarré.
+   * Starts the periodic refresh (one task per list, on its own refreshHours). No effect if no
+   * list is configured, or already started.
    * <p>
-   * Le premier téléchargement de chaque liste est différé jusqu'à ce que son cache disque soit
-   * effectivement dû pour un refresh (âge du fichier &ge; refreshHours), pas déclenché
-   * systématiquement au démarrage du process : sinon, un service qui redémarre en boucle
-   * (crash loop, mauvaise config...) retéléchargerait à chaque redémarrage, potentiellement
-   * bien plus vite que refreshHours, jusqu'à se faire bannir de la source distante — exactement
-   * ce que refreshHours est censé éviter.
+   * The first download of each list is deferred until its disk cache is actually due for a
+   * refresh (file age &ge; refreshHours), rather than always firing on process startup:
+   * otherwise, a service stuck in a restart loop (crash loop, bad config...) would re-download on
+   * every restart, potentially far faster than refreshHours, until it gets banned by the remote
+   * source — exactly what refreshHours is meant to prevent.
    */
   public synchronized void start() {
     if (configsById.isEmpty() || scheduler != null) return;
@@ -96,7 +94,7 @@ public final class ReputationRegistry {
     }
   }
 
-  /** @return le délai avant le prochain téléchargement dû : 0 si pas de cache, ou si son âge dépasse déjà refreshMs. */
+  /** @return the delay before the next download is due: 0 if there's no cache, or if its age already exceeds refreshMs. */
   static long initialDelayMs(long cacheLastModifiedMillis, long nowMillis, long refreshMs) {
     if (cacheLastModifiedMillis <= 0) return 0;
     long age = nowMillis - cacheLastModifiedMillis;
@@ -133,8 +131,8 @@ public final class ReputationRegistry {
           + result.validCount() + " valid / " + result.invalidCount() + " invalid entries "
           + "(fetch " + fetchMs + "ms, parse " + parseMs + "ms, total " + elapsedMs(overallStart) + "ms)");
     } catch (Exception e) {
-      // On garde la dernière version qui a marché (cache disque déjà chargé au démarrage, ou
-      // précédent succès en mémoire) : un refresh raté ne doit jamais vider le signal existant.
+      // Keep the last version that worked (disk cache already loaded at startup, or a previous
+      // in-memory success): a failed refresh must never wipe out an existing signal.
       LOGGER.log(Level.WARNING, "Reputation list [" + cfg.getId() + "]: refresh failed after "
           + elapsedMs(overallStart) + "ms, keeping last known copy", e);
     }

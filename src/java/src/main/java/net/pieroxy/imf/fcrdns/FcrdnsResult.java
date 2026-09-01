@@ -1,18 +1,18 @@
 package net.pieroxy.imf.fcrdns;
 
 /**
- * Résultat d'un contrôle FCrDNS (Forward-Confirmed reverse DNS) sur une IP connectée.
- * Contrairement à SPF/DKIM/DMARC, il n'existe pas de RFC d'authentification dédiée à ce
- * vocabulaire — ces quatre valeurs sont une convention interne à IMF, pas un standard.
+ * Result of an FCrDNS (Forward-Confirmed reverse DNS) check on a connecting IP.
+ * Unlike SPF/DKIM/DMARC, there is no dedicated authentication RFC defining this vocabulary —
+ * these four values are an IMF-internal convention, not a standard.
  */
 public enum FcrdnsResult {
-  /** L'IP a un PTR, et ce PTR se confirme (une résolution A/AAAA du hostname retombe sur l'IP). */
+  /** The IP has a PTR record, and that PTR is confirmed (an A/AAAA lookup of the hostname resolves back to the IP). */
   PASS,
-  /** L'IP a un ou plusieurs PTR, mais aucun ne se confirme. */
+  /** The IP has one or more PTR records, but none of them are confirmed. */
   FAIL,
-  /** L'IP n'a aucun PTR. */
+  /** The IP has no PTR record at all. */
   NONE,
-  /** Une résolution DNS a échoué temporairement (timeout, SERVFAIL...). */
+  /** A DNS resolution failed temporarily (timeout, SERVFAIL...). */
   TEMPERROR;
 
   public String getCode() {

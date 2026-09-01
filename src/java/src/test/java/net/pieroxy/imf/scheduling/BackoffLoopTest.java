@@ -19,35 +19,35 @@ public class BackoffLoopTest {
     BackoffLoop loop = new BackoffLoop(10_000, 60_000);
 
     Thread t = new Thread(() -> loop.run("test", callCount::incrementAndGet));
-    // Interrompu avant même de démarrer : comme le premier cycle s'exécute désormais sans
-    // attente, interrompre après start() serait une course (le thread pourrait avoir déjà
-    // lancé la tâche). Interrompre un Thread non démarré est valide et déterministe : le flag
-    // est déjà posé quand la boucle fait son premier test.
+    // Interrupted before even starting: since the first cycle now runs without waiting,
+    // interrupting after start() would be a race (the thread might already have launched the
+    // task). Interrupting a Thread that hasn't started yet is valid and deterministic: the flag
+    // is already set by the time the loop makes its first check.
     t.interrupt();
     t.start();
     t.join(2000);
 
-    assertFalse("le thread doit s'être arrêté", t.isAlive());
-    assertEquals("la tâche ne doit jamais avoir tourné", 0, callCount.get());
+    assertFalse("the thread must have stopped", t.isAlive());
+    assertEquals("the task must never have run", 0, callCount.get());
   }
 
   @Test
   public void runsTheFirstCycleImmediatelyWithoutWaitingTheInitialDelay() throws InterruptedException {
     AtomicInteger callCount = new AtomicInteger();
-    BackoffLoop loop = new BackoffLoop(60_000, 60_000); // délai volontairement énorme
+    BackoffLoop loop = new BackoffLoop(60_000, 60_000); // deliberately huge delay
 
     Thread t = new Thread(() -> loop.run("test", () -> {
       callCount.incrementAndGet();
-      Thread.currentThread().interrupt(); // un seul cycle, puis stop
+      Thread.currentThread().interrupt(); // just one cycle, then stop
     }));
     long start = System.currentTimeMillis();
     t.start();
     t.join(2000);
     long elapsed = System.currentTimeMillis() - start;
 
-    assertFalse("le thread doit s'être arrêté", t.isAlive());
-    assertEquals("le premier cycle doit avoir tourné sans attendre le délai initial", 1, callCount.get());
-    assertTrue("le premier cycle n'aurait pas dû attendre ~60s (elapsed=" + elapsed + "ms)", elapsed < 2000);
+    assertFalse("the thread must have stopped", t.isAlive());
+    assertEquals("the first cycle must have run without waiting the initial delay", 1, callCount.get());
+    assertTrue("the first cycle should not have waited ~60s (elapsed=" + elapsed + "ms)", elapsed < 2000);
   }
 
   @Test
@@ -69,16 +69,16 @@ public class BackoffLoopTest {
     t.start();
     t.join(5000);
 
-    assertFalse("le thread doit s'être arrêté de lui-même", t.isAlive());
+    assertFalse("the thread must have stopped on its own", t.isAlive());
     assertEquals(4, callCount.get());
 
-    long gapAfterFirstFailure = timestamps.get(1) - timestamps.get(0);   // délai initial (50ms)
-    long gapAfterSecondFailure = timestamps.get(2) - timestamps.get(1); // délai doublé (100ms)
-    long gapAfterSuccess = timestamps.get(3) - timestamps.get(2);       // reset au délai initial (50ms)
+    long gapAfterFirstFailure = timestamps.get(1) - timestamps.get(0);   // initial delay (50ms)
+    long gapAfterSecondFailure = timestamps.get(2) - timestamps.get(1); // doubled delay (100ms)
+    long gapAfterSuccess = timestamps.get(3) - timestamps.get(2);       // reset to initial delay (50ms)
 
-    assertTrue("le délai doit augmenter après un échec (" + gapAfterFirstFailure + " -> " + gapAfterSecondFailure + ")",
+    assertTrue("the delay must grow after a failure (" + gapAfterFirstFailure + " -> " + gapAfterSecondFailure + ")",
             gapAfterSecondFailure > gapAfterFirstFailure * 1.5);
-    assertTrue("le délai doit revenir au niveau initial après un succès (" + gapAfterSecondFailure + " -> " + gapAfterSuccess + ")",
+    assertTrue("the delay must return to the initial level after a success (" + gapAfterSecondFailure + " -> " + gapAfterSuccess + ")",
             gapAfterSuccess < gapAfterSecondFailure / 1.5);
   }
 }

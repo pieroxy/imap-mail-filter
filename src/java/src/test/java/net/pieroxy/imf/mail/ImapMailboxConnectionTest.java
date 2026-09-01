@@ -15,21 +15,22 @@ import java.util.Properties;
 import static org.junit.Assert.assertFalse;
 
 /**
- * Régression : lire le contenu complet d'un message via
- * {@link MailTools#readRawMessageWithoutMarkingSeen} — ce que font DkimResultMatcher et
- * DmarcResultMatcher pour vérifier une signature DKIM — ne doit jamais marquer ce message comme
- * lu côté serveur. C'est exactement le bug observé : plus aucun message non-lu dans l'INBOX dès
- * que ces matchers étaient dans la liste des règles (peu importe qu'une règle matche ou non).
+ * Regression test: reading a message's full content via
+ * {@link MailTools#readRawMessageWithoutMarkingSeen} — what DkimResultMatcher and
+ * DmarcResultMatcher do to verify a DKIM signature — must never mark that message as read on
+ * the server. This is exactly the bug that was observed: no unread message was left in the
+ * INBOX as soon as these matchers were in the rule list (whether or not a rule actually
+ * matched).
  * <p>
- * Deux pièges qui ont fait échouer les premières tentatives de correctif, gardés en commentaire
- * pour ne pas les refaire :
+ * Two traps that made the first fix attempts fail, kept here in a comment so they don't happen
+ * again:
  * <ul>
- *   <li>La propriété de session "mail.imap.peek" ne suffit pas : elle ne couvre pas une lecture
- *   de contenu ad-hoc comme message.writeTo() (vérifié via un trace IMAP : javax.mail envoyait
- *   quand même BODY[], pas BODY.PEEK[], propriété posée ou non).</li>
- *   <li>Un {@link javax.mail.internet.MimeMessage} construit en mémoire (comme le fait
- *   DkimResultMatcherTest) ne peut pas détecter cette régression : writeTo() n'y parle à aucun
- *   serveur, donc l'effet de bord n'existe pas. Seul un vrai message IMAP (GreenMail) le peut.</li>
+ *   <li>The "mail.imap.peek" session property isn't enough on its own: it doesn't cover an
+ *   ad-hoc content read like message.writeTo() (verified via an IMAP trace: javax.mail still
+ *   sent BODY[], not BODY.PEEK[], whether or not the property was set).</li>
+ *   <li>A {@link javax.mail.internet.MimeMessage} built in memory (as DkimResultMatcherTest
+ *   does) can't catch this regression: writeTo() doesn't talk to any server there, so the side
+ *   effect doesn't exist. Only a real IMAP message (GreenMail) can.</li>
  * </ul>
  */
 public class ImapMailboxConnectionTest {

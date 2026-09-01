@@ -16,8 +16,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Vérifie la construction récursive (Matcher.build) et l'évaluation des matchers
- * composites AND/OR, à partir de vrais matchers FROM_EQUALS.
+ * Verifies the recursive construction (Matcher.build) and evaluation of composite AND/OR
+ * matchers, built from real FROM_EQUALS matchers.
  */
 public class CompositeMatcherTest {
   private final Session session = Session.getDefaultInstance(new Properties());
@@ -87,8 +87,8 @@ public class CompositeMatcherTest {
 
   @Test
   public void orDebugStringNamesOnlyTheChildThatMatched() throws Exception {
-    // Le premier enfant (bob) ne matche pas et n'apparaît donc pas dans la debug string :
-    // seul celui qui a effectivement fait matcher le OR y figure.
+    // The first child (bob) doesn't match and so doesn't appear in the debug string: only the
+    // one that actually made the OR match shows up there.
     Matcher or = Matcher.build(composite(MatcherType.OR, leaf("bob@example.com"), leaf("alice@example.com")));
 
     assertEquals("OrMatcher(FromExactMatcher(alice@example.com))",

@@ -23,8 +23,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Teste Rule de bout en bout : construction de l'arbre matcher/action via les factories
- * (Matcher.build / Action.build) à partir d'une config, puis évaluation sur un message.
+ * Tests Rule end to end: builds the matcher/action tree via the factories (Matcher.build /
+ * Action.build) from a config, then evaluates it against a message.
  */
 public class RuleTest {
   private final Session session = Session.getDefaultInstance(new Properties());
@@ -43,9 +43,9 @@ public class RuleTest {
   }
 
   /**
-   * Action AND sans enfant : réussit vacuously sans toucher au message. Utilisée ici pour
-   * tester le déclenchement par le matcher sans dépendre de la mécanique IMAP réelle de
-   * MoveToAction (qui a besoin d'un Folder/Store réels, absents d'un MimeMessage de test).
+   * A childless AND action: succeeds vacuously without touching the message. Used here to test
+   * matcher-driven triggering without depending on MoveToAction's real IMAP mechanics (which
+   * needs a real Folder/Store, absent from a test MimeMessage).
    */
   private static MailFilterRuleActionConfiguration noopAction() {
     MailFilterRuleActionConfiguration c = new MailFilterRuleActionConfiguration();
@@ -92,9 +92,9 @@ public class RuleTest {
   }
 
   /**
-   * Rule.apply() logue le "debugString" du MatchResult (ex: "FromExactMatcher(...)"), pas
-   * juste le nom de la classe du matcher — utile pour savoir, sur un matcher à plusieurs
-   * "keys", laquelle a précisément fait matcher la règle.
+   * Rule.apply() logs the MatchResult's "debugString" (e.g. "FromExactMatcher(...)"), not just
+   * the matcher's class name — useful for knowing, on a matcher with several "keys", which one
+   * precisely made the rule match.
    */
   @Test
   public void logsTheMatcherDebugStringWhenARuleMatches() throws Exception {
@@ -182,10 +182,10 @@ public class RuleTest {
   }
 
   /**
-   * Trois règles qui matchent toutes : la première (keepProcessing) laisse passer à la
-   * deuxième (comportement par défaut : elle arrête l'évaluation là), donc la troisième n'est
-   * jamais évaluée — vérifié en comptant les logs de match du matcher, pas juste le résultat
-   * global, pour prouver que la troisième n'est vraiment jamais atteinte.
+   * Three rules that all match: the first (keepProcessing) lets evaluation carry on to the
+   * second (default behavior: it stops evaluation there), so the third is never evaluated —
+   * checked by counting the matcher's match logs, not just the overall result, to prove the
+   * third is genuinely never reached.
    */
   @Test
   public void keepProcessingLetsEvaluationContinueUntilANonKeepProcessingRuleMatches() throws Exception {
@@ -197,7 +197,7 @@ public class RuleTest {
     MailFilterRuleConfiguration second = new MailFilterRuleConfiguration();
     second.setMatcher(fromEquals("alice@example.com"));
     second.setAction(noopAction());
-    // keepProcessing par défaut à false : doit arrêter l'évaluation ici.
+    // keepProcessing defaults to false: evaluation must stop here.
 
     MailFilterRuleConfiguration third = new MailFilterRuleConfiguration();
     third.setMatcher(fromEquals("alice@example.com"));
@@ -224,6 +224,6 @@ public class RuleTest {
     long matchLogCount = records.stream()
             .filter(r -> r.getMessage() != null && r.getMessage().contains("matched message from"))
             .count();
-    assertEquals("first (keepProcessing) et second doivent matcher, third ne doit jamais être atteinte", 2, matchLogCount);
+    assertEquals("first (keepProcessing) and second must match, third must never be reached", 2, matchLogCount);
   }
 }

@@ -22,10 +22,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Orchestre le traitement d'un compte : planifie les cycles (via {@link BackoffLoop}),
- * récupère les nouveaux messages (via {@link ImapMailbox}) et suit la progression
- * (via {@link MailAccountStateStore}). Ne connaît aucun détail de connexion IMAP ni de
- * persistance : chaque responsabilité vit dans sa propre classe, injectable/testable seule.
+ * Orchestrates processing for an account: schedules cycles (via {@link BackoffLoop}), fetches
+ * new messages (via {@link ImapMailbox}) and tracks progress (via {@link MailAccountStateStore}).
+ * Knows no detail of IMAP connections or persistence: each responsibility lives in its own
+ * class, injectable/testable on its own.
  */
 public class MailAccount implements Runnable {
   private final static Logger LOGGER = Logger.getLogger(MailAccount.class.getName());
@@ -48,7 +48,7 @@ public class MailAccount implements Runnable {
     this(config, dataFolder, classifierCorpusRetentionDays, ImapMailboxConnection::connect);
   }
 
-  /** Visible pour les tests : permet d'injecter une fabrique de mailbox sans IMAPS/TLS réel. */
+  /** Visible for tests: lets a mailbox factory be injected without real IMAPS/TLS. */
   MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays, ImapMailboxFactory mailboxFactory) {
     this.config = config;
     this.stateStore = new MailAccountStateStore(dataFolder, config.getDisplayName());
@@ -67,34 +67,34 @@ public class MailAccount implements Runnable {
 
   @Override
   public void run() {
-    // Une fois pour toutes sur CE thread, avant tout traitement : SubjectClassifierMatcher n'a
-    // aucun autre moyen de savoir à quel compte (donc quel modèle) il appartient, puisqu'il est
-    // construit sans contexte par MatcherType.getImplementation(). Ça tient parce que ce thread
-    // est dédié à ce compte pour toute la durée de vie du process (voir SubjectClassifierContext).
+    // Once and for all on THIS thread, before any processing: SubjectClassifierMatcher has no
+    // other way to know which account (hence which model) it belongs to, since it's built
+    // without context by MatcherType.getImplementation(). This holds because this thread is
+    // dedicated to this account for the whole lifetime of the process (see SubjectClassifierContext).
     SubjectClassifierContext.set(classifierCorpusStore.getModelFile());
     LOGGER.info("Starting account " + config.getDisplayName());
-    // Construit l'arbre Matcher/Action tout de suite plutôt que d'attendre le premier message :
-    // RuleCatalog est normalement paresseux (voir inspect()), mais certains matchers (comme
-    // SubjectClassifierMatcher) ont besoin d'être construits pour annoncer leur état dès le
-    // démarrage — sinon, sur un compte qui ne reçoit rien tout de suite, on ne saurait jamais
-    // si le classifieur est actif ou pas.
+    // Builds the Matcher/Action tree right away rather than waiting for the first message:
+    // RuleCatalog is normally lazy (see inspect()), but some matchers (like
+    // SubjectClassifierMatcher) need to be built to announce their state right at startup —
+    // otherwise, on an account that doesn't receive anything right away, we'd never know
+    // whether the classifier is active or not.
     ruleCatalog.get();
     ruleCatalog.logRules(LOGGER, accountLabel());
     new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS).run(config.getDisplayName(), this::processMessages);
   }
 
-  /** displayName si renseigné, sinon repli sur le login IMAP — voir {@link RuleCatalog#logRules}. */
+  /** displayName if set, otherwise falls back to the IMAP login — see {@link RuleCatalog#logRules}. */
   private String accountLabel() {
     String displayName = config.getDisplayName();
     return (displayName == null || displayName.isBlank()) ? config.getUsername() : displayName;
   }
 
-  /** Applique la première règle qui matche (config manuelle, puis règles apprises). */
+  /** Applies the first matching rule (manual config, then learned rules). */
   private void inspect(Message message) {
     Rule.applyFirstMatching(ruleCatalog.get(), message, LOGGER, "account " + config.getDisplayName());
   }
 
-  /** Package-private (au lieu de private) : permet à MailAccountTest d'exécuter un cycle sans passer par run()/BackoffLoop. */
+  /** Package-private (instead of private): lets MailAccountTest run a cycle without going through run()/BackoffLoop. */
   void processMessages() throws MessagingException {
     LOGGER.info("Processing account " + config.getDisplayName());
     try (ImapMailbox mailbox = mailboxFactory.connect(config)) {
@@ -104,7 +104,7 @@ public class MailAccount implements Runnable {
 
       if (learner.learnFromExamples()) {
         ruleCatalog.invalidate();
-        ruleCatalog.get(); // reconstruit tout de suite (voir le commentaire dans run())
+        ruleCatalog.get(); // rebuilds right away (see the comment in run())
       }
 
       processNewMessages(mailbox);
@@ -119,12 +119,11 @@ public class MailAccount implements Runnable {
   }
 
   /**
-   * Contrairement au reste de l'arborescence (une fois par jour, voir plus bas), Spam est
-   * scanné à chaque cycle : c'est le seul dossier qu'un utilisateur est susceptible de vider
-   * lui-même avant le prochain scan quotidien (ex: purge manuelle tous les soirs) — si on
-   * attendait le lendemain, tout le spam de la veille aurait disparu avant d'avoir jamais été
-   * capturé pour le corpus. Partage le même état (par dossier) que le scan quotidien, donc pas
-   * de double comptage entre les deux.
+   * Unlike the rest of the tree (once a day, see below), Spam is scanned every cycle: it's the
+   * one folder a user is likely to empty out themselves before the next daily scan (e.g. a
+   * manual purge every evening) — if we waited until the next day, all of yesterday's spam
+   * would be gone before ever being captured for the corpus. Shares the same (per-folder) state
+   * as the daily scan, so there's no double counting between the two.
    */
   private void scanSpamFolderForClassifierCorpus(ImapMailbox mailbox) {
     ClassifierScanState state = classifierScanStateStore.load();
@@ -138,11 +137,10 @@ public class MailAccount implements Runnable {
   }
 
   /**
-   * Les dossiers "imf-rules/..." ne changent quasiment jamais une fois créés : pas la peine de
-   * revérifier leur existence à chaque cycle (potentiellement toutes les minutes selon
-   * runEvery). Une fois au démarrage (lastSkeletonEnsureDate vaut encore null) puis une fois
-   * par jour civil ensuite suffit à se remettre d'une suppression accidentelle sans attendre un
-   * redémarrage.
+   * The "imf-rules/..." folders almost never change once created: no need to recheck their
+   * existence every cycle (potentially every minute depending on runEvery). Once at startup
+   * (lastSkeletonEnsureDate is still null) then once per calendar day afterward is enough to
+   * recover from an accidental deletion without waiting for a restart.
    */
   private void ensureFolderSkeletonsIfDue(RuleLearner learner, ManualReprocessor reprocessor) throws MessagingException {
     LocalDate today = LocalDate.now();
@@ -153,12 +151,12 @@ public class MailAccount implements Runnable {
   }
 
   /**
-   * Scanne au plus une fois par jour civil une fois à jour (pas de scheduler dédié : on
-   * profite du cycle déjà en cours, sur la même connexion IMAP). Tant qu'il reste du retard
-   * à rattraper (scan() plafonné, voir {@link ClassifierCorpusScanner}), on relance au cycle
-   * suivant au lieu d'attendre le lendemain, pour rattraper l'historique en plusieurs cycles
-   * rapides plutôt qu'un seul cycle interminable. Une erreur ici n'empêche jamais le
-   * traitement normal des messages, qui vient de se terminer avec succès juste au-dessus.
+   * Scans at most once per calendar day once caught up (no dedicated scheduler: it piggybacks
+   * on the cycle already in progress, over the same IMAP connection). As long as there's
+   * backlog left to catch up on (scan() is capped, see {@link ClassifierCorpusScanner}), it
+   * relaunches on the next cycle instead of waiting for the next day, to catch up on history
+   * over several quick cycles rather than one endless one. An error here never blocks normal
+   * message processing, which just finished successfully right above.
    */
   private void scanClassifierCorpusIfDue(ImapMailbox mailbox) {
     LocalDate today = LocalDate.now();
@@ -179,9 +177,9 @@ public class MailAccount implements Runnable {
       return;
     }
 
-    // Séparé du try ci-dessus : un échec d'entraînement ne doit pas empêcher le scan (déjà
-    // réussi) d'avoir marqué la journée comme traitée, sinon on relance le scan à chaque cycle
-    // pour rien alors que lui a fonctionné.
+    // Separate from the try above: a training failure must not prevent the (already successful)
+    // scan from having marked the day as done, otherwise the scan would be relaunched every
+    // cycle for nothing even though it worked fine.
     if (caughtUpToday) {
       try {
         subjectClassifierTrainer.train();
@@ -192,17 +190,17 @@ public class MailAccount implements Runnable {
   }
 
   /**
-   * Ne traite que les messages dont l'UID est strictement supérieur au dernier UID connu,
-   * afin qu'un message ne soit jamais inspecté deux fois d'un cycle à l'autre.
+   * Only processes messages whose UID is strictly greater than the last known UID, so a message
+   * is never inspected twice from one cycle to the next.
    */
   private void processNewMessages(ImapMailbox mailbox) throws MessagingException {
     MailAccountState state = stateStore.load();
 
     long uidValidity = mailbox.getUidValidity();
     if (state.getUidValidity() != uidValidity) {
-      // Première exécution pour ce compte, ou UIDVALIDITY changée côté serveur (mailbox recréée) :
-      // les anciens UID ne veulent plus rien dire. On repart de "maintenant" plutôt que de rejouer
-      // tout l'historique de la boîte.
+      // First run for this account, or UIDVALIDITY changed server-side (mailbox recreated): the
+      // old UIDs no longer mean anything. Start over from "now" rather than replaying the whole
+      // mailbox history.
       state.setUidValidity(uidValidity);
       state.setLastUid(mailbox.getUidNext() - 1);
     }

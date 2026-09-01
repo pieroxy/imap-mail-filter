@@ -21,8 +21,8 @@ public class ReputationListParserTest {
 
   @Test
   public void semicolonHeaderAndTrailingReferenceAreStrippedLikeSpamhausDrop() {
-    // Format réel de https://www.spamhaus.org/drop/drop.txt : commentaire d'en-tête en ";",
-    // et chaque bloc suivi d'une référence "; SBLxxxx" sur la même ligne.
+    // Real format of https://www.spamhaus.org/drop/drop.txt: header comment starting with ";",
+    // and each block followed by a "; SBLxxxx" reference on the same line.
     String content = "; (c) 2026 The Spamhaus Project SLU\n"
             + "1.10.16.0/20 ; SBL256894\n"
             + "5.42.92.0/24 ; SBL625300\n";

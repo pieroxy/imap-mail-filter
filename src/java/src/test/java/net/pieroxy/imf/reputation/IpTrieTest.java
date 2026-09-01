@@ -45,8 +45,8 @@ public class IpTrieTest {
     trie.add(ip("10.0.0.4"), 32);
     trie.add(ip("10.0.0.0"), 24);
 
-    assertTrue(trie.contains(ip("10.0.0.4"))); // le /32 d'origine
-    assertTrue(trie.contains(ip("10.0.0.200"))); // couvert seulement par le /24 ajouté ensuite
+    assertTrue(trie.contains(ip("10.0.0.4"))); // the original /32
+    assertTrue(trie.contains(ip("10.0.0.200"))); // covered only by the /24 added afterward
     assertFalse(trie.contains(ip("10.0.1.1")));
   }
 
@@ -54,7 +54,7 @@ public class IpTrieTest {
   public void narrowerBlockAddedAfterABroaderOneChangesNothing() {
     IpTrie trie = new IpTrie();
     trie.add(ip("10.0.0.0"), 24);
-    trie.add(ip("10.0.0.4"), 32); // déjà couvert par le /24
+    trie.add(ip("10.0.0.4"), 32); // already covered by the /24
 
     assertTrue(trie.contains(ip("10.0.0.4")));
     assertTrue(trie.contains(ip("10.0.0.200")));

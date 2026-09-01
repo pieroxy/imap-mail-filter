@@ -15,13 +15,13 @@ import java.util.Locale;
 import java.util.Random;
 
 /**
- * Banc d'essai CPU + mémoire : charge un fichier de plages CIDR IPv4 (lz4-compressé, comme
- * {@code dataFolder/reputation/<id>.txt.lz4}) dans une liste [start,end] classique — l'approche
- * actuelle de {@code IpReputationList}/{@code CidrRange}, qui compare l'IP testée à chaque plage
- * (O(n)) — et dans un {@link IpTrie}, puis compare le temps de lookup des deux sur un grand
- * nombre d'IP aléatoires (le scénario réaliste : très majoritairement des "absent", puisque
- * l'immense majorité du courrier ne vient pas d'une IP blacklistée). Usage :
- * <pre>java -cp imf-core-*.jar net.pieroxy.imf.standalone.IpTrieBenchmark &lt;fichier.txt.lz4&gt; [nombre de lookups]</pre>
+ * CPU + memory benchmark: loads an IPv4 CIDR range file (lz4-compressed, like
+ * {@code dataFolder/reputation/<id>.txt.lz4}) into a plain [start,end] list — the current
+ * approach used by {@code IpReputationList}/{@code CidrRange}, which compares the tested IP
+ * against every range (O(n)) — and into an {@link IpTrie}, then compares the lookup time of both
+ * over a large number of random IPs (the realistic scenario: overwhelmingly "not present", since
+ * the vast majority of mail doesn't come from a blacklisted IP). Usage:
+ * <pre>java -cp imf-core-*.jar net.pieroxy.imf.standalone.IpTrieBenchmark &lt;file.txt.lz4&gt; [lookup count]</pre>
  */
 public final class IpTrieBenchmark {
   private static final int DEFAULT_LOOKUPS = 2_000_000;
@@ -35,7 +35,7 @@ public final class IpTrieBenchmark {
     }
     int lookupCount = args.length > 1 ? Integer.parseInt(args[1]) : DEFAULT_LOOKUPS;
 
-    // {start, end, prefixLength} par plage.
+    // {start, end, prefixLength} per range.
     List<long[]> ranges = readRanges(new File(args[0]));
     System.out.println(ranges.size() + " CIDR range(s) read from " + args[0]);
 
@@ -89,7 +89,7 @@ public final class IpTrieBenchmark {
   }
 
   private static long[] randomIps(int count) {
-    Random random = new Random(42); // graine fixe : mêmes IP interrogées d'un run à l'autre, et pour les deux structures
+    Random random = new Random(42); // fixed seed: same IPs queried run to run, and for both structures
     long[] ips = new long[count];
     for (int i = 0; i < count; i++) {
       ips[i] = random.nextInt() & 0xFFFFFFFFL;
@@ -112,7 +112,7 @@ public final class IpTrieBenchmark {
         try {
           ranges.add(parseCidr(line));
         } catch (RuntimeException e) {
-          // ligne invalide : ignorée, comme en production (voir ReputationListParser)
+          // invalid line: skipped, same as in production (see ReputationListParser)
         }
       }
     }

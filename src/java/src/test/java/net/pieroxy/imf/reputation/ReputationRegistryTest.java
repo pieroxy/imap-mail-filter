@@ -89,7 +89,7 @@ public class ReputationRegistryTest {
     ReputationRegistry registry = new ReputationRegistry(
         List.of(list("domain-list", ReputationListType.DOMAIN, 1.0)), dataFolder);
 
-    // domain-list est de type DOMAIN : la référencer depuis ipScore() ne doit jamais planter.
+    // domain-list is of type DOMAIN: referencing it from ipScore() must never blow up.
     assertFalse(registry.ipScore("1.2.3.4", Set.of("domain-list")).isPresent());
   }
 
@@ -120,8 +120,8 @@ public class ReputationRegistryTest {
     assertFalse(registry.ipScore("1.2.3.4", Set.of("blocklist")).isPresent());
   }
 
-  // --- initialDelayMs(...) : ce qui empêche un service en crash loop de retélécharger à
-  // chaque redémarrage (voir start()) ---
+  // --- initialDelayMs(...): what keeps a service stuck in a crash loop from re-downloading on
+  // every restart (see start()) ---
 
   @Test
   public void noCacheAtAllMeansDownloadRightAway() {
@@ -147,16 +147,16 @@ public class ReputationRegistryTest {
     assertEquals(0L, ReputationRegistry.initialDelayMs(thirtyHoursAgo, now, TimeUnit.HOURS.toMillis(24)));
   }
 
-  // --- start() de bout en bout : le comportement décrit ci-dessus tient vraiment sur un
-  // registre réel, pas seulement dans le calcul isolé ---
+  // --- start() end to end: the behavior described above really holds on a real registry, not
+  // just in the isolated calculation ---
 
   @Test
   public void startDoesNotRedownloadAFreshCache() throws Exception {
     String dataFolder = tempFolder.getRoot().getAbsolutePath();
     File sourceFile = tempFolder.newFile("source.txt");
-    Files.writeString(sourceFile.toPath(), "9.9.9.0/24\n"); // différent du cache : prouve qu'il n'est pas relu
+    Files.writeString(sourceFile.toPath(), "9.9.9.0/24\n"); // different from the cache: proves it isn't re-read
 
-    new ReputationListStore(dataFolder).save("blocklist", "1.2.3.0/24\n"); // cache tout frais (mtime = maintenant)
+    new ReputationListStore(dataFolder).save("blocklist", "1.2.3.0/24\n"); // brand new cache (mtime = now)
 
     ReputationListConfig cfg = list("blocklist", ReputationListType.IP_CIDR, 1.0);
     cfg.setUrl(sourceFile.toURI().toString());
@@ -166,8 +166,8 @@ public class ReputationRegistryTest {
     registry.start();
     try {
       Thread.sleep(300);
-      assertTrue("le cache frais doit rester utilisé", registry.ipScore("1.2.3.4", Set.of("blocklist")).isPresent());
-      assertFalse("la source ne doit pas avoir été retéléchargée", registry.ipScore("9.9.9.9", Set.of("blocklist")).isPresent());
+      assertTrue("the fresh cache must still be used", registry.ipScore("1.2.3.4", Set.of("blocklist")).isPresent());
+      assertFalse("the source must not have been re-downloaded", registry.ipScore("9.9.9.9", Set.of("blocklist")).isPresent());
     } finally {
       registry.stop();
     }
@@ -192,7 +192,7 @@ public class ReputationRegistryTest {
     registry.start();
     try {
       Thread.sleep(300);
-      assertTrue("un cache périmé doit être retéléchargé dès le démarrage",
+      assertTrue("a stale cache must be re-downloaded right at startup",
           registry.ipScore("9.9.9.9", Set.of("blocklist")).isPresent());
     } finally {
       registry.stop();

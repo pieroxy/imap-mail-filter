@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Résolveur DNS en mémoire, pour tester {@link DmarcEvaluator} sans réseau. */
+/** In-memory DNS resolver, for testing {@link DmarcEvaluator} without a network. */
 public class FakeDmarcDnsResolver implements DmarcDnsResolver {
   private final Map<String, List<String>> records = new HashMap<>();
   private final Set<String> failing = new java.util.HashSet<>();

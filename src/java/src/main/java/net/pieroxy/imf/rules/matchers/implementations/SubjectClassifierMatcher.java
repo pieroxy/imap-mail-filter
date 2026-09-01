@@ -19,17 +19,17 @@ import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 /**
- * Classifie le sujet du message via le modèle entraîné par
- * {@link net.pieroxy.imf.classifier.SubjectClassifierTrainer} sur le corpus collecté par
- * {@link net.pieroxy.imf.classifier.ClassifierCorpusScanner}. Contrairement aux autres
- * matchers "feuille", pas d'apprentissage par dépôt d'exemple dans imf-rules/ (il n'y a pas de
- * "clé" à extraire d'un message) : l'apprentissage vient du corpus, la clé de config est un
- * seuil de probabilité (ex: "&gt;0.9", "&lt;0.1") plutôt qu'une valeur à comparer.
+ * Classifies the message's subject via the model trained by
+ * {@link net.pieroxy.imf.classifier.SubjectClassifierTrainer} on the corpus collected by
+ * {@link net.pieroxy.imf.classifier.ClassifierCorpusScanner}. Unlike other "leaf" matchers,
+ * there's no learning by dropping an example in imf-rules/ (there's no "key" to extract from a
+ * message): learning comes from the corpus, and the config key is a probability threshold
+ * (e.g. "&gt;0.9", "&lt;0.1") rather than a value to compare against.
  * <p>
- * Pour comparer confiant/pas sûr sans complexifier le contrat de {@link Matcher} (qui reste
- * booléen), on configure deux règles à deux seuils différents plutôt qu'un résultat à
- * plusieurs niveaux de confiance — ex: "&gt;0.99" vers une action ferme, "&gt;0.5" vers une
- * action plus prudente.
+ * To compare confident/unsure without complicating {@link Matcher}'s contract (which stays
+ * boolean), two rules at two different thresholds are configured instead of a result with
+ * several confidence levels — e.g. "&gt;0.99" for a firm action, "&gt;0.5" for a more cautious
+ * one.
  */
 public class SubjectClassifierMatcher extends Matcher {
   private final static Pattern THRESHOLD_PATTERN = Pattern.compile("(>=|<=|>|<)\\s*([0-9]*\\.?[0-9]+)");
@@ -52,10 +52,10 @@ public class SubjectClassifierMatcher extends Matcher {
     operator = m.group(1);
     threshold = Double.parseDouble(m.group(2));
 
-    // Vérifie/logge l'état tout de suite (actif ou pas, et pourquoi) plutôt que d'attendre le
-    // premier message inspecté — MailAccount construit le catalogue de règles dès le démarrage
-    // précisément pour ça (voir MailAccount.run()) : sur un compte qui ne reçoit rien tout de
-    // suite, on saurait sinon jamais si ce matcher est opérationnel.
+    // Checks/logs the state right away (active or not, and why) rather than waiting for the
+    // first message inspected — MailAccount builds the rule catalog at startup precisely for
+    // this (see MailAccount.run()): on an account that doesn't get anything right away, we'd
+    // otherwise never know whether this matcher is operational.
     loadCategorizer();
   }
 
@@ -92,21 +92,21 @@ public class SubjectClassifierMatcher extends Matcher {
   }
 
   /**
-   * Charge/recharge le modèle si besoin. Le matcher n'est reconstruit que quand une règle
-   * apprise change (voir RuleCatalog) — jamais quand ce modèle-ci est réentraîné, puisqu'il
-   * n'est pas appris par dossier. On détecte donc nous-mêmes qu'un nouveau modèle est apparu
-   * via sa date de dernière modification, plutôt que de dépendre de ce cycle d'invalidation.
+   * Loads/reloads the model if needed. The matcher is only rebuilt when a learned rule changes
+   * (see RuleCatalog) — never when this model is retrained, since it isn't learned by folder. So
+   * we detect a new model's appearance ourselves via its last-modified date, rather than
+   * depending on that invalidation cycle.
    */
   private DocumentCategorizerME loadCategorizer() {
     File modelFile = SubjectClassifierContext.get();
     if (modelFile == null) {
-      // Ne doit pas arriver en usage normal (MailAccount.run() positionne le contexte avant
-      // tout traitement sur ce thread) ; le signaler clairement plutôt que planter plus loin.
+      // Shouldn't happen in normal use (MailAccount.run() sets the context before any
+      // processing on this thread); report it clearly rather than failing further down.
       logInactiveOnce("no classifier model context for this thread");
       return null;
     }
 
-    long currentMtime = modelFile.lastModified(); // 0 si le fichier n'existe pas
+    long currentMtime = modelFile.lastModified(); // 0 if the file doesn't exist
     if (currentMtime == 0) {
       categorizer = null;
       loadedModelMtime = -1;
@@ -118,7 +118,7 @@ public class SubjectClassifierMatcher extends Matcher {
       try {
         categorizer = new DocumentCategorizerME(new DoccatModel(modelFile));
         loadedModelMtime = currentMtime;
-        loggedInactive = false; // redevenu actif : une future disparition sera re-logguée
+        loggedInactive = false; // active again: a future disappearance will be logged again
         getLogger().info("Loaded classifier model " + modelFile + " (trained " + Instant.ofEpochMilli(currentMtime) + ")");
       } catch (IOException e) {
         getLogger().log(Level.WARNING, "Failed to load classifier model " + modelFile, e);

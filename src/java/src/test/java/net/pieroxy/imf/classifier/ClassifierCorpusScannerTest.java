@@ -22,9 +22,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Teste ClassifierCorpusScanner de bout en bout contre un vrai serveur IMAP (GreenMail),
- * en particulier le scénario qui a motivé scanSpamFolderNow() : un utilisateur qui vide son
- * dossier Spam avant que le scan quotidien complet n'ait eu l'occasion de le voir.
+ * Tests ClassifierCorpusScanner end to end against a real IMAP server (GreenMail), in
+ * particular the scenario that motivated scanSpamFolderNow(): a user who empties their Spam
+ * folder before the daily full scan has had a chance to see it.
  */
 public class ClassifierCorpusScannerTest {
 
@@ -68,12 +68,12 @@ public class ClassifierCorpusScannerTest {
     ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
     fixture.appendMessage(message("Buy cheap stuff now", "spammer@bad.example.com"), "Spam");
 
-    // Le scan fréquent (à chaque cycle) capture le spam...
+    // The frequent scan (every cycle) captures the spam...
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
       new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account").scanSpamFolderNow(new ClassifierScanState());
     }
 
-    // ...avant que l'utilisateur ne le supprime le soir, comme dans le scénario réel.
+    // ...before the user deletes it in the evening, as in the real-world scenario.
     deleteAllMessagesIn("Spam");
 
     List<ClassifierExample> examples = store.readAll();
@@ -91,7 +91,7 @@ public class ClassifierCorpusScannerTest {
       new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account").scanSpamFolderNow(new ClassifierScanState());
     }
 
-    assertTrue("scanSpamFolderNow ne doit toucher qu'au dossier Spam", store.readAll().isEmpty());
+    assertTrue("scanSpamFolderNow must only touch the Spam folder", store.readAll().isEmpty());
   }
 
   @Test
@@ -112,22 +112,22 @@ public class ClassifierCorpusScannerTest {
   public void dailyScanDoesNotDuplicateWhatTheFrequentSpamScanAlreadyCaptured() throws Exception {
     ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
     fixture.appendMessage(message("Buy cheap stuff now", "spammer@bad.example.com"), "Spam");
-    ClassifierScanState state = new ClassifierScanState(); // même état partagé entre les deux scans, comme dans MailAccount
+    ClassifierScanState state = new ClassifierScanState(); // same state shared between the two scans, as in MailAccount
 
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
       new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account").scanSpamFolderNow(state);
       new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account").scan(state, LocalDate.now());
     }
 
-    assertEquals("le scan quotidien ne doit pas re-capturer ce que le scan fréquent a déjà vu",
+    assertEquals("the daily scan must not re-capture what the frequent scan already saw",
         1, store.readAll().size());
   }
 
   @Test
   public void excludedFoldersAreSkippedEntirelyNeitherSpamNorHam() throws Exception {
     ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
-    // "SpamML" ne s'appelle pas "Spam" : sans exclusion, il serait scanné par le scan complet
-    // et étiqueté HAM à tort (pire que ne pas apprendre dessus — ça empoisonnerait le corpus).
+    // "SpamML" isn't named "Spam": without exclusion it would be scanned by the full scan and
+    // wrongly labeled HAM (worse than not learning from it at all — it would poison the corpus).
     fixture.appendMessage(message("Buy cheap stuff now", "spammer@bad.example.com"), "SpamML");
     fixture.appendMessage(message("Weekly team sync", "colleague@example.com"), "Archive");
 
@@ -136,7 +136,7 @@ public class ClassifierCorpusScannerTest {
     }
 
     List<ClassifierExample> examples = store.readAll();
-    assertEquals("seul Archive doit être capturé, SpamML est exclu", 1, examples.size());
+    assertEquals("only Archive should be captured, SpamML is excluded", 1, examples.size());
     assertEquals("Weekly team sync", examples.get(0).getSubject());
   }
 }

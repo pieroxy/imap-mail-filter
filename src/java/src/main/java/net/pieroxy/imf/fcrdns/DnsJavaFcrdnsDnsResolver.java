@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/** Implémentation de {@link FcrdnsDnsResolver} basée sur dnsjava. */
+/** {@link FcrdnsDnsResolver} implementation backed by dnsjava. */
 public class DnsJavaFcrdnsDnsResolver implements FcrdnsDnsResolver {
   private final Resolver resolver;
 
@@ -87,8 +87,8 @@ public class DnsJavaFcrdnsDnsResolver implements FcrdnsDnsResolver {
     lookup.setResolver(resolver);
     Record[] answers = lookup.run();
     int status = lookup.getResult();
-    // HOST_NOT_FOUND (NXDOMAIN) et TYPE_NOT_FOUND (NODATA) sont des réponses DNS normales
-    // ("rien de ce type ici"), pas des échecs : on renvoie une liste vide.
+    // HOST_NOT_FOUND (NXDOMAIN) and TYPE_NOT_FOUND (NODATA) are normal DNS answers
+    // ("nothing of this type here"), not failures: return an empty list.
     if (status == Lookup.HOST_NOT_FOUND || status == Lookup.TYPE_NOT_FOUND) {
       return List.of();
     }

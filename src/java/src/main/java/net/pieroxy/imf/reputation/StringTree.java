@@ -6,32 +6,31 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * {@code Set<String>} représenté par un arbre radix (préfixe compressé) sur les chaînes
- * **inversées** — voir {@code StringTreeMemoryBenchmark} pour la démarche complète :
+ * {@code Set<String>} represented as a radix tree (compressed prefix tree) on **reversed**
+ * strings — see {@code StringTreeMemoryBenchmark} for the full story:
  * <ol>
- *   <li>Un trie naïf à un caractère par noeud coûtait 43x plus de mémoire qu'un simple
- *       {@code HashSet} sur une vraie liste de domaines (les domaines partagent rarement un
- *       préfixe, mais partagent souvent un suffixe — même TLD, même domaine parent).</li>
- *   <li>Inverser les chaînes + compresser les chemins (un noeud sans embranchement porte
- *       plusieurs caractères d'un coup — l'arête vers lui est une chaîne, pas un caractère,
- *       tant qu'aucun autre mot ne force à la scinder) a ramené ça à 3,75x.</li>
- *   <li>Remplacer le {@code HashMap<Character,Node>} de chaque noeud par deux tableaux triés
- *       ({@code char[]}/{@code Node[]}, dichotomie) a ramené ça à 2x.</li>
- *   <li>Ce fichier : les clés des enfants d'un noeud ne sont plus des {@code char} (juste le
- *       premier caractère d'une arête) mais des {@code String} complètes — l'arête entière.
- *       Un noeud n'a donc plus besoin de son propre champ {@code label} : cette chaîne vit
- *       uniquement dans le {@code String[] keys} du parent. Un mot totalement isolé (aucun
- *       autre mot ne partage son suffixe inversé) ne coûte donc qu'une seule entrée
- *       {@code (String, Node)} dans le parent — le {@code Node} lui-même ne porte plus qu'un
- *       booléen et deux tableaux vides partagés.</li>
+ *   <li>A naive one-character-per-node trie cost 43x more memory than a plain {@code HashSet}
+ *       on a real domain list (domains rarely share a prefix, but often share a suffix — same
+ *       TLD, same parent domain).</li>
+ *   <li>Reversing the strings + compressing paths (a node with no branching carries several
+ *       characters at once — the edge to it is a string, not a character, as long as no other
+ *       word forces a split) brought that down to 3.75x.</li>
+ *   <li>Replacing each node's {@code HashMap<Character,Node>} with two sorted arrays
+ *       ({@code char[]}/{@code Node[]}, binary search) brought that down to 2x.</li>
+ *   <li>This file: a node's children keys are no longer {@code char} (just the first character
+ *       of an edge) but full {@code String}s — the whole edge. A node therefore no longer needs
+ *       its own {@code label} field: that string lives only in the parent's {@code String[] keys}.
+ *       A completely isolated word (no other word shares its reversed suffix) therefore costs
+ *       only a single {@code (String, Node)} entry in the parent — the {@code Node} itself now
+ *       carries only a boolean and two shared empty arrays.</li>
  * </ol>
- * La dichotomie ({@link Node#indexOf}) ne compare que le premier caractère de chaque clé — les
- * clés d'un même noeud ont toujours des premiers caractères distincts par construction (sinon
- * elles auraient été scindées), donc c'est suffisant pour les départager.
+ * The binary search ({@link Node#indexOf}) only compares the first character of each key — keys
+ * within the same node always have distinct first characters by construction (otherwise they
+ * would have been split), so that's enough to tell them apart.
  * <p>
- * {@link #contains} reste O(longueur de la chaîne testée). Insertion seulement : {@link #remove}
- * n'est pas supporté (hérité de {@link AbstractSet}) — une liste de réputation est entièrement
- * reconstruite à chaque refresh plutôt que modifiée en place, voir {@code ReputationListParser}.
+ * {@link #contains} stays O(length of the tested string). Insertion only: {@link #remove} isn't
+ * supported (inherited from {@link AbstractSet}) — a reputation list is entirely rebuilt on
+ * every refresh rather than modified in place, see {@code ReputationListParser}.
  */
 public class StringTree extends AbstractSet<String> {
   private final Node root = new Node();
@@ -45,7 +44,7 @@ public class StringTree extends AbstractSet<String> {
     private Node[] children = NO_CHILDREN;
     private boolean terminal;
 
-    /** Index de la clé dont le premier caractère est c, ou -(point d'insertion)-1 — même contrat qu'Arrays.binarySearch. */
+    /** Index of the key whose first character is c, or -(insertion point)-1 — same contract as Arrays.binarySearch. */
     int indexOf(char c) {
       int lo = 0;
       int hi = keys.length - 1;
@@ -63,7 +62,7 @@ public class StringTree extends AbstractSet<String> {
       return -(lo + 1);
     }
 
-    /** at doit être un point d'insertion valide (voir indexOf) pour une clé pas encore présente. */
+    /** at must be a valid insertion point (see indexOf) for a key that isn't present yet. */
     void insertAt(int at, String key, Node value) {
       String[] newKeys = new String[keys.length + 1];
       Node[] newChildren = new Node[children.length + 1];
@@ -86,7 +85,7 @@ public class StringTree extends AbstractSet<String> {
     return added;
   }
 
-  /** @return true si une entrée nouvelle a été créée (false si déjà présente). suffix = ce qu'il reste à insérer sous node. */
+  /** @return true if a new entry was created (false if already present). suffix = what's left to insert under node. */
   private boolean insert(Node node, String suffix) {
     if (suffix.isEmpty()) {
       boolean wasNew = !node.terminal;
@@ -106,13 +105,13 @@ public class StringTree extends AbstractSet<String> {
     Node child = node.children[idx];
     int lcp = commonPrefixLength(suffix, key);
     if (lcp == key.length()) {
-      // La clé matche entièrement : on continue en profondeur avec le reste.
+      // The key matches in full: keep going deeper with the rest.
       return insert(child, suffix.substring(lcp));
     }
 
-    // Divergence en cours de clé : on scinde l'arête existante en deux — un noeud
-    // intermédiaire (le préfixe commun) dont l'unique enfant est l'ancien noeud (sous une clé
-    // raccourcie du préfixe consommé), qui garde tel quel tout son sous-arbre existant.
+    // Divergence partway through the key: split the existing edge in two — an intermediate
+    // node (the common prefix) whose sole child is the old node (under a key shortened by the
+    // consumed prefix), which keeps its whole existing subtree as-is.
     Node splitOff = child;
     String splitOffKey = key.substring(lcp);
     Node mid = new Node();
@@ -153,7 +152,7 @@ public class StringTree extends AbstractSet<String> {
     return size;
   }
 
-  /** Parcours complet de l'arbre — coûteux, jamais utilisé sur le chemin chaud ({@link #contains}). */
+  /** Full walk of the tree — expensive, never used on the hot path ({@link #contains}). */
   @Override
   public Iterator<String> iterator() {
     List<String> all = new ArrayList<>(size);

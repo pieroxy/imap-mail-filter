@@ -8,15 +8,15 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 /**
- * Évaluateur FCrDNS (Forward-Confirmed reverse DNS) : vérifie qu'une IP connectée a un
- * enregistrement PTR (reverse DNS) qui se confirme par une résolution forward (A/AAAA) du
- * hostname retombant sur la même IP.
+ * FCrDNS (Forward-Confirmed reverse DNS) evaluator: checks that a connecting IP has a PTR
+ * record (reverse DNS) that is confirmed by a forward (A/AAAA) resolution of the hostname
+ * resolving back to the same IP.
  * <p>
- * Contrairement à SPF/DKIM/DMARC, ce n'est pas un standard d'authentification de domaine — le
- * PTR est contrôlé par le propriétaire du bloc d'IP (le FAI/hébergeur), pas par le domaine
- * expéditeur. C'est un signal sur la légitimité de l'infrastructure qui s'est connectée (une
- * IP dynamique/résidentielle typique de botnet n'a en général pas de PTR forward-confirmé),
- * pas une preuve que le message vient bien du domaine qu'il prétend représenter.
+ * Unlike SPF/DKIM/DMARC, this is not a domain authentication standard — the PTR record is
+ * controlled by the owner of the IP block (the ISP/hosting provider), not by the sender's
+ * domain. It's a signal about the legitimacy of the connecting infrastructure (a dynamic/
+ * residential IP, typical of a botnet, usually has no forward-confirmed PTR), not proof that
+ * the message actually comes from the domain it claims to represent.
  */
 public class FcrdnsEvaluator {
   private static final Pattern IP_LITERAL = Pattern.compile("^[0-9a-fA-F:.]+$");
@@ -28,12 +28,12 @@ public class FcrdnsEvaluator {
     this.resolver = resolver;
   }
 
-  /** @return le résultat FCrDNS pour l'IP connectée. */
+  /** @return the FCrDNS result for the connecting IP. */
   public FcrdnsResult evaluate(String ip) {
     return evaluate(ip, defaultLogger);
   }
 
-  /** Comme {@link #evaluate(String)}, mais journalise (niveau FINE) le détail sur le logger donné. */
+  /** Like {@link #evaluate(String)}, but logs the details (FINE level) to the given logger. */
   public FcrdnsResult evaluate(String ip, Logger logger) {
     if (ip == null || !IP_LITERAL.matcher(ip).matches()) {
       logger.fine(() -> "Not a valid IP literal, cannot evaluate FCrDNS: " + ip);
@@ -72,13 +72,13 @@ public class FcrdnsEvaluator {
   private static boolean forwardConfirms(InetAddress target, List<String> candidates) {
     for (String candidate : candidates) {
       try {
-        // Comparaison par InetAddress, pas par égalité de chaîne : deux représentations
-        // textuelles différentes (notamment IPv6 compressé) peuvent désigner la même adresse.
+        // Compare via InetAddress, not string equality: two different textual representations
+        // (notably compressed IPv6) can denote the same address.
         if (InetAddress.getByName(candidate).equals(target)) {
           return true;
         }
       } catch (UnknownHostException ignored) {
-        // ne devrait pas arriver : candidate vient du resolver, déjà un littéral valide
+        // shouldn't happen: candidate comes from the resolver, already a valid literal
       }
     }
     return false;

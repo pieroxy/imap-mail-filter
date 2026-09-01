@@ -65,9 +65,9 @@ public class RuleCatalogTest {
     RuleCatalog catalog = new RuleCatalog(null, store);
 
     List<Rule> first = catalog.get();
-    store.addIfAbsent(rule("new@example.com")); // change externe au cache
+    store.addIfAbsent(rule("new@example.com")); // change external to the cache
 
-    assertSame("get() ne doit pas relire tant qu'on n'a pas invalidé", first, catalog.get());
+    assertSame("get() must not re-read until invalidated", first, catalog.get());
   }
 
   @Test

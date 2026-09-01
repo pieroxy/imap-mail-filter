@@ -13,17 +13,16 @@ import java.io.IOException;
 
 public class MailTools {
     /**
-     * Sérialise le message brut (headers + corps), sans jamais le marquer \Seen comme effet de
-     * bord — utilisé par les vérifications DKIM/DMARC, qui ont besoin du message tel que reçu
-     * pour recalculer une signature/un hash de corps.
+     * Serializes the raw message (headers + body), never marking it \Seen as a side effect —
+     * used by DKIM/DMARC verification, which needs the message exactly as received to
+     * recompute a signature/body hash.
      * <p>
-     * Pour un vrai message IMAP, lire le contenu déclenche côté javax.mail un FETCH BODY[] ; la
-     * propriété de session "mail.imap.peek" ne s'applique PAS à ce chemin (vérifié
-     * empiriquement : elle ne couvre que le préchargement automatique à l'ouverture du dossier,
-     * pas une lecture de contenu ad-hoc comme {@code writeTo()}) — {@link IMAPMessage#setPeek}
-     * posé sur CE message précis, juste avant la lecture, est le seul mécanisme qui fonctionne.
-     * Sans ça, n'importe quel message inspecté (matché ou non par une règle) se retrouverait
-     * silencieusement marqué lu.
+     * For a real IMAP message, reading the content triggers a FETCH BODY[] on the javax.mail
+     * side; the session property "mail.imap.peek" does NOT apply to this path (verified
+     * empirically: it only covers automatic prefetch when opening the folder, not an ad-hoc
+     * content read like {@code writeTo()}) — {@link IMAPMessage#setPeek} set on THIS specific
+     * message, right before reading, is the only mechanism that works. Without it, any message
+     * inspected (whether matched by a rule or not) would end up silently marked as read.
      */
     public static byte[] readRawMessageWithoutMarkingSeen(Message message) throws MessagingException, IOException {
         if (message instanceof IMAPMessage) {
@@ -45,7 +44,7 @@ public class MailTools {
         return sb.toString();
     }
 
-    /** Description du From pour les logs : ne lève jamais, retourne un texte de repli sinon. */
+    /** Description of the From address for logs: never throws, returns a fallback text instead. */
     public static String describeFromSafely(Message message) {
         try {
             String from = getFrom(message);

@@ -1,6 +1,6 @@
 package net.pieroxy.imf.reputation;
 
-/** Une liste chargée et prête à interroger — voir {@link IpReputationList}/{@link DomainReputationList}. */
+/** A list loaded and ready to query — see {@link IpReputationList}/{@link DomainReputationList}. */
 interface ReputationList {
   boolean contains(String value);
 }

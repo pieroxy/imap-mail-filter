@@ -9,23 +9,23 @@ public class MailFilterRuleMatcherConfiguration {
   private MatcherType type;
   private String key;
   /**
-   * Alternative à key quand plusieurs clés déclenchent la même action (ex: N adresses
-   * différentes toutes envoyées vers Spam) : évite une règle entière dupliquée par clé.
-   * Un matcher utilise celui des deux qui est non-nul (keys prioritaire s'il est renseigné).
+   * Alternative to key when several keys trigger the same action (e.g. N different addresses
+   * all sent to Spam): avoids a whole rule being duplicated per key. A matcher uses whichever
+   * of the two is non-null (keys takes priority if set).
    */
   private Set<String> keys;
   /**
-   * Uniquement renseigné pour les matchers composites (AND / OR).
+   * Only set for composite matchers (AND / OR).
    */
   private List<MailFilterRuleMatcherConfiguration> children;
   /**
-   * Niveau de log pour ce noeud (DEBUG/INFO/WARNING/ERROR), optionnel. Défaut : WARNING.
+   * Log level for this node (DEBUG/INFO/WARNING/ERROR), optional. Default: WARNING.
    */
   private String logLevel;
   /**
-   * Uniquement pour IP_REPUTATION_EQUALS / FROM_DOMAIN_REPUTATION_EQUALS : les "id" (voir
-   * {@link Configuration#getReputationLists()}) des listes de réputation à consulter. Si la
-   * valeur testée est trouvée dans plusieurs d'entre elles, le score retenu est le pire (max).
+   * Only for IP_REPUTATION_EQUALS / FROM_DOMAIN_REPUTATION_EQUALS: the "id"s (see
+   * {@link Configuration#getReputationLists()}) of the reputation lists to check. If the
+   * tested value is found in several of them, the score kept is the worst (max).
    */
   private Set<String> listIds;
 

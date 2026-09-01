@@ -5,10 +5,10 @@ import net.pieroxy.imf.config.MailAccountConfiguration;
 import javax.mail.MessagingException;
 
 /**
- * Fabrique une {@link ImapMailbox} à partir de la config d'un compte. Permet à {@link
- * net.pieroxy.imf.rules.MailAccount} de dépendre de cette étape par injection plutôt que
- * d'appeler {@link ImapMailboxConnection#connect} en dur, pour pouvoir être testée sans IMAPS/TLS
- * réel (voir {@code GreenMailImapFixture} côté tests).
+ * Builds an {@link ImapMailbox} from an account's config. Lets {@link
+ * net.pieroxy.imf.rules.MailAccount} depend on this step via injection rather than calling
+ * {@link ImapMailboxConnection#connect} directly, so it can be tested without real IMAPS/TLS
+ * (see {@code GreenMailImapFixture} on the test side).
  */
 @FunctionalInterface
 public interface ImapMailboxFactory {

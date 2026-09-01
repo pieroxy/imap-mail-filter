@@ -9,10 +9,10 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
- * Construit et met en cache la liste des {@link Rule} (config manuelle + règles apprises),
- * pour éviter de reconstruire l'arbre Matcher/Action à chaque message inspecté. La
- * (re)construction n'a lieu qu'au premier accès, puis après chaque appel à
- * {@link #invalidate()} — typiquement quand une nouvelle règle vient d'être apprise ce cycle.
+ * Builds and caches the list of {@link Rule}s (manual config + learned rules), to avoid
+ * rebuilding the Matcher/Action tree on every inspected message. (Re)building only happens on
+ * first access, then after each call to {@link #invalidate()} — typically when a new rule was
+ * just learned this cycle.
  */
 public class RuleCatalog {
   private final List<MailFilterRuleConfiguration> manualRules;
@@ -24,7 +24,7 @@ public class RuleCatalog {
     this.learnedRulesStore = learnedRulesStore;
   }
 
-  /** Construit au premier appel, puis renvoie la même liste tant que invalidate() n'a pas été appelé. */
+  /** Builds on first call, then returns the same list until invalidate() is called. */
   public List<Rule> get() {
     List<Rule> current = rules;
     if (current == null) {
@@ -34,19 +34,19 @@ public class RuleCatalog {
     return current;
   }
 
-  /** Force la reconstruction (config manuelle + règles apprises relues du disque) au prochain get(). */
+  /** Forces a rebuild (manual config + learned rules re-read from disk) on the next get(). */
   public void invalidate() {
     rules = null;
   }
 
   /**
-   * Journalise, dans l'ordre d'évaluation (voir {@link Rule#applyFirstMatching}), une ligne par
-   * règle du catalogue — les règles de {@code config.json} d'abord, puis, séparées visuellement,
-   * les règles apprises (voir {@link #build}, qui les concatène dans le même ordre). Le tout en
-   * un seul appel à {@code logger.info} (un seul {@link java.util.logging.LogRecord}, donc un
-   * seul appel à {@code Handler.publish} — synchronisé côté JDK) pour que le bloc entier
-   * s'écrive d'un bloc et ne s'entrelace jamais avec celui d'un autre compte journalisant en
-   * parallèle sur son propre thread (voir {@link MailAccount#run}).
+   * Logs, in evaluation order (see {@link Rule#applyFirstMatching}), one line per rule in the
+   * catalog — {@code config.json} rules first, then, visually separated, the learned rules (see
+   * {@link #build}, which concatenates them in the same order). All in a single call to
+   * {@code logger.info} (a single {@link java.util.logging.LogRecord}, hence a single call to
+   * {@code Handler.publish} — synchronized on the JDK side) so the whole block is written as one
+   * unit and never interleaves with another account logging in parallel on its own thread (see
+   * {@link MailAccount#run}).
    */
   public void logRules(Logger logger, String accountLabel) {
     List<Rule> current = get();
@@ -57,7 +57,7 @@ public class RuleCatalog {
     appendRuleRange(sb, current, 0, manualCount);
     sb.append("  Learned rules (").append(current.size() - manualCount).append("):").append(System.lineSeparator());
     appendRuleRange(sb, current, manualCount, current.size());
-    sb.setLength(sb.length() - System.lineSeparator().length()); // pas de ligne vide finale
+    sb.setLength(sb.length() - System.lineSeparator().length()); // no trailing blank line
     logger.info(sb.toString());
   }
 

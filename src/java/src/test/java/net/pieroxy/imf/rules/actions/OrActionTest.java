@@ -24,7 +24,7 @@ public class OrActionTest {
 
     assertTrue(or.run(message));
     assertEquals(1, a.callCount);
-    assertEquals("b ne doit jamais être exécuté puisque a a déjà réussi", 0, b.callCount);
+    assertEquals("b must never run since a already succeeded", 0, b.callCount);
   }
 
   @Test

@@ -12,8 +12,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Implémentation de {@link ImapMailbox} basée sur javax.mail. Seule classe du projet à
- * connaître les détails de connexion IMAP bas niveau.
+ * {@link ImapMailbox} implementation based on javax.mail. The only class in the project that
+ * knows the low-level IMAP connection details.
  */
 public class ImapMailboxConnection implements ImapMailbox {
   private final static Logger LOGGER = Logger.getLogger(ImapMailboxConnection.class.getName());
@@ -27,9 +27,9 @@ public class ImapMailboxConnection implements ImapMailbox {
   }
 
   /**
-   * Se connecte au compte et ouvre l'INBOX en lecture/écriture (les actions doivent pouvoir
-   * modifier les messages). L'appelant est responsable de fermer la connexion, idéalement via
-   * un try-with-resources.
+   * Connects to the account and opens the INBOX in read/write mode (actions need to be able to
+   * modify messages). The caller is responsible for closing the connection, ideally via a
+   * try-with-resources.
    */
   public static ImapMailboxConnection connect(MailAccountConfiguration config) throws MessagingException {
     Session session = Session.getDefaultInstance(peekProperties());
@@ -42,9 +42,9 @@ public class ImapMailboxConnection implements ImapMailbox {
   }
 
   /**
-   * Réservé aux tests : enveloppe un Store déjà connecté (ex: un serveur GreenMail en IMAP
-   * simple) sans passer par connect()/IMAPS — permet de tester le reste de cette classe sans
-   * TLS ni vrai serveur IMAP distant.
+   * Reserved for tests: wraps an already-connected Store (e.g. a GreenMail server over plain
+   * IMAP) without going through connect()/IMAPS — lets the rest of this class be tested without
+   * TLS or a real remote IMAP server.
    */
   public static ImapMailboxConnection forTesting(Store connectedStore) throws MessagingException {
     IMAPFolder inbox = (IMAPFolder) connectedStore.getFolder("INBOX");
@@ -67,7 +67,7 @@ public class ImapMailboxConnection implements ImapMailbox {
     Message[] candidates = inbox.getMessagesByUID(lastUid + 1, UIDFolder.LASTUID);
     List<Message> result = new ArrayList<>();
     for (Message m : candidates) {
-      // getMessagesByUID peut renvoyer la borne basse même si son UID est en fait <= lastUid.
+      // getMessagesByUID can return the lower bound even if its UID is actually <= lastUid.
       if (inbox.getUID(m) > lastUid) result.add(m);
     }
     return result.toArray(new Message[0]);
@@ -80,8 +80,8 @@ public class ImapMailboxConnection implements ImapMailbox {
 
   @Override
   public Folder getOrCreateFolder(String... pathSegments) throws MessagingException {
-    // Navigation relative niveau par niveau : indépendant du caractère séparateur du serveur
-    // (contrairement à un nom pleinement qualifié passé directement à store.getFolder(...)).
+    // Relative navigation, level by level: independent of the server's separator character
+    // (unlike a fully-qualified name passed directly to store.getFolder(...)).
     Folder current = store.getDefaultFolder();
     for (String segment : pathSegments) {
       current = current.getFolder(segment);
@@ -115,15 +115,14 @@ public class ImapMailboxConnection implements ImapMailbox {
     Message[] candidates = imapFolder.getMessagesByUID(lastUid + 1, UIDFolder.LASTUID);
     List<Message> result = new ArrayList<>();
     for (Message m : candidates) {
-      // Comme pour l'INBOX : getMessagesByUID peut renvoyer la borne basse même si son UID
-      // est en fait <= lastUid.
+      // Same as for the INBOX: getMessagesByUID can return the lower bound even if its UID is
+      // actually <= lastUid.
       if (imapFolder.getUID(m) > lastUid) result.add(m);
     }
     Message[] messages = result.toArray(new Message[0]);
-    // Sans ce fetch groupé, chaque accès individuel à un en-tête (Subject/From/To/Date/
-    // Received) déclenche sa propre commande IMAP par message : sur un dossier de plusieurs
-    // milliers de messages (des années d'archives), ça peut prendre des dizaines de minutes
-    // au lieu de quelques secondes.
+    // Without this batched fetch, every individual access to a header (Subject/From/To/Date/
+    // Received) triggers its own IMAP command per message: on a folder with several thousand
+    // messages (years of archives), that can take tens of minutes instead of a few seconds.
     if (messages.length > 0) {
       FetchProfile profile = new FetchProfile();
       profile.add(FetchProfile.Item.ENVELOPE);
@@ -161,8 +160,8 @@ public class ImapMailboxConnection implements ImapMailbox {
   @Override
   public void close() {
     try {
-      // expunge=true : les actions (MoveToAction) marquent \Deleted les messages qu'elles
-      // relogent ailleurs ; il faut purger l'INBOX en conséquence à la fin du cycle.
+      // expunge=true: actions (MoveToAction) mark \Deleted the messages they relocate elsewhere;
+      // the INBOX needs to be purged accordingly at the end of the cycle.
       if (inbox.isOpen()) inbox.close(true);
     } catch (MessagingException e) {
       LOGGER.log(Level.WARNING, "Error closing inbox", e);
@@ -175,15 +174,14 @@ public class ImapMailboxConnection implements ImapMailbox {
   }
 
   /**
-   * Filet de sécurité pour le préchargement automatique (FetchProfile) qu'un futur appel
-   * pourrait déclencher — mais attention, ça ne suffit PAS pour le cas qui compte
-   * aujourd'hui : lire le contenu complet d'un message à la demande (message.writeTo(),
-   * utilisé par DkimResultMatcher/DmarcResultMatcher pour vérifier une signature DKIM) ignore
-   * cette propriété (vérifié empiriquement avec un trace IMAP : javax.mail envoie quand même
-   * BODY[], pas BODY.PEEK[], malgré "peek"=true ici). Le vrai correctif pour ce chemin-là est
-   * {@code IMAPMessage.setPeek(true)} posé par message avant lecture, voir
-   * {@link net.pieroxy.imf.utils.MailTools#readRawMessageWithoutMarkingSeen}. Les deux
-   * propriétés ci-dessous existent parce qu'elle est par protocole ("imap" en clair vs "imaps").
+   * A safety net for the automatic prefetch (FetchProfile) that a future call might trigger —
+   * but beware, this is NOT enough for the case that actually matters today: reading a
+   * message's full content on demand (message.writeTo(), used by DkimResultMatcher/
+   * DmarcResultMatcher to verify a DKIM signature) ignores this property (verified empirically
+   * with an IMAP trace: javax.mail still sends BODY[], not BODY.PEEK[], despite "peek"=true
+   * here). The real fix for that path is {@code IMAPMessage.setPeek(true)} set per message
+   * before reading, see {@link net.pieroxy.imf.utils.MailTools#readRawMessageWithoutMarkingSeen}.
+   * The two properties below exist because it's set per protocol ("imap" plaintext vs "imaps").
    */
   private static Properties peekProperties() {
     Properties props = new Properties();

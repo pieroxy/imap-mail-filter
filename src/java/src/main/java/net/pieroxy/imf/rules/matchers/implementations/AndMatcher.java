@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Matche si tous les matchers enfants matchent (court-circuite au premier échec).
- * Sans enfant, un AND est vrai par convention (vacuous truth).
+ * Matches if all the child matchers match (short-circuits on the first failure).
+ * With no children, an AND is true by convention (vacuous truth).
  */
 public class AndMatcher extends Matcher {
   @Override

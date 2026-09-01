@@ -13,16 +13,16 @@ import java.io.IOException;
 import java.util.Optional;
 
 /**
- * Compare le résultat d'une vérification DKIM (ex: "pass", "fail", "none", "permerror") à la
- * clé configurée, de façon insensible à la casse.
+ * Compares the result of a DKIM check (e.g. "pass", "fail", "none", "permerror") against the
+ * configured key, case-insensitively.
  * <p>
- * Comme pour {@link SpfResultMatcher}, la vérification est toujours refaite nous-mêmes, en
- * live, sur le message brut (headers + corps tels que reçus) — jamais lue depuis un header
- * {@code Authentication-Results} préexistant, pour la même raison : rien n'empêche l'expéditeur
- * d'en avoir inséré un lui-même. La cryptographie (canonicalisation RFC 6376, vérification de
- * signature RSA/Ed25519) est déléguée à {@code org.apache.james.jdkim} via {@link DkimVerifier}
- * plutôt que réimplémentée : contrairement au SPF, une seule divergence d'implémentation ferait
- * échouer silencieusement des signatures pourtant valides.
+ * As with {@link SpfResultMatcher}, the check is always redone ourselves, live, on the raw
+ * message (headers + body as received) — never read from a pre-existing
+ * {@code Authentication-Results} header, for the same reason: nothing stops the sender from
+ * having inserted one themselves. The cryptography (RFC 6376 canonicalization, RSA/Ed25519
+ * signature verification) is delegated to {@code org.apache.james.jdkim} via {@link DkimVerifier}
+ * rather than reimplemented: unlike SPF, a single implementation discrepancy would silently
+ * fail otherwise-valid signatures.
  */
 public class DkimResultMatcher extends Matcher {
   private final DkimVerifier verifier;
@@ -31,7 +31,7 @@ public class DkimResultMatcher extends Matcher {
     this(DkimVerifier.createDefault());
   }
 
-  /** Visible pour les tests : permet d'injecter un vérificateur sans résolution DNS réelle. */
+  /** Visible for tests: allows injecting a verifier with no real DNS resolution. */
   DkimResultMatcher(DkimVerifier verifier) {
     this.verifier = verifier;
   }
@@ -61,8 +61,8 @@ public class DkimResultMatcher extends Matcher {
     } catch (IOException e) {
       throw new MessagingException("Failed to read message for DKIM verification", e);
     }
-    // getLogger() (niveau piloté par le "logLevel" de CETTE règle dans le JSON) : même
-    // convention que SpfResultMatcher, voir sa javadoc.
+    // getLogger() (level driven by THIS rule's "logLevel" in the JSON): same convention as
+    // SpfResultMatcher, see its javadoc.
     DkimResult result = verifier.verify(new ByteArrayInputStream(raw), getLogger());
     getLogger().fine(() -> "Evaluated DKIM -> " + result.getCode());
     return result.getCode();

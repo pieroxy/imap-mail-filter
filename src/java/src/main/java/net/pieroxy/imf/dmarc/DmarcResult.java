@@ -1,9 +1,9 @@
 package net.pieroxy.imf.dmarc;
 
 /**
- * Résultat d'une évaluation DMARC (RFC 7489 §11.2). Contrairement à SPF/DKIM, DMARC n'a que
- * cinq issues possibles : il n'y a pas de "softfail"/"neutral"/"policy" — DMARC passe ou
- * échoue, purement en fonction de l'alignment SPF/DKIM (voir {@link DmarcEvaluator}).
+ * Result of a DMARC evaluation (RFC 7489 §11.2). Unlike SPF/DKIM, DMARC only has five possible
+ * outcomes: there's no "softfail"/"neutral"/"policy" — DMARC passes or fails, purely based on
+ * SPF/DKIM alignment (see {@link DmarcEvaluator}).
  */
 public enum DmarcResult {
   NONE,

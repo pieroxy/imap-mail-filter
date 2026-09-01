@@ -15,10 +15,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Construit un {@link ClassifierExample} à partir d'un message : uniquement des en-têtes
+ * Builds a {@link ClassifierExample} from a message: only headers
  * (Subject/From/To/Date/Received/In-Reply-To/References/Precedence/List-Id/List-Unsubscribe/
- * Return-Path/Reply-To), jamais le corps — reste léger et ne risque jamais de marquer \Seen
- * juste en le lisant pour le corpus.
+ * Return-Path/Reply-To), never the body — stays lightweight and never risks marking \Seen just
+ * by reading it for the corpus.
  */
 public final class ClassifierExampleExtractor {
   private static final Pattern IPV4_PATTERN = Pattern.compile("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b");
@@ -68,10 +68,10 @@ public final class ClassifierExampleExtractor {
   }
 
   /**
-   * Display name(s) ("Alice" pour "Alice &lt;alice@example.com&gt;"), joints par un espace —
-   * {@link MailTools#getMailAddress} les ignore, alors qu'ils sont potentiellement un signal
-   * utile pour un futur classifieur (voir {@link ClassifierExample#getFromDisplayName()}).
-   * @return null si aucune adresse n'a de display name renseigné.
+   * Display name(s) ("Alice" for "Alice &lt;alice@example.com&gt;"), joined by a space —
+   * {@link MailTools#getMailAddress} ignores them, even though they're a potentially useful
+   * signal for a future classifier (see {@link ClassifierExample#getFromDisplayName()}).
+   * @return null if no address has a display name set.
    */
   private static String displayNames(Address[] addresses) {
     if (addresses == null) return null;
@@ -88,10 +88,10 @@ public final class ClassifierExampleExtractor {
   }
 
   /**
-   * Best-effort : prend la première adresse IPv4 trouvée dans le dernier en-tête Received
-   * (chaque relais successif préfixe le sien en tête, donc le dernier est le plus proche de
-   * l'expéditeur d'origine). Pas de parsing RFC5321 complet, pas d'IPv6 pour l'instant — à
-   * affiner selon ce qui se révèle réellement utile une fois qu'on aura des données.
+   * Best-effort: takes the first IPv4 address found in the last (oldest) Received header (each
+   * successive relay prepends its own, so the last one is closest to the original sender). No
+   * full RFC 5321 parsing, no IPv6 for now — to be refined based on what actually turns out to be
+   * useful once there's real data.
    */
   private static String extractOriginatingIp(Message message) throws MessagingException {
     String[] received = message.getHeader("Received");
@@ -112,14 +112,14 @@ public final class ClassifierExampleExtractor {
     return value.isEmpty() ? null : value;
   }
 
-  /** Domaine du From, seulement si le message a exactement une adresse From (même convention que FromDomainMatcher/SpfIdentityExtractor). */
+  /** Domain of From, only if the message has exactly one From address (same convention as FromDomainMatcher/SpfIdentityExtractor). */
   private static String singleFromDomain(Address[] from) {
     if (from == null || from.length != 1) return null;
     String raw = from[0] instanceof InternetAddress ? ((InternetAddress) from[0]).getAddress() : from[0].toString();
     return domainOf(raw);
   }
 
-  /** Return-Path est au format "&lt;addr&gt;" (parfois "&lt;&gt;" pour un bounce sans retour) — pas une adresse RFC 5322 normale, jamais parsé comme telle (voir SpfIdentityExtractor). */
+  /** Return-Path is in the "&lt;addr&gt;" format (sometimes "&lt;&gt;" for a bounce with no return address) — not a normal RFC 5322 address, never parsed as one (see SpfIdentityExtractor). */
   private static String returnPathDomain(Message message) throws MessagingException {
     String value = headerValue(message, "Return-Path");
     if (value == null) return null;
@@ -147,7 +147,7 @@ public final class ClassifierExampleExtractor {
     return address.substring(at + 1);
   }
 
-  /** null (indéterminable) si l'un des deux domaines manque — jamais confondu avec "pas de mismatch". */
+  /** null (undeterminable) if either domain is missing — never confused with "no mismatch". */
   private static Boolean mismatch(String fromDomain, String otherDomain) {
     if (fromDomain == null || otherDomain == null) return null;
     return !fromDomain.equalsIgnoreCase(otherDomain);

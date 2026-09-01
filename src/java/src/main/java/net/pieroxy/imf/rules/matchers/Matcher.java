@@ -19,8 +19,8 @@ public abstract class Matcher {
   private Logger logger = Logger.getLogger(Matcher.class.getName());
 
   /**
-   * Construit récursivement l'arbre de matchers décrit par la config (les matchers
-   * composites comme AND/OR référencent d'autres matchers via leurs "children").
+   * Recursively builds the matcher tree described by the config (composite matchers like
+   * AND/OR reference other matchers via their "children").
    */
   public static Matcher build(MailFilterRuleMatcherConfiguration config) {
     Matcher matcher = config.getType().getImplementation();
@@ -34,9 +34,9 @@ public abstract class Matcher {
   public abstract MatchResult matches(Message message) throws MessagingException;
 
   /**
-   * Calcule la clé de config à partir d'un message d'exemple (apprentissage de règle via les
-   * dossiers imf-rules/). Seuls les matchers "feuille" (voir {@link net.pieroxy.imf.rules.matchers.MatcherType#learnableValues()})
-   * ont besoin de la redéfinir ; les composites ne sont jamais sollicités pour ça.
+   * Computes the config key from an example message (rule learning via the imf-rules/
+   * folders). Only "leaf" matchers (see {@link net.pieroxy.imf.rules.matchers.MatcherType#learnableValues()})
+   * need to override this; composites are never asked for it.
    */
   public String extractKeyFromExample(Message message) throws MessagingException {
     throw new UnsupportedOperationException(getClass().getSimpleName() + " does not support learning a rule from an example message");
@@ -46,8 +46,8 @@ public abstract class Matcher {
     this.config = config;
     String name = Matcher.class.getName() + "." + config.getType() + "[" + describeKey() + "]";
     this.logger = Logger.getLogger(name);
-    // Défaut = INFO : WARNING (erreurs) et INFO (matché) doivent être visibles sans configuration
-    // explicite ; seul le détail DEBUG de chaque test de matching est un opt-in par nœud.
+    // Default = INFO: WARNING (errors) and INFO (matched) must be visible without explicit
+    // configuration; only the DEBUG-level detail of each matching test is an opt-in per node.
     this.logger.setLevel(LogLevels.parse(config.getLogLevel(), Level.INFO));
   }
   protected MailFilterRuleMatcherConfiguration getConfig() {
@@ -57,16 +57,16 @@ public abstract class Matcher {
     return children;
   }
 
-  /** Pour les logs : la clé si key est utilisé, sinon un résumé de la taille de keys. */
+  /** For logs: the key if key is used, otherwise a summary of the size of keys. */
   protected String describeKey() {
     if (config.getKeys() != null) return config.getKeys().size() + " keys";
     return config.getKey() != null ? config.getKey() : "";
   }
 
   /**
-   * Représentation compacte de l'arbre de ce matcher pour les logs de démarrage (voir
-   * {@link net.pieroxy.imf.rules.RuleCatalog#logRules}), ex: {@code AND(FROM_EQUALS(toto.com),
-   * SUBJECT_STARTS_WITH(toto))} ou {@code FROM_EQUALS(32 keys)}.
+   * Compact representation of this matcher's tree for startup logs (see
+   * {@link net.pieroxy.imf.rules.RuleCatalog#logRules}), e.g. {@code AND(FROM_EQUALS(toto.com),
+   * SUBJECT_STARTS_WITH(toto))} or {@code FROM_EQUALS(32 keys)}.
    */
   public String describe() {
     String type = config.getType().name();
@@ -77,12 +77,12 @@ public abstract class Matcher {
   }
 
   /**
-   * Teste candidate contre la config du matcher (keys si renseigné, sinon key), avec la
-   * fonction de comparaison fournie (equals, equalsIgnoreCase...), et renvoie la clé
-   * configurée qui a matché (utile pour {@link #matched}, notamment quand plusieurs "keys"
-   * sont configurées et qu'on veut savoir laquelle a précisément fait mouche). Factorise ce
-   * qui, sans ça, serait dupliqué dans chaque matcher "feuille" apprenant plusieurs clés pour
-   * la même action (voir {@link net.pieroxy.imf.learning.LearnedRulesStore}).
+   * Tests candidate against the matcher's config (keys if set, otherwise key), with the
+   * supplied comparison function (equals, equalsIgnoreCase...), and returns the configured key
+   * that matched (useful for {@link #matched}, in particular when several "keys" are configured
+   * and we want to know exactly which one hit). Factors out what would otherwise be duplicated
+   * in every "leaf" matcher that learns several keys for the same action (see
+   * {@link net.pieroxy.imf.learning.LearnedRulesStore}).
    */
   protected Optional<String> matchingKey(String candidate, BiPredicate<String, String> comparator) {
     if (candidate == null) return Optional.empty();
@@ -95,7 +95,7 @@ public abstract class Matcher {
     return Optional.empty();
   }
 
-  /** Un match, avec une description lisible ("NomDeLaClasse(détail)") pour les logs. */
+  /** A match, with a readable description ("ClassName(detail)") for logs. */
   protected MatchResult matched(String debugDetail) {
     return MatchResult.matched(getClass().getSimpleName() + "(" + debugDetail + ")");
   }
@@ -104,7 +104,7 @@ public abstract class Matcher {
     return MatchResult.notMatched();
   }
 
-  /** Logger propre à ce noeud de config, dont le niveau suit son logLevel (INFO par défaut). */
+  /** Logger specific to this config node, whose level follows its logLevel (INFO by default). */
   public Logger getLogger() {
     return logger;
   }

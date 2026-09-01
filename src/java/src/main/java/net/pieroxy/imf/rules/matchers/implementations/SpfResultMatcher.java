@@ -12,15 +12,15 @@ import javax.mail.MessagingException;
 import java.util.Optional;
 
 /**
- * Compare le résultat d'une vérification SPF (ex: "pass", "fail", "softfail", "neutral",
- * "none") à la clé configurée, de façon insensible à la casse.
+ * Compares the result of an SPF check (e.g. "pass", "fail", "softfail", "neutral", "none")
+ * against the configured key, case-insensitively.
  * <p>
- * La vérification est toujours refaite nous-mêmes, en live, à partir de l'IP connectée (lue
- * dans le {@code Received} le plus récent) et du domaine expéditeur (voir
- * {@link SpfIdentityExtractor}) — jamais lue depuis un header {@code Authentication-Results}
- * ou {@code Received-SPF} préexistant sur le message. Un tel header peut avoir été ajouté par
- * l'expéditeur lui-même (rien ne l'en empêche), et rien ne garantit que l'infrastructure de
- * réception le filtre avant livraison : on ne lui fait donc jamais confiance, même présent.
+ * The check is always redone ourselves, live, from the connecting IP (read from the most recent
+ * {@code Received} header) and the sender domain (see {@link SpfIdentityExtractor}) — never read
+ * from a pre-existing {@code Authentication-Results} or {@code Received-SPF} header on the
+ * message. Such a header could have been added by the sender itself (nothing prevents it), and
+ * nothing guarantees the receiving infrastructure strips it before delivery: it's therefore
+ * never trusted, even when present.
  */
 public class SpfResultMatcher extends Matcher {
   private final SpfEvaluator evaluator;
@@ -29,7 +29,7 @@ public class SpfResultMatcher extends Matcher {
     this(new SpfEvaluator(new DnsJavaSpfDnsResolver()));
   }
 
-  /** Visible pour les tests : permet d'injecter un évaluateur sans résolution DNS réelle. */
+  /** Visible for tests: allows injecting an evaluator with no real DNS resolution. */
   SpfResultMatcher(SpfEvaluator evaluator) {
     this.evaluator = evaluator;
   }
@@ -53,10 +53,10 @@ public class SpfResultMatcher extends Matcher {
   }
 
   private String evaluateLive(Message message) throws MessagingException {
-    // getLogger() (niveau piloté par le "logLevel" de CETTE règle dans le JSON) est passé
-    // jusqu'au fond de l'extraction et de l'évaluation, pour que "logLevel": "DEBUG" sur la
-    // règle suffise à voir toute la trace (header Received examiné, record SPF trouvé,
-    // mécanisme par mécanisme) sans toucher à une configuration de logging globale.
+    // getLogger() (level driven by THIS rule's "logLevel" in the JSON) is passed all the way
+    // down through extraction and evaluation, so that "logLevel": "DEBUG" on the rule is enough
+    // to see the full trace (Received header examined, SPF record found, mechanism by
+    // mechanism) without touching any global logging configuration.
     Optional<String> ip = SpfIdentityExtractor.extractClientIp(message, getLogger());
     Optional<String> domain = SpfIdentityExtractor.extractSenderDomain(message, getLogger());
     if (ip.isEmpty() || domain.isEmpty()) {

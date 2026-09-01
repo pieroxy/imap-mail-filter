@@ -3,7 +3,7 @@ package net.pieroxy.imf.reputation;
 import java.util.Locale;
 import java.util.Set;
 
-/** Correspondance exacte, insensible à la casse — pas de repli sur le domaine parent. */
+/** Exact match, case-insensitive — no fallback to the parent domain. */
 final class DomainReputationList implements ReputationList {
   private final Set<String> domains;
 

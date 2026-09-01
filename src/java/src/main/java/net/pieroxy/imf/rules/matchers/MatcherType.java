@@ -24,21 +24,21 @@ public enum MatcherType {
   FROM_ADDRESS_EQUALS(FromAddressMatcher::new, true),
   FROM_DOMAIN_EQUALS(FromDomainMatcher::new, true),
   SUBJECT_STARTS_WITH(SubjectStartsWithMatcher::new, true),
-  // Pas learnable : la clé possible (pass/fail/softfail/...) est un ensemble fixe et déjà
-  // documenté, pas une valeur spécifique à découvrir par l'exemple. Et contrairement à
-  // FROM_*, la règle apprise ne serait pas spécifique à l'exemple déposé : elle s'appliquerait
-  // globalement à tout message ayant le même statut, pas juste à un expéditeur précis.
+  // Not learnable: the possible key (pass/fail/softfail/...) is a fixed, already-documented
+  // set, not a specific value to discover from the example. And unlike FROM_*, the learned
+  // rule wouldn't be specific to the deposited example: it would apply globally to any message
+  // with the same status, not just to one particular sender.
   SPF_RESULT_EQUALS(SpfResultMatcher::new, false),
   DKIM_RESULT_EQUALS(DkimResultMatcher::new, false),
   DMARC_RESULT_EQUALS(DmarcResultMatcher::new, false),
   DMARC_POLICY_EQUALS(DmarcPolicyMatcher::new, false),
   FCRDNS_RESULT_EQUALS(FcrdnsResultMatcher::new, false),
-  // Pas learnable non plus, mais pour une raison différente des matchers d'authentification
-  // ci-dessus : l'apprentissage ne vient pas d'un dépôt d'exemple dans imf-rules/, mais du
-  // corpus collecté par ClassifierCorpusScanner et réentraîné par SubjectClassifierTrainer.
+  // Not learnable either, but for a different reason than the authentication matchers above:
+  // learning here doesn't come from an example dropped in imf-rules/, but from the corpus
+  // collected by ClassifierCorpusScanner and retrained by SubjectClassifierTrainer.
   SUBJECT_CLASSIFIER_EQUALS(SubjectClassifierMatcher::new, false),
-  // Pas learnable non plus : la réputation vient de listes externes téléchargées (voir
-  // net.pieroxy.imf.reputation.ReputationRegistry), pas d'un exemple déposé dans imf-rules/.
+  // Not learnable either: reputation comes from downloaded external lists (see
+  // net.pieroxy.imf.reputation.ReputationRegistry), not from an example dropped in imf-rules/.
   IP_REPUTATION_EQUALS(IpReputationMatcher::new, false),
   FROM_DOMAIN_REPUTATION_EQUALS(FromDomainReputationMatcher::new, false),
   AND(AndMatcher::new, false),
@@ -57,8 +57,8 @@ public enum MatcherType {
   }
 
   /**
-   * Types "feuille" pour lesquels l'apprentissage de règle par l'exemple (dossiers imf-rules/)
-   * a un sens. Les composites (AND/OR) en sont exclus : réservés à la config manuelle.
+   * "Leaf" types for which rule learning by example (imf-rules/ folders) makes sense.
+   * Composites (AND/OR) are excluded: reserved for manual config.
    */
   public static List<MatcherType> learnableValues() {
     return Arrays.stream(values()).filter(t -> t.learnable).collect(Collectors.toList());

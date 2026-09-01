@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Retriever de clé publique DKIM en mémoire, pour tester {@link DkimVerifier} sans réseau. */
+/** In-memory DKIM public key retriever, for testing {@link DkimVerifier} without a network. */
 public class FakeDkimPublicKeyRecordRetriever implements PublicKeyRecordRetriever {
   private final Map<String, List<String>> records = new HashMap<>();
 

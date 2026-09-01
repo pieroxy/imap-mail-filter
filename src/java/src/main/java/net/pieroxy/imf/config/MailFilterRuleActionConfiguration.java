@@ -8,11 +8,11 @@ public class MailFilterRuleActionConfiguration {
   private ActionType type;
   private String key;
   /**
-   * Uniquement renseigné pour les actions composites (AND / OR).
+   * Only set for composite actions (AND / OR).
    */
   private List<MailFilterRuleActionConfiguration> children;
   /**
-   * Niveau de log pour ce noeud (DEBUG/INFO/WARNING/ERROR), optionnel. Défaut : WARNING.
+   * Log level for this node (DEBUG/INFO/WARNING/ERROR), optional. Default: WARNING.
    */
   private String logLevel;
 

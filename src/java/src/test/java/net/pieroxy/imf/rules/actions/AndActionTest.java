@@ -36,7 +36,7 @@ public class AndActionTest {
 
     assertFalse(and.run(message));
     assertEquals(1, a.callCount);
-    assertEquals("b ne doit jamais être exécuté après l'échec de a", 0, b.callCount);
+    assertEquals("b must never run after a fails", 0, b.callCount);
   }
 
   @Test

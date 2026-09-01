@@ -14,17 +14,17 @@ import javax.mail.MessagingException;
 import java.util.Optional;
 
 /**
- * Compare le résultat d'une évaluation DMARC (RFC 7489) à la clé configurée : {@code pass},
- * {@code fail}, {@code none}, {@code permerror}, ou {@code temperror}. Insensible à la casse.
+ * Compares the result of a DMARC (RFC 7489) evaluation against the configured key: {@code pass},
+ * {@code fail}, {@code none}, {@code permerror}, or {@code temperror}. Case-insensitive.
  * <p>
- * S'appuie sur SPF et DKIM déjà implémentés ({@link SpfResultMatcher}, {@link DkimResultMatcher}) :
- * les deux sont recalculés en live (même politique de confiance que les autres matchers de ce
- * paquet — jamais un header préexistant n'est lu), puis {@link DmarcEvaluator} détermine si
- * l'un des deux est "aligné" avec le domaine affiché dans {@code From:}.
+ * Builds on the already-implemented SPF and DKIM ({@link SpfResultMatcher}, {@link DkimResultMatcher}):
+ * both are recomputed live (same trust policy as the other matchers in this package — a
+ * pre-existing header is never read), then {@link DmarcEvaluator} determines whether either one
+ * is "aligned" with the domain shown in {@code From:}.
  * <p>
- * Voir aussi {@link DmarcPolicyMatcher}, qui expose la politique publiée par le domaine
- * ({@code p=}/{@code sp=}) plutôt que le verdict pass/fail — les deux partagent le même calcul
- * via {@link DmarcMessageEvaluator}.
+ * See also {@link DmarcPolicyMatcher}, which exposes the domain's published policy
+ * ({@code p=}/{@code sp=}) rather than the pass/fail verdict — the two share the same
+ * computation via {@link DmarcMessageEvaluator}.
  */
 public class DmarcResultMatcher extends Matcher {
   private final DmarcMessageEvaluator evaluator;
@@ -35,7 +35,7 @@ public class DmarcResultMatcher extends Matcher {
             new DmarcEvaluator(new DnsJavaDmarcDnsResolver())));
   }
 
-  /** Visible pour les tests : permet d'injecter un évaluateur sans réseau. */
+  /** Visible for tests: allows injecting an evaluator with no network access. */
   DmarcResultMatcher(DmarcMessageEvaluator evaluator) {
     this.evaluator = evaluator;
   }

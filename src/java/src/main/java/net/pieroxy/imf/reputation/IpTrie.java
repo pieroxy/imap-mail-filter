@@ -1,25 +1,23 @@
 package net.pieroxy.imf.reputation;
 
 /**
- * Trie binaire pour des plages CIDR IPv4 : un noeud par bit, du poids fort au poids faible (32
- * niveaux maximum), pour un lookup borné à 32 comparaisons quel que soit le nombre de plages
- * enregistrées — contrairement à {@link IpReputationList}, qui compare l'IP testée à
- * <em>chaque</em> plage de la liste (O(n)). Voir {@code IpTrieBenchmark} pour la mesure
- * CPU/mémoire réelle des deux approches sur un vrai jeu de données (Spamhaus DROP).
+ * Binary trie for IPv4 CIDR ranges: one node per bit, most significant to least significant (32
+ * levels max), for a lookup bounded to 32 comparisons regardless of how many ranges are
+ * registered — unlike {@link IpReputationList}, which compares the tested IP against
+ * <em>every</em> range in the list (O(n)). See {@code IpTrieBenchmark} for the real CPU/memory
+ * measurement of both approaches on a real dataset (Spamhaus DROP).
  * <p>
- * Deux enfants possibles par noeud seulement (bit à 0 ou à 1) : pas besoin de dichotomie ni de
- * table de hachage comme pour {@link StringTree}, deux références directes suffisent et sont
- * déjà optimales.
+ * Only two possible children per node (bit 0 or 1): no need for binary search or a hash table
+ * like {@link StringTree}, two direct references are enough and already optimal.
  * <p>
- * Un noeud atteint pendant la descente et marqué "terminal" signifie : tous les bits de poids
- * fort parcourus jusqu'ici correspondent à un bloc CIDR enregistré, donc toute IP passant par ce
- * noeud est couverte, quels que soient ses bits restants — inutile de descendre plus loin. C'est
- * exactement la sémantique CIDR (un préfixe plus court couvre un espace plus large), et ça reste
- * correct quel que soit l'ordre d'insertion : un bloc large ajouté après un bloc plus étroit
- * qu'il contient étend bien la couverture (voir {@code IpTrieTest}).
+ * A node reached during the descent and marked "terminal" means: all the high-order bits walked
+ * so far match a registered CIDR block, so any IP passing through this node is covered,
+ * whatever its remaining bits — no need to go deeper. That's exactly CIDR semantics (a shorter
+ * prefix covers a wider space), and it stays correct regardless of insertion order: a wide block
+ * added after a narrower one it contains does extend the coverage (see {@code IpTrieTest}).
  * <p>
- * IPv4 seulement pour l'instant, comme {@link CidrRange} — le même principe s'étend directement
- * à IPv6 avec 128 niveaux au lieu de 32.
+ * IPv4 only for now, like {@link CidrRange} — the same principle extends directly to IPv6 with
+ * 128 levels instead of 32.
  */
 public class IpTrie {
   private final Node root = new Node();
@@ -30,11 +28,11 @@ public class IpTrie {
     private boolean terminal;
   }
 
-  /** Enregistre le bloc CIDR dont les prefixLength bits de poids fort de ip forment le préfixe. */
+  /** Registers the CIDR block whose prefix is the prefixLength high-order bits of ip. */
   public void add(long ip, int prefixLength) {
     Node node = root;
     for (int i = 0; i < prefixLength; i++) {
-      if (node.terminal) return; // déjà couvert par un bloc plus large enregistré avant : rien à ajouter
+      if (node.terminal) return; // already covered by a wider block registered earlier: nothing to add
       boolean bit = ((ip >>> (31 - i)) & 1L) != 0;
       Node next = bit ? node.one : node.zero;
       if (next == null) {

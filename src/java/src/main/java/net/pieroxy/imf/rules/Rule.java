@@ -24,10 +24,10 @@ public class Rule {
   }
 
   /**
-   * Représentation compacte pour les logs de démarrage, ex:
-   * {@code Rule(FROM_DOMAIN_EQUALS(toto.com),MOVE_TO(Work))}, ou
-   * {@code Rule(...,...) [keepProcessing]} si la règle laisse l'évaluation continuer sur les
-   * suivantes même quand elle matche.
+   * Compact representation for the startup logs, e.g.
+   * {@code Rule(FROM_DOMAIN_EQUALS(toto.com),MOVE_TO(Work))}, or
+   * {@code Rule(...,...) [keepProcessing]} if the rule lets evaluation carry on to the following
+   * rules even when it matches.
    */
   public String describe() {
     String base = "Rule(" + matcher.describe() + "," + action.describe() + ")";
@@ -35,9 +35,9 @@ public class Rule {
   }
 
   /**
-   * Journalise sur le logger propre à chaque noeud (matcher/action) : WARNING sur erreur,
-   * INFO quand le matcher matche et quand l'action s'exécute.
-   * @return true si le matcher a matché (indépendamment du succès de l'action).
+   * Logs on each node's own logger (matcher/action): WARNING on error, INFO when the matcher
+   * matches and when the action runs.
+   * @return true if the matcher matched (regardless of whether the action succeeded).
    */
   public boolean apply(Message message) {
     MatchResult matchResult;
@@ -61,18 +61,17 @@ public class Rule {
     return true;
   }
 
-  /** true si cette règle ne doit pas arrêter l'évaluation des suivantes même quand elle matche — voir {@link #applyFirstMatching}. */
+  /** true if this rule shouldn't stop evaluation of the following ones even when it matches — see {@link #applyFirstMatching}. */
   public boolean isKeepProcessing() {
     return config.isKeepProcessing();
   }
 
   /**
-   * Applique la première règle de la liste qui matche message (partagé par le traitement de
-   * l'INBOX et le rejeu manuel depuis imf-rules/ToProcess), sauf qu'une règle marquée
-   * keepProcessing n'arrête pas la recherche : son action s'exécute quand même, mais
-   * l'évaluation continue comme si elle n'avait pas matché. Une règle qui lève une exception ne
-   * bloque pas les suivantes non plus.
-   * @return true si au moins une règle a matché (keepProcessing ou non).
+   * Applies the first rule in the list that matches message (shared by INBOX processing and
+   * manual replay from imf-rules/ToProcess), except a rule marked keepProcessing doesn't stop
+   * the search: its action still runs, but evaluation carries on as if it hadn't matched. A rule
+   * that throws an exception doesn't block the following ones either.
+   * @return true if at least one rule matched (keepProcessing or not).
    */
   public static boolean applyFirstMatching(List<Rule> rules, Message message, Logger logger, String context) {
     boolean anyMatched = false;

@@ -17,10 +17,10 @@ import java.util.Optional;
 import java.util.logging.Logger;
 
 /**
- * Calcule l'évaluation DMARC complète d'un message (domaine From, SPF et DKIM sous-jacents,
- * puis {@link DmarcEvaluator}) — partagé par {@code DmarcResultMatcher} et
- * {@code DmarcPolicyMatcher}, qui n'ont chacun besoin que d'une moitié du résultat (le
- * pass/fail pour l'un, la politique publiée pour l'autre) mais du même calcul sous-jacent.
+ * Computes the full DMARC evaluation of a message (From domain, underlying SPF and DKIM, then
+ * {@link DmarcEvaluator}) — shared by {@code DmarcResultMatcher} and {@code DmarcPolicyMatcher},
+ * which each only need half of the result (pass/fail for one, the published policy for the
+ * other) but the same underlying computation.
  */
 public class DmarcMessageEvaluator {
   private final SpfEvaluator spfEvaluator;
@@ -33,7 +33,7 @@ public class DmarcMessageEvaluator {
     this.dmarcEvaluator = dmarcEvaluator;
   }
 
-  /** @return vide si le domaine From du message ne peut pas être déterminé (message sans From unique exploitable). */
+  /** @return empty if the message's From domain can't be determined (no single usable From address). */
   public Optional<DmarcEvaluation> evaluate(Message message, Logger logger) throws MessagingException {
     Optional<String> fromDomain = extractFromDomain(message);
     if (fromDomain.isEmpty()) {
@@ -41,8 +41,8 @@ public class DmarcMessageEvaluator {
       return Optional.empty();
     }
 
-    // DMARC a besoin du domaine que SPF a réellement vérifié (Return-Path, avec repli sur
-    // From) — distinct du domaine From lui-même, utilisé pour l'alignment.
+    // DMARC needs the domain SPF actually verified (Return-Path, falling back to From) —
+    // distinct from the From domain itself, which is used for alignment.
     Optional<String> spfIp = SpfIdentityExtractor.extractClientIp(message, logger);
     Optional<String> spfDomain = SpfIdentityExtractor.extractSenderDomain(message, logger);
     boolean spfPassed = spfIp.isPresent() && spfDomain.isPresent()

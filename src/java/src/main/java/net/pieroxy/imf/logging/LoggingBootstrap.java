@@ -14,14 +14,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Configure java.util.logging au démarrage. Lève d'abord le plafond des handlers déjà en
- * place (par défaut, le ConsoleHandler du JDK filtre en dessous de INFO) : sans ça, un
- * noeud dont le logLevel est positionné à DEBUG ne s'afficherait jamais, quel que soit son
- * propre niveau, car le handler l'aurait déjà éliminé en amont. Ajoute ensuite, si
- * configuré, un fichier de log recevant tout ce qui passe, avec une rotation quotidienne
- * (compression lz4 + purge) tant que le programme tourne. La première rotation est calée
- * sur minuit (heure locale) pour que chaque fichier archivé corresponde à une journée
- * complète, peu importe l'heure de démarrage du programme.
+ * Configures java.util.logging at startup. First lifts the ceiling of the handlers already in
+ * place (by default, the JDK's ConsoleHandler filters out anything below INFO): without this, a
+ * node whose logLevel is set to DEBUG would never show up, whatever its own level, because the
+ * handler would already have discarded it upstream. Then, if configured, adds a log file
+ * receiving everything that passes through, with daily rotation (lz4 compression + pruning) for
+ * as long as the program runs. The first rotation is timed to midnight (local time) so that
+ * every archived file corresponds to a full day, regardless of what time the program started.
  */
 public final class LoggingBootstrap {
   private final static Logger LOGGER = Logger.getLogger(LoggingBootstrap.class.getName());

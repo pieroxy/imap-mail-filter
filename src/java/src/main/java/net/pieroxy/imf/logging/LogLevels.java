@@ -3,9 +3,8 @@ package net.pieroxy.imf.logging;
 import java.util.logging.Level;
 
 /**
- * Traduit le niveau de log tel qu'écrit dans config.json (DEBUG/INFO/WARNING/ERROR) vers
- * un java.util.logging.Level. java.util.logging n'a pas de niveau DEBUG natif : on le
- * fait correspondre à FINE.
+ * Translates the log level as written in config.json (DEBUG/INFO/WARNING/ERROR) into a
+ * java.util.logging.Level. java.util.logging has no native DEBUG level: it's mapped to FINE.
  */
 public final class LogLevels {
   private LogLevels() {}

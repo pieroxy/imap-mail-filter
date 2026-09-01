@@ -19,15 +19,14 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * Fixture et helpers partagés par les tests de {@link MailAccount#processMessages()} contre un
- * vrai serveur IMAP en mémoire (GreenMail). Une sous-classe par scénario (pas une seule classe
- * avec 4 {@code @Test}) : chaque {@code @Before}/{@code @After} démarre/arrête son propre
- * serveur GreenMail, ce qui domine largement le temps d'exécution — les regrouper dans une
- * seule classe les sérialisait, alors qu'en classes séparées {@code parallel=classes} (voir
- * pom.xml) les fait tourner en même temps.
+ * Fixture and helpers shared by the {@link MailAccount#processMessages()} tests against a real
+ * in-memory IMAP server (GreenMail). One subclass per scenario (not a single class with 4
+ * {@code @Test} methods): each {@code @Before}/{@code @After} starts/stops its own GreenMail
+ * server, which dominates the run time by far — grouping them in one class would serialize
+ * them, whereas separate classes run concurrently under {@code parallel=classes} (see pom.xml).
  * <p>
- * Nommée {@code Abstract*} pour rester hors de portée des patterns de découverte de Surefire
- * (elle n'a d'ailleurs aucun {@code @Test} propre à exécuter).
+ * Named {@code Abstract*} to stay out of Surefire's discovery patterns (it has no {@code @Test}
+ * of its own to run anyway).
  */
 public abstract class AbstractMailAccountTest {
   @Rule

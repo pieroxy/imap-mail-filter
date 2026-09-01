@@ -7,8 +7,8 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 
 /**
- * Matche si au moins un des matchers enfants matche (court-circuite au premier succès).
- * Sans enfant, un OR est faux par convention.
+ * Matches if at least one of the child matchers matches (short-circuits on the first success).
+ * With no children, an OR is false by convention.
  */
 public class OrMatcher extends Matcher {
   @Override

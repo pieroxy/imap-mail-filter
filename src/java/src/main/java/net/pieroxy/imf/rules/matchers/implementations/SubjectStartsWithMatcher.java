@@ -8,15 +8,14 @@ import javax.mail.MessagingException;
 import java.util.Optional;
 
 /**
- * Matche si le {@code Subject:} du message commence par la clé configurée, de façon
- * insensible à la casse.
+ * Matches if the message's {@code Subject:} starts with the configured key, case-insensitively.
  * <p>
- * Learnable, mais naïvement : {@link #extractKeyFromExample} apprend le sujet **complet** de
- * l'exemple déposé, pas un préfixe déduit intelligemment (il n'y a aucun moyen de savoir quelle
- * partie du sujet est le préfixe voulu vs. le contenu spécifique à cet exemple précis, ex:
- * "Votre facture n°12345" — faut-il apprendre "Votre facture" ou tout le texte ?). Pour l'instant,
- * il faut éditer à la main le fichier {@code <dataFolder>/<displayName>-learned-rules.json}
- * après coup pour raccourcir la clé apprise au préfixe réellement voulu.
+ * Learnable, but naively: {@link #extractKeyFromExample} learns the **entire** subject of the
+ * deposited example, not an intelligently-inferred prefix (there's no way to know which part of
+ * the subject is the intended prefix vs. content specific to this particular example, e.g.
+ * "Your invoice #12345" — should it learn "Your invoice" or the whole text?). For now, the
+ * {@code <dataFolder>/<displayName>-learned-rules.json} file has to be hand-edited afterward to
+ * shorten the learned key down to the actually-intended prefix.
  */
 public class SubjectStartsWithMatcher extends Matcher {
   @Override

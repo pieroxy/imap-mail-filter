@@ -8,24 +8,24 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Évaluateur DMARC (RFC 7489) : ne refait ni SPF ni DKIM — il prend leurs résultats déjà
- * calculés (voir {@link net.pieroxy.imf.spf.SpfEvaluator}, {@link net.pieroxy.imf.dkim.DkimVerifier})
- * et détermine si l'un des deux est "aligné" avec le domaine visible dans {@code From:}, ainsi
- * que la politique effective publiée par ce domaine (voir {@link DmarcPolicy}).
+ * DMARC evaluator (RFC 7489): doesn't redo SPF or DKIM itself — it takes their already-computed
+ * results (see {@link net.pieroxy.imf.spf.SpfEvaluator}, {@link net.pieroxy.imf.dkim.DkimVerifier})
+ * and determines whether either one is "aligned" with the domain shown in {@code From:}, as
+ * well as the effective policy published by that domain (see {@link DmarcPolicy}).
  * <p>
- * DMARC passe si SPF a réussi ET est aligné, OU si DKIM a réussi ET est aligné (RFC 7489
- * §3.1) — un seul des deux suffit. "Aligné" veut dire : même domaine exact (mode strict,
- * {@code adkim=s}/{@code aspf=s}), ou même domaine organisationnel (mode relaxed, par défaut)
- * — calculé via la Public Suffix List (Guava {@code InternetDomainName}), pas une comparaison
- * naïve des deux derniers labels : pour {@code mail.example.co.uk}, le domaine organisationnel
- * est {@code example.co.uk}, pas {@code co.uk} (qui est lui-même un suffixe public partagé par
- * des millions de domaines sans rapport).
+ * DMARC passes if SPF succeeded AND is aligned, OR if DKIM succeeded AND is aligned (RFC 7489
+ * §3.1) — either one is enough. "Aligned" means: the exact same domain (strict mode,
+ * {@code adkim=s}/{@code aspf=s}), or the same organizational domain (relaxed mode, the
+ * default) — computed via the Public Suffix List (Guava's {@code InternetDomainName}), not a
+ * naive comparison of the last two labels: for {@code mail.example.co.uk}, the organizational
+ * domain is {@code example.co.uk}, not {@code co.uk} (itself a public suffix shared by millions
+ * of unrelated domains).
  * <p>
- * Le record est cherché au domaine exact, puis — s'il est absent là — au domaine
- * organisationnel (RFC 7489 §6.6.3), pour couvrir le cas d'un sous-domaine qui n'a pas son
- * propre record DMARC ; dans ce second cas, c'est le tag {@code sp=} du record organisationnel
- * qui fait foi pour la politique (replié sur {@code p=} si {@code sp=} est absent), pas
- * {@code p=} directement.
+ * The record is looked up at the exact domain first, then — if absent there — at the
+ * organizational domain (RFC 7489 §6.6.3), to cover the case of a subdomain that has no DMARC
+ * record of its own; in that second case, it's the organizational record's {@code sp=} tag that
+ * governs the policy (falling back to {@code p=} if {@code sp=} is absent), not {@code p=}
+ * directly.
  */
 public class DmarcEvaluator {
   private final DmarcDnsResolver resolver;
@@ -36,21 +36,21 @@ public class DmarcEvaluator {
   }
 
   /**
-   * @param fromDomain domaine du header From: affiché (l'identité que DMARC protège).
-   * @param spfPassed  true si SPF a renvoyé "pass" pour ce message.
-   * @param spfDomain  le domaine que SPF a effectivement vérifié (voir SpfIdentityExtractor), non nul si spfPassed est true.
-   * @param dkimPassingDomains les domaines (d=) de chaque signature DKIM qui a vérifié avec succès.
+   * @param fromDomain domain of the displayed From: header (the identity DMARC protects).
+   * @param spfPassed  true if SPF returned "pass" for this message.
+   * @param spfDomain  the domain SPF actually verified (see SpfIdentityExtractor), non-null if spfPassed is true.
+   * @param dkimPassingDomains the domains (d=) of every DKIM signature that verified successfully.
    */
   public DmarcResult evaluate(String fromDomain, boolean spfPassed, String spfDomain, List<String> dkimPassingDomains) {
     return evaluate(fromDomain, spfPassed, spfDomain, dkimPassingDomains, defaultLogger);
   }
 
-  /** Comme {@link #evaluate(String, boolean, String, List)}, mais journalise (niveau FINE) sur le logger donné. */
+  /** Same as {@link #evaluate(String, boolean, String, List)}, but logs (FINE level) to the given logger. */
   public DmarcResult evaluate(String fromDomain, boolean spfPassed, String spfDomain, List<String> dkimPassingDomains, Logger logger) {
     return evaluateDetailed(fromDomain, spfPassed, spfDomain, dkimPassingDomains, logger).result();
   }
 
-  /** Comme {@link #evaluate(String, boolean, String, List, Logger)}, mais expose aussi la politique publiée. */
+  /** Same as {@link #evaluate(String, boolean, String, List, Logger)}, but also exposes the published policy. */
   public DmarcEvaluation evaluateDetailed(String fromDomain, boolean spfPassed, String spfDomain, List<String> dkimPassingDomains, Logger logger) {
     if (fromDomain == null || fromDomain.isBlank()) {
       return new DmarcEvaluation(DmarcResult.NONE, DmarcPolicy.UNPUBLISHED);
@@ -84,8 +84,8 @@ public class DmarcEvaluator {
     if (orgDomain.isPresent() && !orgDomain.get().equalsIgnoreCase(fromDomain)) {
       logger.fine(() -> "No DMARC record at " + fromDomain + ", trying organizational domain " + orgDomain.get());
       DmarcRecord viaOrg = fetchValidRecord(orgDomain.get());
-      // sp= (repli sur p=) du record organisationnel s'applique aux sous-domaines qui n'ont
-      // pas leur propre record (RFC 7489 §6.3) — pas p=, qui ne concernait que ce domaine-là.
+      // The organizational record's sp= (falling back to p=) applies to subdomains that have
+      // no record of their own (RFC 7489 §6.3) — not p=, which only ever concerned that domain.
       if (viaOrg != null) return new EffectiveRecord(viaOrg, viaOrg.subdomainPolicy);
     }
     return null;
@@ -124,9 +124,8 @@ public class DmarcEvaluator {
         case "adkim" -> strictDkim = "s".equalsIgnoreCase(value);
         case "aspf" -> strictSpf = "s".equalsIgnoreCase(value);
         default -> {
-          // pct=, rua=, ruf=, fo=, ri=, v=... : ignorés, pas nécessaires pour calculer
-          // pass/fail/policy (seulement pour le reporting ou la granularité d'application,
-          // hors périmètre).
+          // pct=, rua=, ruf=, fo=, ri=, v=...: ignored, not needed to compute pass/fail/policy
+          // (only relevant for reporting or enforcement granularity, out of scope here).
         }
       }
     }

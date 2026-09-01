@@ -99,10 +99,10 @@ public class StringTreeTest {
   }
 
   /**
-   * Domaines partageant le même suffixe (TLD + domaine parent) — le cas que la compression de
-   * chemin sur chaînes inversées est censée bien gérer : "moc.elpmaxe.a"/"moc.elpmaxe.b" une
-   * fois inversés partagent un long préfixe commun puis divergent sur le dernier caractère,
-   * ce qui force un split d'arête au moment d'insérer le second.
+   * Domains sharing the same suffix (TLD + parent domain) — the case path compression on
+   * reversed strings is supposed to handle well: once reversed, "moc.elpmaxe.a"/"moc.elpmaxe.b"
+   * share a long common prefix and then diverge on the last character, which forces an edge
+   * split when the second one is inserted.
    */
   @Test
   public void domainsSharingATldAndParentDomainAreBothFoundAfterAnEdgeSplit() {
@@ -117,9 +117,9 @@ public class StringTreeTest {
   }
 
   /**
-   * "example.com" est un suffixe strict de "sub.example.com" : une fois inversées, la première
-   * chaîne est un préfixe complet de la seconde — insérer la seconde après la première doit
-   * prolonger l'arête existante en profondeur, pas la scinder.
+   * "example.com" is a strict suffix of "sub.example.com": once reversed, the first string is a
+   * full prefix of the second — inserting the second after the first must extend the existing
+   * edge deeper, not split it.
    */
   @Test
   public void aDomainThatIsASuffixOfAnotherExtendsTheExistingEdge() {
@@ -132,7 +132,7 @@ public class StringTreeTest {
     assertFalse(tree.contains("other.example.com"));
   }
 
-  /** Même chose que ci-dessus mais dans l'ordre inverse : le noeud intermédiaire existe déjà (créé par le premier insert) et doit juste passer terminal=true. */
+  /** Same as above but in reverse order: the intermediate node already exists (created by the first insert) and just needs to flip to terminal=true. */
   @Test
   public void insertingTheShorterSuffixAfterTheLongerOneReusesTheExistingNode() {
     StringTree tree = new StringTree();

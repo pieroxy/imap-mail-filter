@@ -21,12 +21,12 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
- * (Ré)entraîne un classifieur de sujet (SPAM/HAM) à partir du corpus déjà collecté par
- * {@link ClassifierCorpusScanner}. Appelé une fois par jour, juste après un scan de corpus
- * réussi et à jour (même compte, pas de scheduler séparé). N'écrit un modèle que si le corpus
- * contient assez d'exemples des deux classes ; en dessous, ne fait rien et se contente de
- * logger — {@link net.pieroxy.imf.rules.matchers.implementations.SubjectClassifierMatcher}
- * logge de son côté, une fois, qu'il reste inactif tant qu'aucun modèle n'existe.
+ * (Re)trains a subject classifier (SPAM/HAM) from the corpus already collected by
+ * {@link ClassifierCorpusScanner}. Called once a day, right after a successful, up-to-date
+ * corpus scan (same account, no separate scheduler). Only writes a model if the corpus holds
+ * enough examples of both classes; below that, does nothing and just logs —
+ * {@link net.pieroxy.imf.rules.matchers.implementations.SubjectClassifierMatcher} logs, on its
+ * own side, once, that it stays inactive as long as no model exists.
  */
 public class SubjectClassifierTrainer {
   private final static Logger LOGGER = Logger.getLogger(SubjectClassifierTrainer.class.getName());
@@ -59,8 +59,8 @@ public class SubjectClassifierTrainer {
 
     TrainingParameters params = new TrainingParameters();
     params.put(TrainingParameters.ALGORITHM_PARAM, NaiveBayesTrainer.NAIVE_BAYES_VALUE);
-    // Les sujets sont courts : un cutoff par défaut (5 occurrences minimum) éliminerait la
-    // plupart des mots utiles sur un corpus de cette taille.
+    // Subjects are short: the default cutoff (5 occurrences minimum) would eliminate most of
+    // the useful words on a corpus this size.
     params.put(TrainingParameters.CUTOFF_PARAM, 1);
 
     DoccatModel model = DocumentCategorizerME.train("en", toStream(samples), params, new DoccatFactory());

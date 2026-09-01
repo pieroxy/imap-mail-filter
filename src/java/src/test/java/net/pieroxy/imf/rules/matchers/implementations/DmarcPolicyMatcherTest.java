@@ -47,7 +47,7 @@ public class DmarcPolicyMatcherTest {
 
   @Test
   public void matchesTheDomainsPublishedPolicy() throws Exception {
-    SpfEvaluator spfEvaluator = new SpfEvaluator(new FakeSpfDnsResolver()); // peu importe : la politique ne dépend pas du pass/fail
+    SpfEvaluator spfEvaluator = new SpfEvaluator(new FakeSpfDnsResolver()); // doesn't matter: the policy doesn't depend on pass/fail
     DmarcEvaluator dmarcEvaluator = new DmarcEvaluator(new FakeDmarcDnsResolver()
             .withTxt("_dmarc.example.com", "v=DMARC1; p=reject"));
     DmarcPolicyMatcher matcher = matcherWithEvaluators("reject", spfEvaluator, dmarcEvaluator);
@@ -58,7 +58,7 @@ public class DmarcPolicyMatcherTest {
   @Test
   public void unpublishedIsDistinctFromExplicitNonePolicy() throws Exception {
     SpfEvaluator spfEvaluator = new SpfEvaluator(new FakeSpfDnsResolver());
-    // Aucun record _dmarc.example.com du tout : "unpublished", pas "none".
+    // No _dmarc.example.com record at all: "unpublished", not "none".
     DmarcEvaluator dmarcEvaluator = new DmarcEvaluator(new FakeDmarcDnsResolver());
     DmarcPolicyMatcher matcher = matcherWithEvaluators("unpublished", spfEvaluator, dmarcEvaluator);
 

@@ -12,7 +12,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Implémentation de {@link DmarcDnsResolver} basée sur dnsjava. */
+/** {@link DmarcDnsResolver} implementation backed by dnsjava. */
 public class DnsJavaDmarcDnsResolver implements DmarcDnsResolver {
   private final Resolver resolver;
 

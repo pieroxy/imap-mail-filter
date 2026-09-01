@@ -89,9 +89,9 @@ public class LearnedRulesStoreTest {
 
     assertTrue(added);
     List<MailFilterRuleConfiguration> rules = store.load();
-    assertEquals("même matcher type + même action : une seule règle, pas deux", 1, rules.size());
+    assertEquals("same matcher type + same action: a single rule, not two", 1, rules.size());
     MailFilterRuleMatcherConfiguration matcher = rules.get(0).getMatcher();
-    assertNull("key laisse la place à keys une fois fusionné", matcher.getKey());
+    assertNull("key gives way to keys once merged", matcher.getKey());
     assertEquals(2, matcher.getKeys().size());
     assertTrue(matcher.getKeys().contains("alice@example.com"));
     assertTrue(matcher.getKeys().contains("bob@example.com"));
@@ -101,7 +101,7 @@ public class LearnedRulesStoreTest {
   public void addIfAbsentIgnoresAKeyAlreadyMergedIntoKeys() {
     LearnedRulesStore store = new LearnedRulesStore(tmp.getRoot().getAbsolutePath(), "account");
     store.addIfAbsent(rule("alice@example.com", "Spam"));
-    store.addIfAbsent(rule("bob@example.com", "Spam")); // fusionné dans la même règle
+    store.addIfAbsent(rule("bob@example.com", "Spam")); // merged into the same rule
 
     boolean added = store.addIfAbsent(rule("alice@example.com", "Spam"));
 
@@ -113,8 +113,8 @@ public class LearnedRulesStoreTest {
 
   @Test
   public void addIfAbsentCompactsPreExistingDuplicatesAlreadyInTheFile() {
-    // Simule un fichier écrit avant que la fusion n'existe : deux règles séparées, même
-    // matcher type + même action, jamais fusionnées entre elles.
+    // Simulates a file written before merging existed: two separate rules, same matcher
+    // type + same action, never merged with each other.
     LearnedRulesStore store = new LearnedRulesStore(tmp.getRoot().getAbsolutePath(), "account");
     store.save(Arrays.asList(rule("alice@example.com", "Spam"), rule("bob@example.com", "Spam")));
 
@@ -122,7 +122,7 @@ public class LearnedRulesStoreTest {
 
     assertTrue(added);
     List<MailFilterRuleConfiguration> rules = store.load();
-    assertEquals("les deux doublons préexistants + la nouvelle clé : une seule règle", 1, rules.size());
+    assertEquals("the two pre-existing duplicates + the new key: a single rule", 1, rules.size());
     Set<String> keys = rules.get(0).getMatcher().getKeys();
     assertEquals(3, keys.size());
     assertTrue(keys.containsAll(Arrays.asList("alice@example.com", "bob@example.com", "carol@example.com")));
@@ -135,9 +135,9 @@ public class LearnedRulesStoreTest {
 
     boolean added = store.addIfAbsent(rule("alice@example.com", "Spam"));
 
-    assertFalse("alice était déjà connue, rien de nouveau appris", added);
+    assertFalse("alice was already known, nothing new learned", added);
     List<MailFilterRuleConfiguration> rules = store.load();
-    assertEquals("les deux doublons préexistants doivent quand même être compactés", 1, rules.size());
+    assertEquals("the two pre-existing duplicates must still be compacted", 1, rules.size());
     assertEquals(2, rules.get(0).getMatcher().getKeys().size());
   }
 
