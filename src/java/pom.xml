@@ -109,7 +109,7 @@
                d'état entre classes. threadCount fixe (pas per-core) pour un résultat prévisible
                indépendamment de la machine. -->
           <parallel>classes</parallel>
-          <threadCount>8</threadCount>
+          <threadCount>10</threadCount>
           <perCoreThreadCount>false</perCoreThreadCount>
         </configuration>
         <dependencies>
