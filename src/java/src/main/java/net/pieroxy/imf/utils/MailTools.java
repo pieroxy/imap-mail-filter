@@ -1,15 +1,39 @@
 package net.pieroxy.imf.utils;
 
 import com.sun.mail.imap.IMAPFolder;
+import com.sun.mail.imap.IMAPMessage;
 import org.apache.commons.mail.util.MimeMessageParser;
 
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class MailTools {
+    /**
+     * Sérialise le message brut (headers + corps), sans jamais le marquer \Seen comme effet de
+     * bord — utilisé par les vérifications DKIM/DMARC, qui ont besoin du message tel que reçu
+     * pour recalculer une signature/un hash de corps.
+     * <p>
+     * Pour un vrai message IMAP, lire le contenu déclenche côté javax.mail un FETCH BODY[] ; la
+     * propriété de session "mail.imap.peek" ne s'applique PAS à ce chemin (vérifié
+     * empiriquement : elle ne couvre que le préchargement automatique à l'ouverture du dossier,
+     * pas une lecture de contenu ad-hoc comme {@code writeTo()}) — {@link IMAPMessage#setPeek}
+     * posé sur CE message précis, juste avant la lecture, est le seul mécanisme qui fonctionne.
+     * Sans ça, n'importe quel message inspecté (matché ou non par une règle) se retrouverait
+     * silencieusement marqué lu.
+     */
+    public static byte[] readRawMessageWithoutMarkingSeen(Message message) throws MessagingException, IOException {
+        if (message instanceof IMAPMessage) {
+            ((IMAPMessage) message).setPeek(true);
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        message.writeTo(out);
+        return out.toByteArray();
+    }
+
     public static String getFrom(Message message) throws MessagingException {
         Address[] from = message.getFrom();
         if (from == null) return "";

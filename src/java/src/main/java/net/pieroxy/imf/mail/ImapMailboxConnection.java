@@ -32,7 +32,7 @@ public class ImapMailboxConnection implements ImapMailbox {
    * un try-with-resources.
    */
   public static ImapMailboxConnection connect(MailAccountConfiguration config) throws MessagingException {
-    Session session = Session.getDefaultInstance(new Properties());
+    Session session = Session.getDefaultInstance(peekProperties());
     session.setDebug(false);
     Store store = session.getStore("imaps");
     store.connect(config.getHost(), config.getPort(), config.getUsername(), config.getPassword());
@@ -172,5 +172,23 @@ public class ImapMailboxConnection implements ImapMailbox {
     } catch (MessagingException e) {
       LOGGER.log(Level.WARNING, "Error closing store", e);
     }
+  }
+
+  /**
+   * Filet de sécurité pour le préchargement automatique (FetchProfile) qu'un futur appel
+   * pourrait déclencher — mais attention, ça ne suffit PAS pour le cas qui compte
+   * aujourd'hui : lire le contenu complet d'un message à la demande (message.writeTo(),
+   * utilisé par DkimResultMatcher/DmarcResultMatcher pour vérifier une signature DKIM) ignore
+   * cette propriété (vérifié empiriquement avec un trace IMAP : javax.mail envoie quand même
+   * BODY[], pas BODY.PEEK[], malgré "peek"=true ici). Le vrai correctif pour ce chemin-là est
+   * {@code IMAPMessage.setPeek(true)} posé par message avant lecture, voir
+   * {@link net.pieroxy.imf.utils.MailTools#readRawMessageWithoutMarkingSeen}. Les deux
+   * propriétés ci-dessous existent parce qu'elle est par protocole ("imap" en clair vs "imaps").
+   */
+  private static Properties peekProperties() {
+    Properties props = new Properties();
+    props.setProperty("mail.imap.peek", "true");
+    props.setProperty("mail.imaps.peek", "true");
+    return props;
   }
 }

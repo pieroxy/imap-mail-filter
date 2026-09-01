@@ -52,7 +52,12 @@ public class GreenMailImapFixture {
 
   /** Connexion IMAP en clair (pas de TLS) vers ce serveur — ce que connect() fait normalement via "imaps". */
   public ImapMailboxConnection connectAsImapMailbox() throws MessagingException {
-    Session session = Session.getDefaultInstance(new Properties());
+    // mail.imap.peek : même réglage que ImapMailboxConnection.connect() en production (voir sa
+    // javadoc — ne suffit PAS à lui seul pour message.writeTo(), qui a besoin en plus de
+    // IMAPMessage.setPeek() par message ; voir MailTools.readRawMessageWithoutMarkingSeen()).
+    Properties props = new Properties();
+    props.setProperty("mail.imap.peek", "true");
+    Session session = Session.getDefaultInstance(props);
     Store store = session.getStore("imap");
     store.connect("127.0.0.1", greenMail.getImap().getPort(), USERNAME, PASSWORD);
     return ImapMailboxConnection.forTesting(store);

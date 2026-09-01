@@ -4,6 +4,7 @@ import net.pieroxy.imf.dkim.DkimResult;
 import net.pieroxy.imf.dkim.DkimVerifier;
 import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
+import net.pieroxy.imf.utils.MailTools;
 import org.apache.james.jdkim.api.PublicKeyRecordRetriever;
 import org.apache.james.jdkim.impl.DNSPublicKeyRecordRetriever;
 import org.xbill.DNS.SimpleResolver;
@@ -11,7 +12,6 @@ import org.xbill.DNS.SimpleResolver;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Optional;
@@ -71,9 +71,7 @@ public class DkimResultMatcher extends Matcher {
   private String evaluateDkim(Message message) throws MessagingException {
     byte[] raw;
     try {
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      message.writeTo(out);
-      raw = out.toByteArray();
+      raw = MailTools.readRawMessageWithoutMarkingSeen(message);
     } catch (IOException e) {
       throw new MessagingException("Failed to read message for DKIM verification", e);
     }

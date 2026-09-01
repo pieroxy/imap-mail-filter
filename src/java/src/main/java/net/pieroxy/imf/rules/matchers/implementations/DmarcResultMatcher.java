@@ -11,6 +11,7 @@ import net.pieroxy.imf.spf.DnsJavaSpfDnsResolver;
 import net.pieroxy.imf.spf.SpfEvaluator;
 import net.pieroxy.imf.spf.SpfIdentityExtractor;
 import net.pieroxy.imf.spf.SpfResult;
+import net.pieroxy.imf.utils.MailTools;
 import org.apache.james.jdkim.api.PublicKeyRecordRetriever;
 import org.apache.james.jdkim.impl.DNSPublicKeyRecordRetriever;
 import org.xbill.DNS.SimpleResolver;
@@ -20,7 +21,6 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Optional;
@@ -96,9 +96,7 @@ public class DmarcResultMatcher extends Matcher {
 
     byte[] raw;
     try {
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      message.writeTo(out);
-      raw = out.toByteArray();
+      raw = MailTools.readRawMessageWithoutMarkingSeen(message);
     } catch (IOException e) {
       throw new MessagingException("Failed to read message for DMARC verification", e);
     }
