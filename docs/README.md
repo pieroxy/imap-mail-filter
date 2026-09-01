@@ -211,6 +211,28 @@ matcher matches**. A rule "applies" (and stops the search) as soon as its matche
 if the action itself later fails; a failed action is logged but doesn't make IMF try the next
 rule instead.
 
+Set `"keepProcessing": true` on a rule (alongside `matcher`/`action`, not inside either) to
+change that: its action still runs when it matches, but evaluation carries on to the next rule
+as if it hadn't, instead of stopping there. Useful when more than one rule should be able to act
+on the same message — e.g. a weaker signal marks it read for visibility, while a stronger rule
+further down the list still gets a chance to move it:
+
+```json
+[
+  {
+    "matcher": { "type": "SUBJECT_CLASSIFIER_EQUALS", "key": ">0.5" },
+    "action": { "type": "READ" },
+    "keepProcessing": true
+  },
+  {
+    "matcher": { "type": "SUBJECT_CLASSIFIER_EQUALS", "key": ">0.99" },
+    "action": { "type": "MOVE_TO", "key": "Spam" }
+  }
+]
+```
+
+Defaults to `false` (existing behavior, unchanged) if absent.
+
 ## Learning rules by example
 
 Instead of writing a rule by hand, you can teach it by dropping example messages into a

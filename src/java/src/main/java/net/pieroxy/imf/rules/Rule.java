@@ -23,9 +23,15 @@ public class Rule {
     action = Action.build(config.getAction());
   }
 
-  /** Représentation compacte pour les logs de démarrage, ex: {@code Rule(FROM_DOMAIN_EQUALS(toto.com),MOVE_TO(Work))}. */
+  /**
+   * Représentation compacte pour les logs de démarrage, ex:
+   * {@code Rule(FROM_DOMAIN_EQUALS(toto.com),MOVE_TO(Work))}, ou
+   * {@code Rule(...,...) [keepProcessing]} si la règle laisse l'évaluation continuer sur les
+   * suivantes même quand elle matche.
+   */
   public String describe() {
-    return "Rule(" + matcher.describe() + "," + action.describe() + ")";
+    String base = "Rule(" + matcher.describe() + "," + action.describe() + ")";
+    return isKeepProcessing() ? base + " [keepProcessing]" : base;
   }
 
   /**
@@ -55,22 +61,33 @@ public class Rule {
     return true;
   }
 
+  /** true si cette règle ne doit pas arrêter l'évaluation des suivantes même quand elle matche — voir {@link #applyFirstMatching}. */
+  public boolean isKeepProcessing() {
+    return config.isKeepProcessing();
+  }
+
   /**
    * Applique la première règle de la liste qui matche message (partagé par le traitement de
-   * l'INBOX et le rejeu manuel depuis imf-rules/ToProcess). Une règle qui lève une exception
-   * ne bloque pas les suivantes.
-   * @return true si une règle a matché.
+   * l'INBOX et le rejeu manuel depuis imf-rules/ToProcess), sauf qu'une règle marquée
+   * keepProcessing n'arrête pas la recherche : son action s'exécute quand même, mais
+   * l'évaluation continue comme si elle n'avait pas matché. Une règle qui lève une exception ne
+   * bloque pas les suivantes non plus.
+   * @return true si au moins une règle a matché (keepProcessing ou non).
    */
   public static boolean applyFirstMatching(List<Rule> rules, Message message, Logger logger, String context) {
+    boolean anyMatched = false;
     for (Rule rule : rules) {
       try {
         if (rule.apply(message)) {
-          return true;
+          anyMatched = true;
+          if (!rule.isKeepProcessing()) {
+            return true;
+          }
         }
       } catch (Exception e) {
         logger.log(Level.WARNING, "Rule failed on " + context + " for message from " + MailTools.describeFromSafely(message), e);
       }
     }
-    return false;
+    return anyMatched;
   }
 }

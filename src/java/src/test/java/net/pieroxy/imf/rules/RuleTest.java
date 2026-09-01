@@ -18,6 +18,7 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -148,5 +149,81 @@ public class RuleTest {
     List<Rule> rules = Arrays.asList(new Rule(first), new Rule(second));
 
     assertTrue(Rule.applyFirstMatching(rules, messageFrom("alice@example.com"), Logger.getLogger("test"), "test"));
+  }
+
+  @Test
+  public void describeMentionsKeepProcessingWhenSet() throws Exception {
+    MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
+    config.setMatcher(fromEquals("alice@example.com"));
+    config.setAction(noopAction());
+    config.setKeepProcessing(true);
+
+    assertTrue(new Rule(config).describe().endsWith(" [keepProcessing]"));
+  }
+
+  @Test
+  public void describeOmitsKeepProcessingByDefault() throws Exception {
+    MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
+    config.setMatcher(fromEquals("alice@example.com"));
+    config.setAction(noopAction());
+
+    assertFalse(new Rule(config).describe().contains("keepProcessing"));
+  }
+
+  @Test
+  public void aKeepProcessingRuleAloneStillCountsAsAMatch() throws Exception {
+    MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
+    config.setMatcher(fromEquals("alice@example.com"));
+    config.setAction(noopAction());
+    config.setKeepProcessing(true);
+    List<Rule> rules = List.of(new Rule(config));
+
+    assertTrue(Rule.applyFirstMatching(rules, messageFrom("alice@example.com"), Logger.getLogger("test"), "test"));
+  }
+
+  /**
+   * Trois règles qui matchent toutes : la première (keepProcessing) laisse passer à la
+   * deuxième (comportement par défaut : elle arrête l'évaluation là), donc la troisième n'est
+   * jamais évaluée — vérifié en comptant les logs de match du matcher, pas juste le résultat
+   * global, pour prouver que la troisième n'est vraiment jamais atteinte.
+   */
+  @Test
+  public void keepProcessingLetsEvaluationContinueUntilANonKeepProcessingRuleMatches() throws Exception {
+    MailFilterRuleConfiguration first = new MailFilterRuleConfiguration();
+    first.setMatcher(fromEquals("alice@example.com"));
+    first.setAction(noopAction());
+    first.setKeepProcessing(true);
+
+    MailFilterRuleConfiguration second = new MailFilterRuleConfiguration();
+    second.setMatcher(fromEquals("alice@example.com"));
+    second.setAction(noopAction());
+    // keepProcessing par défaut à false : doit arrêter l'évaluation ici.
+
+    MailFilterRuleConfiguration third = new MailFilterRuleConfiguration();
+    third.setMatcher(fromEquals("alice@example.com"));
+    third.setAction(noopAction());
+
+    List<Rule> rules = Arrays.asList(new Rule(first), new Rule(second), new Rule(third));
+
+    List<LogRecord> records = new ArrayList<>();
+    Handler capture = new Handler() {
+      @Override public void publish(LogRecord record) { records.add(record); }
+      @Override public void flush() {}
+      @Override public void close() {}
+    };
+    Logger matcherLogger = Logger.getLogger(net.pieroxy.imf.rules.matchers.Matcher.class.getName());
+    matcherLogger.addHandler(capture);
+    boolean matched;
+    try {
+      matched = Rule.applyFirstMatching(rules, messageFrom("alice@example.com"), Logger.getLogger("test"), "test");
+    } finally {
+      matcherLogger.removeHandler(capture);
+    }
+
+    assertTrue(matched);
+    long matchLogCount = records.stream()
+            .filter(r -> r.getMessage() != null && r.getMessage().contains("matched message from"))
+            .count();
+    assertEquals("first (keepProcessing) et second doivent matcher, third ne doit jamais être atteinte", 2, matchLogCount);
   }
 }
