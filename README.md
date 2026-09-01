@@ -9,6 +9,16 @@ IMF stands alone and just needs IMAP access to your account to add spam detectio
 
 IMF also implements a dead simple way to report spam or create a simple rule: just move an example email into the right `imf-rules/` subfolder, and every future email matching the same criteria gets routed automatically — see [Learning rules by example](docs/README.md#learning-rules-by-example) for how that folder structure works.
 
+## Who is it for?
+
+If you're using Gmail or outlook.com for your mail, you probably have no need for this.
+
+IMF has been designed for self-hosted mail servers. Most of them support spam detection and server-side rules, one way or another, but those are often server-specific and cumbersome.
+
+This means that changing mail servers requires you to reconfigure spam detection and rules all over again.
+
+With IMF, just plug it into your new server through IMAP and you're done. All rules still work, all spam detection is up and running.
+
 ## Requirements
 
 Just Java 17 and an Internet connection.
