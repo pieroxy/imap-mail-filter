@@ -5,6 +5,7 @@ import net.pieroxy.imf.dkim.DkimTestSigner;
 import net.pieroxy.imf.dkim.DkimVerifier;
 import net.pieroxy.imf.dkim.FakeDkimPublicKeyRecordRetriever;
 import net.pieroxy.imf.dmarc.DmarcEvaluator;
+import net.pieroxy.imf.dmarc.DmarcMessageEvaluator;
 import net.pieroxy.imf.dmarc.FakeDmarcDnsResolver;
 import net.pieroxy.imf.spf.FakeSpfDnsResolver;
 import net.pieroxy.imf.spf.SpfEvaluator;
@@ -34,7 +35,8 @@ public class DmarcResultMatcherTest {
                                                     DmarcEvaluator dmarcEvaluator) {
     MailFilterRuleMatcherConfiguration config = new MailFilterRuleMatcherConfiguration();
     config.setKey(key);
-    DmarcResultMatcher matcher = new DmarcResultMatcher(spfEvaluator, new DkimVerifier(retriever), dmarcEvaluator);
+    DmarcMessageEvaluator evaluator = new DmarcMessageEvaluator(spfEvaluator, new DkimVerifier(retriever), dmarcEvaluator);
+    DmarcResultMatcher matcher = new DmarcResultMatcher(evaluator);
     matcher.setConfig(config);
     return matcher;
   }

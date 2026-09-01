@@ -22,8 +22,24 @@
           "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
         },
         {
-          "matcher": { "type": "DMARC_RESULT_EQUALS", "key": "fail" },
+          "matcher": {
+            "type": "AND",
+            "children": [
+              { "type": "DMARC_RESULT_EQUALS", "key": "fail" },
+              { "type": "DMARC_POLICY_EQUALS", "key": "reject" }
+            ]
+          },
           "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
+        },
+        {
+          "matcher": {
+            "type": "AND",
+            "children": [
+              { "type": "DMARC_RESULT_EQUALS", "key": "fail" },
+              { "type": "DMARC_POLICY_EQUALS", "keys": ["quarantine", "none"] }
+            ]
+          },
+          "action": { "type": "MOVE_TO", "key": "Spam" }
         },
         {
           "matcher": {

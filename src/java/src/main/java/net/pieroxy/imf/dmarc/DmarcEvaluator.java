@@ -10,7 +10,8 @@ import java.util.logging.Logger;
 /**
  * Évaluateur DMARC (RFC 7489) : ne refait ni SPF ni DKIM — il prend leurs résultats déjà
  * calculés (voir {@link net.pieroxy.imf.spf.SpfEvaluator}, {@link net.pieroxy.imf.dkim.DkimVerifier})
- * et détermine si l'un des deux est "aligné" avec le domaine visible dans {@code From:}.
+ * et détermine si l'un des deux est "aligné" avec le domaine visible dans {@code From:}, ainsi
+ * que la politique effective publiée par ce domaine (voir {@link DmarcPolicy}).
  * <p>
  * DMARC passe si SPF a réussi ET est aligné, OU si DKIM a réussi ET est aligné (RFC 7489
  * §3.1) — un seul des deux suffit. "Aligné" veut dire : même domaine exact (mode strict,
@@ -22,7 +23,9 @@ import java.util.logging.Logger;
  * <p>
  * Le record est cherché au domaine exact, puis — s'il est absent là — au domaine
  * organisationnel (RFC 7489 §6.6.3), pour couvrir le cas d'un sous-domaine qui n'a pas son
- * propre record DMARC.
+ * propre record DMARC ; dans ce second cas, c'est le tag {@code sp=} du record organisationnel
+ * qui fait foi pour la politique (replié sur {@code p=} si {@code sp=} est absent), pas
+ * {@code p=} directement.
  */
 public class DmarcEvaluator {
   private final DmarcDnsResolver resolver;
@@ -44,34 +47,46 @@ public class DmarcEvaluator {
 
   /** Comme {@link #evaluate(String, boolean, String, List)}, mais journalise (niveau FINE) sur le logger donné. */
   public DmarcResult evaluate(String fromDomain, boolean spfPassed, String spfDomain, List<String> dkimPassingDomains, Logger logger) {
-    if (fromDomain == null || fromDomain.isBlank()) return DmarcResult.NONE;
+    return evaluateDetailed(fromDomain, spfPassed, spfDomain, dkimPassingDomains, logger).result();
+  }
+
+  /** Comme {@link #evaluate(String, boolean, String, List, Logger)}, mais expose aussi la politique publiée. */
+  public DmarcEvaluation evaluateDetailed(String fromDomain, boolean spfPassed, String spfDomain, List<String> dkimPassingDomains, Logger logger) {
+    if (fromDomain == null || fromDomain.isBlank()) {
+      return new DmarcEvaluation(DmarcResult.NONE, DmarcPolicy.UNPUBLISHED);
+    }
     try {
-      DmarcRecord record = findRecord(fromDomain, logger);
-      if (record == null) {
+      EffectiveRecord found = findRecord(fromDomain, logger);
+      if (found == null) {
         logger.fine(() -> "No DMARC record for " + fromDomain + " or its organizational domain");
-        return DmarcResult.NONE;
+        return new DmarcEvaluation(DmarcResult.NONE, DmarcPolicy.UNPUBLISHED);
       }
-      boolean spfAligned = spfPassed && spfDomain != null && domainsAligned(fromDomain, spfDomain, record.strictSpf);
-      boolean dkimAligned = dkimPassingDomains.stream().anyMatch(d -> domainsAligned(fromDomain, d, record.strictDkim));
+      boolean spfAligned = spfPassed && spfDomain != null && domainsAligned(fromDomain, spfDomain, found.record.strictSpf);
+      boolean dkimAligned = dkimPassingDomains.stream().anyMatch(d -> domainsAligned(fromDomain, d, found.record.strictDkim));
       logger.fine(() -> "DMARC alignment for from=" + fromDomain + ": spfAligned=" + spfAligned + " dkimAligned=" + dkimAligned);
-      return (spfAligned || dkimAligned) ? DmarcResult.PASS : DmarcResult.FAIL;
+      DmarcResult result = (spfAligned || dkimAligned) ? DmarcResult.PASS : DmarcResult.FAIL;
+      DmarcPolicy policy = DmarcPolicy.valueOf(found.effectivePolicy.toUpperCase());
+      return new DmarcEvaluation(result, policy);
     } catch (DmarcPermErrorException e) {
       logger.fine(() -> "DMARC record error for " + fromDomain + ": " + e.getMessage());
-      return DmarcResult.PERMERROR;
+      return new DmarcEvaluation(DmarcResult.PERMERROR, DmarcPolicy.PERMERROR);
     } catch (DmarcDnsException e) {
       logger.log(Level.FINE, "DMARC DNS lookup failed for " + fromDomain, e);
-      return DmarcResult.TEMPERROR;
+      return new DmarcEvaluation(DmarcResult.TEMPERROR, DmarcPolicy.TEMPERROR);
     }
   }
 
-  private DmarcRecord findRecord(String fromDomain, Logger logger) throws DmarcDnsException, DmarcPermErrorException {
-    DmarcRecord record = fetchValidRecord(fromDomain);
-    if (record != null) return record;
+  private EffectiveRecord findRecord(String fromDomain, Logger logger) throws DmarcDnsException, DmarcPermErrorException {
+    DmarcRecord exact = fetchValidRecord(fromDomain);
+    if (exact != null) return new EffectiveRecord(exact, exact.policy);
 
     Optional<String> orgDomain = organizationalDomainOf(fromDomain);
     if (orgDomain.isPresent() && !orgDomain.get().equalsIgnoreCase(fromDomain)) {
       logger.fine(() -> "No DMARC record at " + fromDomain + ", trying organizational domain " + orgDomain.get());
-      return fetchValidRecord(orgDomain.get());
+      DmarcRecord viaOrg = fetchValidRecord(orgDomain.get());
+      // sp= (repli sur p=) du record organisationnel s'applique aux sous-domaines qui n'ont
+      // pas leur propre record (RFC 7489 §6.3) — pas p=, qui ne concernait que ce domaine-là.
+      if (viaOrg != null) return new EffectiveRecord(viaOrg, viaOrg.subdomainPolicy);
     }
     return null;
   }
@@ -94,6 +109,7 @@ public class DmarcEvaluator {
 
   private static DmarcRecord parseRecord(String txt, String domain) throws DmarcPermErrorException {
     String policy = null;
+    String subdomainPolicy = null;
     boolean strictDkim = false;
     boolean strictSpf = false;
     for (String rawTag : txt.split(";")) {
@@ -103,19 +119,29 @@ public class DmarcEvaluator {
       String name = tag.substring(0, eq).trim().toLowerCase();
       String value = tag.substring(eq + 1).trim();
       switch (name) {
-        case "p" -> policy = value.toLowerCase();
+        case "p" -> policy = requireValidPolicyValue(value, domain, "p");
+        case "sp" -> subdomainPolicy = requireValidPolicyValue(value, domain, "sp");
         case "adkim" -> strictDkim = "s".equalsIgnoreCase(value);
         case "aspf" -> strictSpf = "s".equalsIgnoreCase(value);
         default -> {
-          // sp=, pct=, rua=, ruf=, fo=, ri=, v=... : ignorés, pas nécessaires pour calculer
-          // pass/fail (seulement pour le reporting ou la politique d'action, hors périmètre).
+          // pct=, rua=, ruf=, fo=, ri=, v=... : ignorés, pas nécessaires pour calculer
+          // pass/fail/policy (seulement pour le reporting ou la granularité d'application,
+          // hors périmètre).
         }
       }
     }
     if (policy == null) {
       throw new DmarcPermErrorException("DMARC record for " + domain + " has no p= tag");
     }
-    return new DmarcRecord(strictDkim, strictSpf);
+    return new DmarcRecord(policy, subdomainPolicy != null ? subdomainPolicy : policy, strictDkim, strictSpf);
+  }
+
+  private static String requireValidPolicyValue(String value, String domain, String tagName) throws DmarcPermErrorException {
+    String normalized = value.toLowerCase();
+    if (!normalized.equals("none") && !normalized.equals("quarantine") && !normalized.equals("reject")) {
+      throw new DmarcPermErrorException("DMARC record for " + domain + " has an invalid " + tagName + "=" + value);
+    }
+    return normalized;
   }
 
   private static boolean domainsAligned(String fromDomain, String otherDomain, boolean strict) {
@@ -136,12 +162,26 @@ public class DmarcEvaluator {
   }
 
   private static final class DmarcRecord {
+    final String policy;
+    final String subdomainPolicy;
     final boolean strictDkim;
     final boolean strictSpf;
 
-    DmarcRecord(boolean strictDkim, boolean strictSpf) {
+    DmarcRecord(String policy, String subdomainPolicy, boolean strictDkim, boolean strictSpf) {
+      this.policy = policy;
+      this.subdomainPolicy = subdomainPolicy;
       this.strictDkim = strictDkim;
       this.strictSpf = strictSpf;
+    }
+  }
+
+  private static final class EffectiveRecord {
+    final DmarcRecord record;
+    final String effectivePolicy;
+
+    EffectiveRecord(DmarcRecord record, String effectivePolicy) {
+      this.record = record;
+      this.effectivePolicy = effectivePolicy;
     }
   }
 }

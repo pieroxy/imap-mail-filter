@@ -94,7 +94,13 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
           "action": { "type": "MOVE_TO", "key": "Spam" }
         },
         {
-          "matcher": { "type": "DMARC_RESULT_EQUALS", "key": "fail" },
+          "matcher": {
+            "type": "AND",
+            "children": [
+              { "type": "DMARC_RESULT_EQUALS", "key": "fail" },
+              { "type": "DMARC_POLICY_EQUALS", "key": "reject" }
+            ]
+          },
           "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
         },
         {
@@ -129,13 +135,15 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
 }
 ```
 
-This example: sends SPF hard-failures and DMARC failures to Spam pre-marked read, sends SPF
-softfails to Spam unread (for manual review), routes a newsletter domain to a `Newsletters`
-folder only when it also carries a valid DKIM signature for that domain, simply marks mail from
-two trusted addresses as read (using `keys` to match either one) without moving it, and — once
-enough data has been collected, see [Classifier corpus collection](#classifier-corpus-collection)
-below — sends very-confidently-classified subjects to `SpamML` pre-marked read, and merely
-possibly-spammy ones to `SpamML` left unread for review. Two rules at two thresholds rather than
+This example: sends SPF hard-failures to Spam pre-marked read; sends DMARC failures from
+domains that publish a `reject` policy (see [`DMARC_POLICY_EQUALS`](matchers/dmarc-policy-equals.md))
+to Spam pre-marked read too; sends SPF softfails to Spam unread (for manual review); routes a
+newsletter domain to a `Newsletters` folder only when it also carries a valid DKIM signature for
+that domain; marks mail from two trusted addresses as read (using `keys` to match either one)
+without moving it; and — once enough data has been collected, see
+[Classifier corpus collection](#classifier-corpus-collection) below — sends
+very-confidently-classified subjects to `SpamML` pre-marked read, and merely possibly-spammy
+ones to `SpamML` left unread for review. Two rules at two thresholds rather than
 one: [`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) only ever
 matches/doesn't match, so "confident" vs "unsure" is expressed as two separately-configured
 rules, not a single rule with a confidence level.
@@ -166,6 +174,7 @@ A rule is a `matcher` + an `action`. When a matcher matches a message, its actio
 | [`SPF_RESULT_EQUALS`](matchers/spf-result-equals.md) | Match a live-verified SPF result. |
 | [`DKIM_RESULT_EQUALS`](matchers/dkim-result-equals.md) | Match a live-verified DKIM result. |
 | [`DMARC_RESULT_EQUALS`](matchers/dmarc-result-equals.md) | Match a live-evaluated DMARC result (SPF/DKIM domain alignment). |
+| [`DMARC_POLICY_EQUALS`](matchers/dmarc-policy-equals.md) | Match the sender domain's published DMARC policy. |
 | [`FCRDNS_RESULT_EQUALS`](matchers/fcrdns-result-equals.md) | Match a live-evaluated reverse DNS (FCrDNS) result on the connecting IP. |
 | [`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) | Match when a locally-trained model scores the subject above/below a threshold. |
 | [`AND`](matchers/and.md) | Composite: all children must match. |

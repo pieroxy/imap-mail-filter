@@ -3,6 +3,7 @@ package net.pieroxy.imf.dmarc;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 
@@ -111,5 +112,68 @@ public class DmarcEvaluatorTest {
     DmarcEvaluator evaluator = new DmarcEvaluator(new FakeDmarcDnsResolver());
 
     assertEquals(DmarcResult.NONE, evaluator.evaluate("", true, "example.com", List.of()));
+  }
+
+  @Test
+  public void resolvesThePublishedPolicy() {
+    FakeDmarcDnsResolver resolver = new FakeDmarcDnsResolver()
+            .withTxt("_dmarc.example.com", "v=DMARC1; p=reject");
+    DmarcEvaluator evaluator = new DmarcEvaluator(resolver);
+
+    assertEquals(DmarcPolicy.REJECT, evaluator.evaluateDetailed("example.com", true, "example.com", List.of(), Logger.getLogger("test")).policy());
+  }
+
+  @Test
+  public void noRecordAtAllYieldsUnpublishedPolicyNotNone() {
+    DmarcEvaluator evaluator = new DmarcEvaluator(new FakeDmarcDnsResolver());
+
+    // "unpublished" (aucun DMARC) est volontairement distinct de "none" (p=none, un choix
+    // actif du domaine) : ne pas les confondre.
+    assertEquals(DmarcPolicy.UNPUBLISHED, evaluator.evaluateDetailed("example.com", true, "example.com", List.of(), Logger.getLogger("test")).policy());
+  }
+
+  @Test
+  public void explicitPNoneIsDistinctFromUnpublished() {
+    FakeDmarcDnsResolver resolver = new FakeDmarcDnsResolver()
+            .withTxt("_dmarc.example.com", "v=DMARC1; p=none");
+    DmarcEvaluator evaluator = new DmarcEvaluator(resolver);
+
+    assertEquals(DmarcPolicy.NONE, evaluator.evaluateDetailed("example.com", true, "example.com", List.of(), Logger.getLogger("test")).policy());
+  }
+
+  @Test
+  public void subdomainWithoutItsOwnRecordUsesOrganizationalSpNotP() {
+    FakeDmarcDnsResolver resolver = new FakeDmarcDnsResolver()
+            .withTxt("_dmarc.example.com", "v=DMARC1; p=reject; sp=quarantine");
+    DmarcEvaluator evaluator = new DmarcEvaluator(resolver);
+
+    assertEquals(DmarcPolicy.QUARANTINE, evaluator.evaluateDetailed("news.example.com", true, "example.com", List.of(), Logger.getLogger("test")).policy());
+  }
+
+  @Test
+  public void subdomainFallsBackToPWhenSpIsAbsent() {
+    FakeDmarcDnsResolver resolver = new FakeDmarcDnsResolver()
+            .withTxt("_dmarc.example.com", "v=DMARC1; p=reject"); // pas de sp=
+    DmarcEvaluator evaluator = new DmarcEvaluator(resolver);
+
+    assertEquals(DmarcPolicy.REJECT, evaluator.evaluateDetailed("news.example.com", true, "example.com", List.of(), Logger.getLogger("test")).policy());
+  }
+
+  @Test
+  public void invalidPolicyValueIsPermError() {
+    FakeDmarcDnsResolver resolver = new FakeDmarcDnsResolver()
+            .withTxt("_dmarc.example.com", "v=DMARC1; p=bogus");
+    DmarcEvaluator evaluator = new DmarcEvaluator(resolver);
+
+    assertEquals(DmarcResult.PERMERROR, evaluator.evaluate("example.com", true, "example.com", List.of()));
+  }
+
+  @Test
+  public void invalidSubdomainPolicyValueIsPermError() {
+    FakeDmarcDnsResolver resolver = new FakeDmarcDnsResolver()
+            .withTxt("_dmarc.example.com", "v=DMARC1; p=reject; sp=bogus");
+    DmarcEvaluator evaluator = new DmarcEvaluator(resolver);
+
+    assertEquals(DmarcResult.PERMERROR, evaluator.evaluate("example.com", true, "example.com", List.of()));
   }
 }

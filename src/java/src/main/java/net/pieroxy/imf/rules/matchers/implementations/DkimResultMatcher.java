@@ -5,15 +5,11 @@ import net.pieroxy.imf.dkim.DkimVerifier;
 import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 import net.pieroxy.imf.utils.MailTools;
-import org.apache.james.jdkim.api.PublicKeyRecordRetriever;
-import org.apache.james.jdkim.impl.DNSPublicKeyRecordRetriever;
-import org.xbill.DNS.SimpleResolver;
 
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -32,22 +28,12 @@ public class DkimResultMatcher extends Matcher {
   private final DkimVerifier verifier;
 
   public DkimResultMatcher() {
-    this(new DkimVerifier(defaultPublicKeyRecordRetriever()));
+    this(DkimVerifier.createDefault());
   }
 
   /** Visible pour les tests : permet d'injecter un vérificateur sans résolution DNS réelle. */
   DkimResultMatcher(DkimVerifier verifier) {
     this.verifier = verifier;
-  }
-
-  private static PublicKeyRecordRetriever defaultPublicKeyRecordRetriever() {
-    try {
-      SimpleResolver resolver = new SimpleResolver();
-      resolver.setTimeout(Duration.ofSeconds(5));
-      return new DNSPublicKeyRecordRetriever(resolver);
-    } catch (IOException e) {
-      throw new IllegalStateException("Could not initialize DNS resolver for DKIM", e);
-    }
   }
 
   @Override

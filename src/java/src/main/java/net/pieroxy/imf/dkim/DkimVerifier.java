@@ -6,9 +6,12 @@ import org.apache.james.jdkim.api.Result;
 import org.apache.james.jdkim.exceptions.FailException;
 import org.apache.james.jdkim.exceptions.PermFailException;
 import org.apache.james.jdkim.exceptions.TempFailException;
+import org.apache.james.jdkim.impl.DNSPublicKeyRecordRetriever;
+import org.xbill.DNS.SimpleResolver;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,6 +44,17 @@ public class DkimVerifier {
 
   public DkimVerifier(PublicKeyRecordRetriever publicKeyRecordRetriever) {
     this.publicKeyRecordRetriever = publicKeyRecordRetriever;
+  }
+
+  /** Instance prête à l'emploi, résolvant les clés publiques DKIM via le DNS système. */
+  public static DkimVerifier createDefault() {
+    try {
+      SimpleResolver resolver = new SimpleResolver();
+      resolver.setTimeout(Duration.ofSeconds(5));
+      return new DkimVerifier(new DNSPublicKeyRecordRetriever(resolver));
+    } catch (IOException e) {
+      throw new IllegalStateException("Could not initialize DNS resolver for DKIM", e);
+    }
   }
 
   /** @return le résultat DKIM pour le message brut (headers + corps, tel que reçu) lu depuis rawMessage. */

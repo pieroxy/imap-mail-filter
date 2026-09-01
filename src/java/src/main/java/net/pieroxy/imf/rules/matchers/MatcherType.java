@@ -2,6 +2,7 @@ package net.pieroxy.imf.rules.matchers;
 
 import net.pieroxy.imf.rules.matchers.implementations.AndMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.DkimResultMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.DmarcPolicyMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.DmarcResultMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FcrdnsResultMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromAddressMatcher;
@@ -28,6 +29,7 @@ public enum MatcherType {
   SPF_RESULT_EQUALS(SpfResultMatcher::new, false),
   DKIM_RESULT_EQUALS(DkimResultMatcher::new, false),
   DMARC_RESULT_EQUALS(DmarcResultMatcher::new, false),
+  DMARC_POLICY_EQUALS(DmarcPolicyMatcher::new, false),
   FCRDNS_RESULT_EQUALS(FcrdnsResultMatcher::new, false),
   // Pas learnable non plus, mais pour une raison différente des matchers d'authentification
   // ci-dessus : l'apprentissage ne vient pas d'un dépôt d'exemple dans imf-rules/, mais du

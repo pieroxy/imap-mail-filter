@@ -56,9 +56,10 @@ the organizational domain's `_dmarc.<org-domain>` record is tried as a fallback 
 | `permerror` | The published record is malformed (missing the required `p=` tag), or ambiguous (more than one TXT record found). |
 | `temperror` | A DNS lookup failed temporarily. |
 
-Unlike SPF/DKIM, this matcher doesn't currently expose the domain's published *policy*
-(`p=none/quarantine/reject`) — only whether the mail itself passed or failed DMARC. Whether to
-act on a `fail` is entirely up to your own rule, same as for SPF/DKIM.
+This matcher only tells you whether the mail passed or failed — not how strongly the domain
+itself vouches for that verdict. See [`DMARC_POLICY_EQUALS`](dmarc-policy-equals.md) for the
+domain's published policy (`p=none/quarantine/reject`), which lets you tell a `fail` from a
+domain that's serious about DMARC apart from a `fail` from one that's still rolling it out.
 
 ## Example
 
