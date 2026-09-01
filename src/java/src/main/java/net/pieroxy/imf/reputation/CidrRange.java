@@ -8,10 +8,12 @@ package net.pieroxy.imf.reputation;
 final class CidrRange {
   private final long start;
   private final long end;
+  private final int prefixLength;
 
-  private CidrRange(long start, long end) {
+  private CidrRange(long start, long end, int prefixLength) {
     this.start = start;
     this.end = end;
+    this.prefixLength = prefixLength;
   }
 
   static CidrRange parse(String text) {
@@ -25,11 +27,20 @@ final class CidrRange {
     long mask = prefixLength == 0 ? 0 : (0xFFFFFFFFL << (32 - prefixLength)) & 0xFFFFFFFFL;
     long start = ip & mask;
     long end = start | (~mask & 0xFFFFFFFFL);
-    return new CidrRange(start, end);
+    return new CidrRange(start, end, prefixLength);
   }
 
+  /** Contrôle "manuel"/de référence, utilisé par les tests — {@link IpTrie} est ce qui sert réellement en production, voir {@link IpReputationList}. */
   boolean contains(long ip) {
     return ip >= start && ip <= end;
+  }
+
+  long start() {
+    return start;
+  }
+
+  int prefixLength() {
+    return prefixLength;
   }
 
   static long ipToLong(String ip) {
