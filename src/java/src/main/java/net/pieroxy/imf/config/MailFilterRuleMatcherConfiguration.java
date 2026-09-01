@@ -22,6 +22,12 @@ public class MailFilterRuleMatcherConfiguration {
    * Niveau de log pour ce noeud (DEBUG/INFO/WARNING/ERROR), optionnel. Défaut : WARNING.
    */
   private String logLevel;
+  /**
+   * Uniquement pour IP_REPUTATION_EQUALS / FROM_DOMAIN_REPUTATION_EQUALS : les "id" (voir
+   * {@link Configuration#getReputationLists()}) des listes de réputation à consulter. Si la
+   * valeur testée est trouvée dans plusieurs d'entre elles, le score retenu est le pire (max).
+   */
+  private Set<String> listIds;
 
   public MatcherType getType() {
     return type;
@@ -61,5 +67,13 @@ public class MailFilterRuleMatcherConfiguration {
 
   public void setLogLevel(String logLevel) {
     this.logLevel = logLevel;
+  }
+
+  public Set<String> getListIds() {
+    return listIds;
+  }
+
+  public void setListIds(Set<String> listIds) {
+    this.listIds = listIds;
   }
 }

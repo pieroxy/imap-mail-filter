@@ -23,6 +23,7 @@ Brings to your IMAP account:
 * SPF, DKIM, DMARC and FCrDNS checks
 * Rules based on **from** and **subject**
 * ML-based spam detection ([`SUBJECT_CLASSIFIER_EQUALS`](docs/matchers/subject-classifier-equals.md)), trained locally on your own emails — no dataset, no third-party service, just a model built and kept from your own mailbox as it grows
+* IP/domain reputation scoring ([`IP_REPUTATION_EQUALS`](docs/matchers/ip-reputation-equals.md)/[`FROM_DOMAIN_REPUTATION_EQUALS`](docs/matchers/from-domain-reputation-equals.md)) against lists you download yourself — periodic bulk download, never a live per-message lookup, so nothing about a specific email is ever sent anywhere
 
 Additionally:
 
@@ -39,12 +40,12 @@ A few things worth understanding before you dive in:
 * **INBOX doesn't count** — INBOX is never scanned for the corpus, so mail you leave sitting there teaches the classifier nothing. Filing/archiving read mail into folders (an "inbox zero" habit) is what actually feeds it examples of legitimate mail.
 * **Unread in Spam means "review me"** — by convention (see the [starter config](config.example.json)), strong verdicts (SPF/DKIM/DMARC `fail`) are moved to Spam pre-marked read, while weaker, corroborating-only signals are left unread — a manual-review flag, since IMF has no UI to show confidence.
 * **Always verified live** — SPF/DKIM/DMARC/FCrDNS are recomputed from scratch via DNS on every check; any `Authentication-Results`/`Received-SPF` header already on the message is never trusted, since anyone could have forged it before delivery.
+* **Reputation lists are the opposite: never live** — [`IP_REPUTATION_EQUALS`](docs/matchers/ip-reputation-equals.md)/[`FROM_DOMAIN_REPUTATION_EQUALS`](docs/matchers/from-domain-reputation-equals.md) check IPs/domains against lists downloaded in bulk ahead of time, refreshed periodically for the whole process — never a query per message. See [Reputation lists](docs/README.md#reputation-lists).
 * **Manual reprocessing** — drop any message into `imf-rules/ToProcess` to run the current rule set against it (handy for reclassifying an old message after adding or fixing a rule); it ends up in `imf-rules/Done` once handled, whether or not a rule actually matched. See [Manually reprocessing a message](docs/README.md#manually-reprocessing-a-message).
 
 ## Roadmap
 
 * Feed the classifier more than just the subject — sender, recipient, IP.
-* Reputation based scoring for spam detection
 * Simple web UI to edit more complex rules.
 * More matchers:
     * Recipient-based: TO_EQUALS/CC_EQUALS/recipient-domain matching
@@ -95,4 +96,16 @@ isn't just about having *some* data: a model trained on too few examples tends t
 artificially extreme scores (a word seen once on one side of the split can swing a score to 0.99
 on its own, not because it's a genuinely reliable pattern) — 50 gives `>0.99` a fairer chance of
 meaning what it says before this rule starts acting on it.
+
+Finally, `reputationLists` declares two independent, free IP sources: [Spamhaus DROP](https://www.spamhaus.org/drop/drop.txt)
+(netblocks entirely hijacked or controlled by professional spam/cybercrime operations) and
+[FireHOL's `blocklist_de_mail`](https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/blocklist_de_mail.ipset)
+(IPs reported attacking mail/Postfix servers in the last 48 hours) — different methodologies, so
+they rarely flag the same IP for the same reason, which makes "both agree" a meaningfully
+stronger signal than either alone. Two
+[`IP_REPUTATION_EQUALS`](docs/matchers/ip-reputation-equals.md) rules, same tiered pattern as
+DMARC/FCrDNS above: `AND` (both lists match) routes to Spam pre-marked read; `OR` (only one
+does) routes to Spam left unread, for manual review. See
+[Reputation lists](docs/README.md#reputation-lists) for how these are downloaded (once for the
+whole process, refreshed periodically, never queried live per message).
 

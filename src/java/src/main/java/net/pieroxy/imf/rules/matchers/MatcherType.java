@@ -7,7 +7,9 @@ import net.pieroxy.imf.rules.matchers.implementations.DmarcResultMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FcrdnsResultMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromAddressMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromDomainMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.FromDomainReputationMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.FromExactMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.IpReputationMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.OrMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SpfResultMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SubjectClassifierMatcher;
@@ -35,6 +37,10 @@ public enum MatcherType {
   // ci-dessus : l'apprentissage ne vient pas d'un dépôt d'exemple dans imf-rules/, mais du
   // corpus collecté par ClassifierCorpusScanner et réentraîné par SubjectClassifierTrainer.
   SUBJECT_CLASSIFIER_EQUALS(SubjectClassifierMatcher::new, false),
+  // Pas learnable non plus : la réputation vient de listes externes téléchargées (voir
+  // net.pieroxy.imf.reputation.ReputationRegistry), pas d'un exemple déposé dans imf-rules/.
+  IP_REPUTATION_EQUALS(IpReputationMatcher::new, false),
+  FROM_DOMAIN_REPUTATION_EQUALS(FromDomainReputationMatcher::new, false),
   AND(AndMatcher::new, false),
   OR(OrMatcher::new, false);
 

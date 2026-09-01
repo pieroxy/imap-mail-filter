@@ -19,6 +19,7 @@ configurable rules to new mail: move it, mark it read, or both. Rules can be wri
 - [Classifier corpus collection](#classifier-corpus-collection)
   - [Excluding a folder from the corpus](#excluding-a-folder-from-the-corpus)
   - [Subject classifier training](#subject-classifier-training)
+- [Reputation lists](#reputation-lists)
 
 ## Running IMF
 
@@ -48,6 +49,7 @@ field-for-field into Java objects — the JSON keys match the Java field names e
 | `logFile` | no | Path to a log file. If absent, IMF only logs to the console. |
 | `keepLogFiles` | no | Number of rotated, lz4-compressed daily log files to keep. Only relevant if `logFile` is set; `0` or absent disables rotation. |
 | `classifierCorpusRetentionDays` | no | Enables classifier corpus collection when `> 0` (see [Classifier corpus collection](#classifier-corpus-collection)). `0` or absent disables it. |
+| `reputationLists` | no | IP/domain reputation lists to download and refresh (see [Reputation lists](#reputation-lists)). Absent means the feature is off. |
 
 ### Account fields
 
@@ -178,6 +180,8 @@ A rule is a `matcher` + an `action`. When a matcher matches a message, its actio
 | [`DMARC_POLICY_EQUALS`](matchers/dmarc-policy-equals.md) | Match the sender domain's published DMARC policy. |
 | [`FCRDNS_RESULT_EQUALS`](matchers/fcrdns-result-equals.md) | Match a live-evaluated reverse DNS (FCrDNS) result on the connecting IP. |
 | [`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) | Match when a locally-trained model scores the subject above/below a threshold. |
+| [`IP_REPUTATION_EQUALS`](matchers/ip-reputation-equals.md) | Match when the connecting IP's reputation score (from downloaded lists) crosses a threshold. |
+| [`FROM_DOMAIN_REPUTATION_EQUALS`](matchers/from-domain-reputation-equals.md) | Same as above, on the `From:` domain against domain reputation lists. |
 | [`AND`](matchers/and.md) | Composite: all children must match. |
 | [`OR`](matchers/or.md) | Composite: any child matching is enough. |
 
@@ -326,3 +330,57 @@ so IMF doesn't bother writing one yet.
 Use [`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) in a rule to actually
 act on this — see its doc for the config format (a probability threshold like `">0.9"`, not a
 value to match) and how it behaves before a model exists.
+
+## Reputation lists
+
+`reputationLists` (top-level, not per-account) declares external IP/domain reputation sources
+to download and keep refreshed — never queried live per message, only ever a periodic bulk
+download, so no per-message data (sender, IP, subject...) ever leaves the box. Each entry:
+
+```json
+{
+  "id": "spamhaus-drop",
+  "type": "IP_CIDR",
+  "url": "https://www.spamhaus.org/drop/drop.txt",
+  "refreshHours": 24,
+  "score": 1.0
+}
+```
+
+| Field | Description |
+|---|---|
+| `id` | Referenced from a matcher's `listIds` (see below). Unique across `reputationLists`. |
+| `type` | `IP_CIDR` (one IPv4 or CIDR block per line, e.g. `203.0.113.0/24`) or `DOMAIN` (one domain per line, exact match). Determines which matcher can use the list — `IP_REPUTATION_EQUALS` for `IP_CIDR`, [`FROM_DOMAIN_REPUTATION_EQUALS`](matchers/from-domain-reputation-equals.md) for `DOMAIN`. |
+| `url` | `https://...`/`http://...` to download, or `file://...` for a local file you maintain yourself. |
+| `refreshHours` | How often to re-download (minimum enforced: 1 hour). |
+| `score` | 0 (ok) to 1 (spam): the value attributed to anything found in this list. |
+
+Every list present in `reputationLists` is downloaded and refreshed on this schedule as soon as
+the process starts, whether or not a matcher currently references it — simpler to reason about
+than trying to lazily activate only referenced lists, and it means a list is warm and ready
+before you wire a rule to it. Blank lines are ignored; `#` or `;` start a comment, either as a
+whole line or trailing after an entry (e.g. Spamhaus DROP publishes
+`1.10.16.0/20 ; SBL256894` — the `; SBL256894` reference is stripped, not treated as part of the
+entry). A single malformed entry is skipped (logged) rather than failing the whole list. If a
+refresh fails (the source is down, network issue...), IMF keeps serving the last successfully
+downloaded copy — cached on disk, lz4-compressed, under `dataFolder/reputation/` — indefinitely,
+rather than losing the signal.
+
+The example above is a real, working source: [Spamhaus DROP](https://www.spamhaus.org/drop/drop.txt)
+is a free, no-registration list of netblocks entirely hijacked or leased by professional
+spam/cybercrime operations. The [starter config](../config.example.json) also declares a second,
+independent IP source — [FireHOL's `blocklist_de_mail`](https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/blocklist_de_mail.ipset),
+IPs reported attacking mail/Postfix servers in the last 48 hours — and combines the two via `AND`/`OR`
+(see [Rule evaluation order](#rule-evaluation-order)) into a confidence tier: both lists agreeing
+routes to Spam pre-marked read, only one matching routes to Spam left unread for review — the
+same pattern already used there for DMARC/FCrDNS. Worth doing specifically because the two lists
+use different detection methods (known hijacked infrastructure vs. recently-observed abuse
+reports), so agreement between them is a meaningfully stronger signal than either alone; two
+lists that substantially overlap (e.g. one that's itself an aggregate including the other)
+wouldn't give you that. For domain reputation (`DOMAIN` type), no equally well-known free source
+is bundled here yet — bring your own list, or a `file://` one you maintain by hand.
+
+See [`IP_REPUTATION_EQUALS`](matchers/ip-reputation-equals.md) and
+[`FROM_DOMAIN_REPUTATION_EQUALS`](matchers/from-domain-reputation-equals.md) for how a matcher
+references one or more lists (`listIds`) and a threshold (`key`, e.g. `">0.5"`) — when several
+referenced lists contain the same value, the worst (highest) score wins.

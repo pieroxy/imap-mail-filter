@@ -45,4 +45,14 @@ public class MatcherTypeTest {
   public void subjectClassifierIsNotLearnable() {
     assertFalse(MatcherType.learnableValues().contains(MatcherType.SUBJECT_CLASSIFIER_EQUALS));
   }
+
+  /**
+   * Pas learnable non plus : la réputation vient de listes externes téléchargées (voir
+   * net.pieroxy.imf.reputation.ReputationRegistry), pas d'un exemple déposé dans imf-rules/.
+   */
+  @Test
+  public void reputationMatchersAreNotLearnable() {
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.IP_REPUTATION_EQUALS));
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.FROM_DOMAIN_REPUTATION_EQUALS));
+  }
 }

@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import net.pieroxy.imf.config.Configuration;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 import net.pieroxy.imf.logging.LoggingBootstrap;
+import net.pieroxy.imf.reputation.ReputationRegistry;
+import net.pieroxy.imf.reputation.ReputationRegistryHolder;
 import net.pieroxy.imf.rules.MailAccount;
 
 import java.io.*;
@@ -21,6 +23,7 @@ public class Runner {
   private final static String MVN_VER;
   private static Configuration config;
   private static final List<Thread> accountThreads = new ArrayList<>();
+  private static ReputationRegistry reputationRegistry;
 
   static {
     GIT_REV = readResourceFileAsString("GIT_REV");
@@ -41,6 +44,10 @@ public class Runner {
     Gson gson = new Gson();
     Runner.config = gson.fromJson(new FileReader(new File(args[0], "config.json")), Configuration.class);
     LoggingBootstrap.configure(config.getLogFile(), config.getKeepLogFiles());
+
+    reputationRegistry = new ReputationRegistry(config.getReputationLists(), config.getDataFolder());
+    reputationRegistry.start();
+    ReputationRegistryHolder.set(reputationRegistry);
 
     config.getConfigurations().forEach(conf -> {
       MailAccount account = new MailAccount(conf, config.getDataFolder(), config.getClassifierCorpusRetentionDays());
@@ -65,6 +72,9 @@ public class Runner {
       } catch (InterruptedException ignored) {
         Thread.currentThread().interrupt();
       }
+    }
+    if (reputationRegistry != null) {
+      reputationRegistry.stop();
     }
     LoggingBootstrap.shutdown();
     logDirectly("Shutdown complete.");

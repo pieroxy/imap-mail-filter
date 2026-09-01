@@ -9,6 +9,8 @@ public class Configuration {
   private int keepLogFiles;
   /** Nombre de jours de fichiers du corpus classifieur à garder (0 ou absent = désactivé). */
   private int classifierCorpusRetentionDays;
+  /** Sources de réputation IP/domaine (voir {@link ReputationListConfig}) — absent = fonctionnalité désactivée. */
+  private List<ReputationListConfig> reputationLists;
 
   public List<MailAccountConfiguration> getConfigurations() {
     return configurations;
@@ -48,5 +50,13 @@ public class Configuration {
 
   public void setClassifierCorpusRetentionDays(int classifierCorpusRetentionDays) {
     this.classifierCorpusRetentionDays = classifierCorpusRetentionDays;
+  }
+
+  public List<ReputationListConfig> getReputationLists() {
+    return reputationLists;
+  }
+
+  public void setReputationLists(List<ReputationListConfig> reputationLists) {
+    this.reputationLists = reputationLists;
   }
 }
