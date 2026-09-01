@@ -3,6 +3,7 @@ package net.pieroxy.imf.rules.actions;
 import net.pieroxy.imf.config.MailFilterRuleActionConfiguration;
 import net.pieroxy.imf.rules.actions.implementations.AndAction;
 import net.pieroxy.imf.rules.actions.implementations.MoveToAction;
+import net.pieroxy.imf.rules.actions.implementations.NoopAction;
 import net.pieroxy.imf.rules.actions.implementations.OrAction;
 import net.pieroxy.imf.rules.actions.implementations.ReadAction;
 
@@ -38,7 +39,10 @@ public enum ActionType {
     }
   }, true),
   AND(AndAction::new, false),
-  OR(OrAction::new, false);
+  OR(OrAction::new, false),
+  // Not learnable: no folder/key to speak of, and "learn me a rule that does nothing" makes no
+  // sense as a by-example action.
+  NOOP(NoopAction::new, false);
 
   private final ActionProvider provider;
   private final boolean learnable;
