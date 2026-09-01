@@ -32,7 +32,7 @@ Additionally:
 
 ## Documentation
 
-See [docs/](docs/README.md) for how IMF works, the configuration reference, and a dedicated page for every matcher and action.
+See [docs/](docs/README.md) for how IMF works, the configuration reference, and a dedicated page for every matcher and action. New here? Start with the [quick start guide](docs/quickstart.md): download the jar, try it, then run it as a systemd service.
 
 ## Starter configuration
 

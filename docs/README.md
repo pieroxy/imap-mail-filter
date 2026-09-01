@@ -4,6 +4,7 @@ IMF (imap-mail-filter) is a small daemon that polls one or more IMAP accounts an
 configurable rules to new mail: move it, mark it read, or both. Rules can be written by hand in
 `config.json`, or taught by example by dropping sample messages into special IMAP folders.
 
+- [Quick start](quickstart.md) — download the jar, try it, then run it as a systemd service
 - [Running IMF](#running-imf)
 - [Configuration file](#configuration-file)
   - [Top-level fields](#top-level-fields)
