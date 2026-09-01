@@ -42,6 +42,32 @@ public class ClassifierExampleExtractorTest {
     assertTrue(example.getTo().contains("carol@example.com"));
     assertEquals(sentDate.toInstant().toString(), example.getMailDate());
     assertEquals(fetchDate.toString(), example.getFetchDate());
+    assertEquals("Alice", example.getFromDisplayName());
+    assertNull(example.getToDisplayName()); // bob/carol n'ont pas de display name
+  }
+
+  @Test
+  public void joinsMultipleDisplayNamesWithASpace() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("alice@example.com", "Alice"));
+    message.setRecipients(Message.RecipientType.TO, new InternetAddress[]{
+        new InternetAddress("bob@example.com", "Bob"), new InternetAddress("carol@example.com", "Carol")
+    });
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertEquals("Alice", example.getFromDisplayName());
+    assertEquals("Bob Carol", example.getToDisplayName());
+  }
+
+  @Test
+  public void blankDisplayNameIsTreatedAsAbsent() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("alice@example.com", ""));
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertNull(example.getFromDisplayName());
   }
 
   @Test
@@ -55,6 +81,8 @@ public class ClassifierExampleExtractorTest {
     assertNull(example.getSubject());
     assertNull(example.getMailDate());
     assertNull(example.getIp());
+    assertNull(example.getFromDisplayName());
+    assertNull(example.getToDisplayName());
   }
 
   @Test

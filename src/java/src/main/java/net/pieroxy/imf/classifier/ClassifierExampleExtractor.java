@@ -5,6 +5,7 @@ import net.pieroxy.imf.utils.MailTools;
 import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import javax.mail.internet.InternetAddress;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -28,8 +29,12 @@ public final class ClassifierExampleExtractor {
     example.setMailDate(message.getSentDate() != null
         ? DateTimeFormatter.ISO_INSTANT.format(message.getSentDate().toInstant())
         : null);
-    example.setFrom(addresses(message.getFrom()));
-    example.setTo(addresses(message.getRecipients(Message.RecipientType.TO)));
+    Address[] from = message.getFrom();
+    Address[] to = message.getRecipients(Message.RecipientType.TO);
+    example.setFrom(addresses(from));
+    example.setFromDisplayName(displayNames(from));
+    example.setTo(addresses(to));
+    example.setToDisplayName(displayNames(to));
     example.setSubject(message.getSubject());
     example.setIp(extractOriginatingIp(message));
     example.setLabel(label);
@@ -43,6 +48,26 @@ public final class ClassifierExampleExtractor {
       result.add(MailTools.getMailAddress(a));
     }
     return result;
+  }
+
+  /**
+   * Display name(s) ("Alice" pour "Alice &lt;alice@example.com&gt;"), joints par un espace —
+   * {@link MailTools#getMailAddress} les ignore, alors qu'ils sont potentiellement un signal
+   * utile pour un futur classifieur (voir {@link ClassifierExample#getFromDisplayName()}).
+   * @return null si aucune adresse n'a de display name renseigné.
+   */
+  private static String displayNames(Address[] addresses) {
+    if (addresses == null) return null;
+    List<String> names = new ArrayList<>();
+    for (Address a : addresses) {
+      if (a instanceof InternetAddress) {
+        String personal = ((InternetAddress) a).getPersonal();
+        if (personal != null && !personal.isBlank()) {
+          names.add(personal);
+        }
+      }
+    }
+    return names.isEmpty() ? null : String.join(" ", names);
   }
 
   /**

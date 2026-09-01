@@ -4,13 +4,16 @@ import java.util.List;
 
 /**
  * Un enregistrement du corpus d'entraînement : de quoi nourrir un futur classifieur (subject,
- * from, to, IP d'origine best-effort), étiqueté SPAM/HAM d'après le dossier IMAP d'où il vient.
+ * from/to avec leur display name, IP d'origine best-effort), étiqueté SPAM/HAM d'après le
+ * dossier IMAP d'où il vient.
  */
 public class ClassifierExample {
   private String fetchDate;
   private String mailDate;
   private List<String> from;
+  private String fromDisplayName;
   private List<String> to;
+  private String toDisplayName;
   private String subject;
   private String ip;
   private ClassifierLabel label;
@@ -45,6 +48,24 @@ public class ClassifierExample {
 
   public void setTo(List<String> to) {
     this.to = to;
+  }
+
+  /** Display name(s) du/des expéditeur(s) ("Alice" pour "Alice &lt;alice@example.com&gt;"), joints par un espace ; null si aucun. */
+  public String getFromDisplayName() {
+    return fromDisplayName;
+  }
+
+  public void setFromDisplayName(String fromDisplayName) {
+    this.fromDisplayName = fromDisplayName;
+  }
+
+  /** Display name(s) du/des destinataire(s) To, joints par un espace ; null si aucun. */
+  public String getToDisplayName() {
+    return toDisplayName;
+  }
+
+  public void setToDisplayName(String toDisplayName) {
+    this.toDisplayName = toDisplayName;
   }
 
   public String getSubject() {
