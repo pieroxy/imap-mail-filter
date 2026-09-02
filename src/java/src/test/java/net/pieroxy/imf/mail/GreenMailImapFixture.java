@@ -52,6 +52,15 @@ public class GreenMailImapFixture {
 
   /** Plain (non-TLS) IMAP connection to this server — what connect() normally does via "imaps". */
   public ImapMailboxConnection connectAsImapMailbox() throws MessagingException {
+    return ImapMailboxConnection.forTesting(connectStore());
+  }
+
+  /**
+   * Raw {@link Store}, for tests that need lower-level access than {@link ImapMailbox} exposes
+   * (e.g. {@code ImapIdleWatcherTest}, which needs message-count listeners on an {@code
+   * IMAPFolder}). Plain (non-TLS) IMAP, like {@link #connectAsImapMailbox()}.
+   */
+  public Store connectStore() throws MessagingException {
     // mail.imap.peek: same setting as ImapMailboxConnection.connect() in production (see its
     // javadoc — NOT enough on its own for message.writeTo(), which also needs
     // IMAPMessage.setPeek() per message; see MailTools.readRawMessageWithoutMarkingSeen()).
@@ -60,7 +69,7 @@ public class GreenMailImapFixture {
     Session session = Session.getDefaultInstance(props);
     Store store = session.getStore("imap");
     store.connect("127.0.0.1", greenMail.getImap().getPort(), USERNAME, PASSWORD);
-    return ImapMailboxConnection.forTesting(store);
+    return store;
   }
 
   /** Appends message into the given folder (created if needed), via IMAP APPEND. */

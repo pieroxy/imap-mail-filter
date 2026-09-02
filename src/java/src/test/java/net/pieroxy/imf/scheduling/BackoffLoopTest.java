@@ -51,6 +51,27 @@ public class BackoffLoopTest {
   }
 
   @Test
+  public void wakeCutsTheInterCycleWaitShort() throws InterruptedException {
+    AtomicInteger callCount = new AtomicInteger();
+    BackoffLoop loop = new BackoffLoop(60_000, 60_000); // deliberately huge delay
+
+    Thread t = new Thread(() -> loop.run("test", () -> {
+      if (callCount.incrementAndGet() >= 2) Thread.currentThread().interrupt(); // stop after the 2nd cycle
+    }));
+    long start = System.currentTimeMillis();
+    t.start();
+    // Give the first cycle time to run and the loop time to enter its (huge) wait before waking it.
+    Thread.sleep(200);
+    loop.wake();
+    t.join(2000);
+    long elapsed = System.currentTimeMillis() - start;
+
+    assertFalse("the thread must have stopped", t.isAlive());
+    assertEquals("wake() must have triggered a second cycle", 2, callCount.get());
+    assertTrue("the second cycle should not have waited ~60s (elapsed=" + elapsed + "ms)", elapsed < 2000);
+  }
+
+  @Test
   public void delayGrowsOnFailureAndResetsOnSuccess() throws InterruptedException {
     List<Long> timestamps = Collections.synchronizedList(new ArrayList<>());
     AtomicInteger callCount = new AtomicInteger();

@@ -9,6 +9,7 @@ import net.pieroxy.imf.classifier.SubjectClassifierTrainer;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 import net.pieroxy.imf.learning.LearnedRulesStore;
 import net.pieroxy.imf.learning.RuleLearner;
+import net.pieroxy.imf.mail.ImapIdleWatcher;
 import net.pieroxy.imf.mail.ImapMailbox;
 import net.pieroxy.imf.mail.ImapMailboxConnection;
 import net.pieroxy.imf.mail.ImapMailboxFactory;
@@ -85,7 +86,23 @@ public class MailAccount implements Runnable {
     // whether the classifier is active or not.
     ruleCatalog.get();
     ruleCatalog.logRules(LOGGER, accountLabel());
-    new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS).run(config.getDisplayName(), this::processMessages);
+
+    // Everything in processMessages() but the INBOX scan can tolerate the full runEvery delay
+    // (see MailAccountConfiguration.runEvery); only new mail sitting unclassified in the INBOX
+    // is time-sensitive. Rather than shrinking runEvery for everything, a dedicated IMAP IDLE
+    // connection watches the INBOX and wakes this loop early the instant new mail arrives —
+    // runEvery then only bounds the worst case (a server without IDLE support, or a dropped
+    // IDLE connection still reconnecting). See ImapIdleWatcher.
+    BackoffLoop mainLoop = new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS);
+    ImapIdleWatcher idleWatcher = new ImapIdleWatcher(config, mainLoop::wake);
+    Thread idleThread = new Thread(idleWatcher, "mail-account-" + accountLabel() + "-idle");
+    idleThread.setDaemon(true);
+    idleThread.start();
+    try {
+      mainLoop.run(config.getDisplayName(), this::processMessages);
+    } finally {
+      idleWatcher.shutdown();
+    }
   }
 
   /** displayName if set, otherwise falls back to the IMAP login — see {@link RuleCatalog#logRules}. */
