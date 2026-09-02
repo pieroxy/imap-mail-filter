@@ -54,7 +54,7 @@ public class Rule {
 
     try {
       boolean result = action.run(message);
-      action.getLogger().info(() -> "Action applied (success=" + result + ") to message from " + MailTools.describeFromSafely(message));
+      action.getLogger().info(() -> "Action "+action.describe()+" applied (success=" + result + ") to message from " + MailTools.describeFromSafely(message));
     } catch (Exception e) {
       action.getLogger().log(Level.WARNING, "Action failed on message from " + MailTools.describeFromSafely(message), e);
     }
