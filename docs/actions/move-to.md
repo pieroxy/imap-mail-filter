@@ -8,13 +8,15 @@ Moves the message to another IMAP folder.
 
 | Field | Required | Description |
 |---|---|---|
-| `key` | yes | Target folder name, passed as-is to the IMAP server — a full path like `"[Gmail]/Spam"` works if that's the folder's real name on your server. |
+| `key` | yes | Target folder, `"/"`-separated for a nested one, e.g. `"Admin/Backups"` or `"[Gmail]/Spam"`. |
 | `logLevel` | no | See [Logging](../README.md#logging). |
 
 ## Behavior
 
-- The target folder is created (if it doesn't already exist) before the message is moved into
-  it.
+- `"/"` in `key` always means "nested folder", regardless of the IMAP server's actual hierarchy
+  delimiter.
+- The target folder — and every missing intermediate one for a nested `key` — is created before
+  the message is moved into it.
 - Implemented as a copy-then-delete: the message is copied to the target folder **with its
   current flags** (e.g. `\Seen` if already marked read), then flagged `\Deleted` in the source
   folder. Actual removal happens when the folder is next expunged.
