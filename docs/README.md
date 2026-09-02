@@ -13,6 +13,7 @@ configurable rules to new mail: move it, mark it read, or both. Rules can be wri
 - [Matchers and actions](#matchers-and-actions)
 - [Rule evaluation order](#rule-evaluation-order)
 - [Learning rules by example](#learning-rules-by-example)
+  - [Learning shortcuts](#learning-shortcuts)
 - [Manually reprocessing a message](#manually-reprocessing-a-message)
 - [Logging](#logging)
 - [Data files](#data-files)
@@ -67,6 +68,7 @@ Each entry in `configurations` is one IMAP account:
 | `classifierSpamFolderName` | no | Folder treated as "Spam" for classifier corpus labeling. Defaults to `"Spam"`. |
 | `classifierExcludedFolders` | no | Folder names (anywhere in the tree) to skip entirely for classifier corpus collection — neither `SPAM` nor `HAM`, just ignored, like `INBOX`/`imf-rules/` already are. See [Classifier corpus collection](#classifier-corpus-collection). |
 | `rules` | no | List of manually-configured rules for this account (see [Matchers and actions](#matchers-and-actions)). Absent/empty means only learned rules (if any) apply. |
+| `learningShortcuts` | no | Named flat `imf-rules/<name>` folders bound to a fixed (matcher type, action) pair, as an alternative to the full discovery tree. See [Learning shortcuts](#learning-shortcuts). |
 
 Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP option.
 
@@ -265,6 +267,43 @@ types, which are reserved for manual config). Each cycle, for every example mess
 
 Learned rules always come **after** manual rules in evaluation order, so a manual rule always
 wins if both would match.
+
+### Learning shortcuts
+
+The full discovery tree above creates one `<MATCHER_TYPE>/<ACTION_TYPE>` folder pair for
+**every** learnable combination — useful to see what's possible, but in practice most accounts
+only ever use a handful of them, and subscribing an IMAP client to the rest just for them to sit
+there unused doesn't scale.
+
+`learningShortcuts` (per account) gives a specific (matcher type, action) pair its own flat
+folder directly under `imf-rules/`, instead of the two nested levels:
+
+```json
+{
+  "learningShortcuts": [
+    {
+      "name": "MoveSameDomainToSpam",
+      "matcher": { "type": "FROM_DOMAIN_EQUALS" },
+      "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" }
+    }
+  ]
+}
+```
+
+Dropping a message into `imf-rules/MoveSameDomainToSpam` teaches exactly the same rule as
+`imf-rules/FROM_DOMAIN_EQUALS/MOVE_TO_AND_READ/Spam` would — same extraction, same persistence
+to `<displayName>-learned-rules.json`, same `Done` archival — just reached through one
+subscribable folder instead of two unsubscribed levels. The two mechanisms coexist freely: a
+shortcut doesn't remove its equivalent discovery-tree folder, so nothing stops using one to
+explore and the other day to day.
+
+The `action` is fully fixed in config, `key` included — a shortcut has no `<key>` folder level
+left to carry a destination, unlike the discovery tree. `matcher` only ever takes a `type`: its
+key is still extracted from each example, exactly as in the discovery tree, so setting `key` (or
+`keys`) on a shortcut's matcher is rejected. IMF validates every shortcut at startup — a
+non-learnable matcher/action type, a missing `action.key`, a matcher `key`/`keys`, a name reused
+by two shortcuts, or a name colliding with a discovery-tree folder (a `MATCHER_TYPE` name, or
+`Done`) all fail loudly rather than being silently ignored.
 
 ## Manually reprocessing a message
 

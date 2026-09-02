@@ -103,7 +103,7 @@ public class MailAccount implements Runnable {
   void processMessages() throws MessagingException {
     LOGGER.info("Processing account " + config.getDisplayName());
     try (ImapMailbox mailbox = mailboxFactory.connect(config)) {
-      RuleLearner learner = new RuleLearner(mailbox, learnedRulesStore);
+      RuleLearner learner = new RuleLearner(mailbox, learnedRulesStore, config.getLearningShortcuts());
       ManualReprocessor reprocessor = new ManualReprocessor(mailbox, ruleCatalog);
       ensureFolderSkeletonsIfDue(learner, reprocessor);
 

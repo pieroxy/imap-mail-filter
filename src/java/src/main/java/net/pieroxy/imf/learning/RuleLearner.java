@@ -1,5 +1,6 @@
 package net.pieroxy.imf.learning;
 
+import net.pieroxy.imf.config.LearningShortcutConfiguration;
 import net.pieroxy.imf.config.MailFilterRuleActionConfiguration;
 import net.pieroxy.imf.config.MailFilterRuleConfiguration;
 import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
@@ -14,6 +15,9 @@ import javax.mail.Flags;
 import javax.mail.Folder;
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,6 +26,11 @@ import java.util.logging.Logger;
  * imf-rules/&lt;MATCHER_TYPE&gt;/&lt;ACTION_TYPE&gt;/&lt;key&gt; (e.g. imf-rules/FROM_EQUALS/MOVE_TO/Spam)
  * to create the rule "if &lt;MATCHER_TYPE&gt; extracted from the message matches, then &lt;ACTION_TYPE&gt;(&lt;key&gt;)".
  * Composite types (AND/OR) are excluded: reserved for manual config.
+ * <p>
+ * {@code learningShortcuts} (see {@link LearningShortcutConfiguration}) offers a second, flatter
+ * entry point onto the same mechanism: a single {@code imf-rules/<name>} folder bound to one
+ * fixed (matcher type, action) pair, for the handful of combinations actually used day to day —
+ * without needing an IMAP client subscribed to the full discovery tree above.
  */
 public class RuleLearner {
   private final static Logger LOGGER = Logger.getLogger(RuleLearner.class.getName());
@@ -30,10 +39,76 @@ public class RuleLearner {
 
   private final ImapMailbox mailbox;
   private final LearnedRulesStore store;
+  private final List<LearningShortcutConfiguration> shortcuts;
 
   public RuleLearner(ImapMailbox mailbox, LearnedRulesStore store) {
+    this(mailbox, store, List.of());
+  }
+
+  public RuleLearner(ImapMailbox mailbox, LearnedRulesStore store, List<LearningShortcutConfiguration> shortcuts) {
     this.mailbox = mailbox;
     this.store = store;
+    this.shortcuts = shortcuts != null ? shortcuts : List.of();
+    validateShortcuts(this.shortcuts);
+  }
+
+  /**
+   * Fails fast (rather than silently ignoring a mistake) on anything that would make a shortcut
+   * ambiguous or meaningless: an unlearnable type, a matcher key that would never be used (it's
+   * always extracted per example, same as the discovery tree), a missing action key (there's no
+   * folder level left to carry it, unlike the discovery tree's {@code <key>} folder), a name
+   * colliding with the discovery tree's own top-level names, or two shortcuts sharing a name.
+   */
+  private void validateShortcuts(List<LearningShortcutConfiguration> shortcuts) {
+    Set<String> seenNames = new HashSet<>();
+    for (LearningShortcutConfiguration shortcut : shortcuts) {
+      String name = shortcut.getName();
+      if (name == null || name.isBlank()) {
+        throw new IllegalArgumentException("learningShortcuts entry is missing a name");
+      }
+      if (!seenNames.add(name)) {
+        throw new IllegalArgumentException("learningShortcuts name \"" + name + "\" is used more than once");
+      }
+      if (isReservedName(name)) {
+        throw new IllegalArgumentException("learningShortcuts name \"" + name
+                + "\" collides with a reserved imf-rules/ folder name");
+      }
+
+      MailFilterRuleMatcherConfiguration matcher = shortcut.getMatcher();
+      if (matcher == null || matcher.getType() == null) {
+        throw new IllegalArgumentException("learningShortcuts \"" + name + "\": matcher.type is required");
+      }
+      if (!MatcherType.learnableValues().contains(matcher.getType())) {
+        throw new IllegalArgumentException("learningShortcuts \"" + name + "\": " + matcher.getType()
+                + " is not a learnable matcher type");
+      }
+      if (matcher.getKey() != null || matcher.getKeys() != null || matcher.getChildren() != null) {
+        throw new IllegalArgumentException("learningShortcuts \"" + name
+                + "\": matcher must only set type — its key is extracted from each example, same as in imf-rules/"
+                + matcher.getType() + "/...");
+      }
+
+      MailFilterRuleActionConfiguration action = shortcut.getAction();
+      if (action == null || action.getType() == null) {
+        throw new IllegalArgumentException("learningShortcuts \"" + name + "\": action.type is required");
+      }
+      if (!ActionType.learnableValues().contains(action.getType())) {
+        throw new IllegalArgumentException("learningShortcuts \"" + name + "\": " + action.getType()
+                + " is not a learnable action type");
+      }
+      if (action.getKey() == null || action.getKey().isBlank()) {
+        throw new IllegalArgumentException("learningShortcuts \"" + name + "\": action.key is required"
+                + " (there's no <key> folder level to carry it, unlike the discovery tree)");
+      }
+    }
+  }
+
+  private boolean isReservedName(String name) {
+    if (name.equals(DONE_FOLDER)) return true;
+    for (MatcherType matcherType : MatcherType.learnableValues()) {
+      if (name.equals(matcherType.name())) return true;
+    }
+    return false;
   }
 
   /** Creates the "ready to use" folder tree (the key level, e.g. "Spam", is left for the user to create). */
@@ -44,6 +119,9 @@ public class RuleLearner {
         mailbox.getOrCreateFolder(ROOT_FOLDER, matcherType.name(), actionType.name());
       }
     }
+    for (LearningShortcutConfiguration shortcut : shortcuts) {
+      mailbox.getOrCreateFolder(ROOT_FOLDER, shortcut.getName());
+    }
   }
 
   /** @return true if at least one new rule was learned during this call. */
@@ -53,23 +131,32 @@ public class RuleLearner {
       for (ActionType actionType : ActionType.learnableValues()) {
         Folder actionFolder = mailbox.getOrCreateFolder(ROOT_FOLDER, matcherType.name(), actionType.name());
         for (Folder keyFolder : mailbox.listSubfolders(actionFolder)) {
-          learnedSomething |= learnFromKeyFolder(matcherType, actionType, keyFolder);
+          learnedSomething |= learnFromFolder(matcherType, actionType, keyFolder.getName(), keyFolder);
         }
       }
+    }
+    for (LearningShortcutConfiguration shortcut : shortcuts) {
+      Folder folder = mailbox.getOrCreateFolder(ROOT_FOLDER, shortcut.getName());
+      learnedSomething |= learnFromFolder(shortcut.getMatcher().getType(), shortcut.getAction().getType(),
+              shortcut.getAction().getKey(), folder);
     }
     return learnedSomething;
   }
 
-  private boolean learnFromKeyFolder(MatcherType matcherType, ActionType actionType, Folder keyFolder) throws MessagingException {
-    String actionKey = keyFolder.getName();
-    Message[] examples = mailbox.getAllMessages(keyFolder);
+  /**
+   * @param actionKey the action's key — the discovery tree derives it from {@code folder}'s own
+   *                   name (its "&lt;key&gt;" level), a shortcut takes it straight from its fixed
+   *                   config instead (the folder itself is just named after the shortcut).
+   */
+  private boolean learnFromFolder(MatcherType matcherType, ActionType actionType, String actionKey, Folder folder) throws MessagingException {
+    Message[] examples = mailbox.getAllMessages(folder);
     boolean learnedSomething = false;
     try {
       for (Message example : examples) {
         learnedSomething |= learnFromExample(matcherType, actionType, actionKey, example);
       }
     } finally {
-      mailbox.closeAndExpunge(keyFolder);
+      mailbox.closeAndExpunge(folder);
     }
     return learnedSomething;
   }
@@ -113,8 +200,8 @@ public class RuleLearner {
       }
       return learned;
     } catch (Exception e) {
-      LOGGER.log(Level.WARNING, "Failed to learn a rule from example message under "
-              + ROOT_FOLDER + "/" + matcherType + "/" + actionType + "/" + actionKey, e);
+      LOGGER.log(Level.WARNING, "Failed to learn a rule from example message for " + matcherType + "/" + actionType
+              + "(" + actionKey + ")", e);
       return false;
     }
   }

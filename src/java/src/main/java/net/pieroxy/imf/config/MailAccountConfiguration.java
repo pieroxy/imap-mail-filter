@@ -28,6 +28,14 @@ public class MailAccountConfiguration {
 
   private List<MailFilterRuleConfiguration> rules;
 
+  /**
+   * Named shortcuts to the discovery folder tree (see
+   * {@link net.pieroxy.imf.learning.RuleLearner}): one flat {@code imf-rules/<name>} folder per
+   * entry, bound to a fixed (matcher type, action) pair, so an IMAP client only needs to
+   * subscribe to the handful actually in use instead of the whole
+   * {@code <MATCHER_TYPE>/<ACTION_TYPE>} combinatorial tree.
+   */
+  private List<LearningShortcutConfiguration> learningShortcuts;
 
   public String getHost() {
     return host;
@@ -91,6 +99,14 @@ public class MailAccountConfiguration {
 
   public void setRules(List<MailFilterRuleConfiguration> rules) {
     this.rules = rules;
+  }
+
+  public List<LearningShortcutConfiguration> getLearningShortcuts() {
+    return learningShortcuts;
+  }
+
+  public void setLearningShortcuts(List<LearningShortcutConfiguration> learningShortcuts) {
+    this.learningShortcuts = learningShortcuts;
   }
 
   public int getPort() {
