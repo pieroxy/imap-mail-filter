@@ -207,6 +207,10 @@ public class RuleLearner {
   }
 
   private void moveToDone(Message example) throws MessagingException {
+    // Unread: copyMessages() below copies the message with its current flags, so \Seen must be
+    // cleared beforehand to land on the copy — a clear "something here needs sorting" indicator
+    // in the mail client, rather than a message silently waiting to be noticed.
+    example.setFlag(Flags.Flag.SEEN, false);
     Folder doneFolder = mailbox.getOrCreateFolder(ROOT_FOLDER, DONE_FOLDER);
     example.getFolder().copyMessages(new Message[]{example}, doneFolder);
     example.setFlag(Flags.Flag.DELETED, true);

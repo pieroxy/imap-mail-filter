@@ -76,6 +76,10 @@ public class ManualReprocessor {
   }
 
   private void moveToDone(Message message) throws MessagingException {
+    // Unread: copyMessages() below copies the message with its current flags, so \Seen must be
+    // cleared beforehand to land on the copy — a clear "something here needs sorting" indicator
+    // in the mail client, rather than a message silently waiting to be noticed.
+    message.setFlag(Flags.Flag.SEEN, false);
     Folder doneFolder = mailbox.getOrCreateFolder(ROOT_FOLDER, DONE_FOLDER);
     message.getFolder().copyMessages(new Message[]{message}, doneFolder);
     message.setFlag(Flags.Flag.DELETED, true);

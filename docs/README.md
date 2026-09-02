@@ -263,7 +263,9 @@ types, which are reserved for manual config). Each cycle, for every example mess
    duplicate rule.
 3. The action actually runs on the example message itself.
 4. If the example is still present afterward (the action didn't move or delete it), it's moved
-   to `imf-rules/Done` — so it isn't re-learned/re-run every cycle.
+   to `imf-rules/Done` — so it isn't re-learned/re-run every cycle. It's marked **unread** on
+   the way in, regardless of its state before: a clear indicator in the mail client that
+   something there still needs to be manually sorted.
 
 Learned rules always come **after** manual rules in evaluation order, so a manual rule always
 wins if both would match.
@@ -312,7 +314,7 @@ after adding a rule that should have caught it), drop it into `imf-rules/ToProce
 cycle, IMF treats every message found there exactly as if it had just arrived: the first
 matching rule applies normally. If the message is still present afterward — no rule matched, or
 the matching rule's action didn't relocate it — it's moved to `imf-rules/Done` (the same folder
-used by the learning system above) for manual review.
+used by the learning system above, marked unread the same way) for manual review.
 
 ## Logging
 

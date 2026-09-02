@@ -14,6 +14,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import javax.mail.Flags;
+import javax.mail.Message;
 import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -109,6 +112,26 @@ public class ManualReprocessorTest {
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
       assertEquals(1, mailbox.getAllMessages(mailbox.getOrCreateFolder("imf-rules", "Done")).length);
       assertEquals(0, mailbox.getAllMessages(mailbox.getOrCreateFolder("imf-rules", "ToProcess")).length);
+    }
+  }
+
+  @Test
+  public void messageFiledIntoDoneIsMarkedUnread() throws Exception {
+    MimeMessage message = messageFrom("sender@unrelated.example.com");
+    message.setFlag(Flags.Flag.SEEN, true); // starts read: proves moveToDone() actively clears it
+    fixture.appendMessage(message, "imf-rules", "ToProcess");
+
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      ManualReprocessor reprocessor = new ManualReprocessor(mailbox, catalogWith(moveToSpamOnDomain("spammy.example.com")));
+      reprocessor.ensureFolderSkeleton();
+      reprocessor.reprocessPending();
+    }
+
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      Message[] inDone = mailbox.getAllMessages(mailbox.getOrCreateFolder("imf-rules", "Done"));
+      assertEquals(1, inDone.length);
+      assertFalse("a message filed into Done must stand out as needing attention in the mail client",
+              inDone[0].isSet(Flags.Flag.SEEN));
     }
   }
 }
