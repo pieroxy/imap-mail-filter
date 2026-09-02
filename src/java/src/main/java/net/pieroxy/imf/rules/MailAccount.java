@@ -89,20 +89,14 @@ public class MailAccount implements Runnable {
 
     // Everything in processMessages() but the INBOX scan can tolerate the full runEvery delay
     // (see MailAccountConfiguration.runEvery); only new mail sitting unclassified in the INBOX
-    // is time-sensitive. Rather than shrinking runEvery for everything, a dedicated IMAP IDLE
-    // connection watches the INBOX and wakes this loop early the instant new mail arrives —
-    // runEvery then only bounds the worst case (a server without IDLE support, or a dropped
-    // IDLE connection still reconnecting). See ImapIdleWatcher.
-    BackoffLoop mainLoop = new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS);
-    ImapIdleWatcher idleWatcher = new ImapIdleWatcher(config, mainLoop::wake);
-    Thread idleThread = new Thread(idleWatcher, "mail-account-" + accountLabel() + "-idle");
-    idleThread.setDaemon(true);
-    idleThread.start();
-    try {
-      mainLoop.run(config.getDisplayName(), this::processMessages);
-    } finally {
-      idleWatcher.shutdown();
-    }
+    // is time-sensitive. Rather than shrinking runEvery for everything, the wait between cycles
+    // watches the INBOX via IMAP IDLE (see ImapIdleWatcher) and returns early the instant new
+    // mail arrives — runEvery then only bounds the worst case (a server without IDLE support, or
+    // a watch that failed for this cycle). The watcher always closes its connection before a
+    // cycle's own connection opens INBOX: some IMAP servers refuse a second, concurrent SELECT
+    // of the same mailbox, so the two must never overlap.
+    new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS, new ImapIdleWatcher(config))
+        .run(config.getDisplayName(), this::processMessages);
   }
 
   /** displayName if set, otherwise falls back to the IMAP login — see {@link RuleCatalog#logRules}. */

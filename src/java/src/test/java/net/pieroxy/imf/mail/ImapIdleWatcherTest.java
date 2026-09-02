@@ -9,8 +9,6 @@ import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
 
@@ -29,22 +27,39 @@ public class ImapIdleWatcherTest {
   }
 
   @Test
-  public void notifiesAsSoonAsAMessageArrivesInTheInbox() throws Exception {
+  public void awaitReturnsAsSoonAsAMessageArrivesInTheInbox() throws Exception {
     MailAccountConfiguration config = fixture.accountConfig("idle-test");
-    CountDownLatch notified = new CountDownLatch(1);
-    ImapIdleWatcher watcher = new ImapIdleWatcher(config, c -> fixture.connectStore(), notified::countDown);
-    Thread watcherThread = new Thread(watcher, "idle-watcher-test");
-    watcherThread.setDaemon(true);
-    watcherThread.start();
-    try {
-      // Give the watcher time to connect and enter IDLE before delivering the message.
-      Thread.sleep(300);
-      fixture.appendMessage(messageFrom("sender@example.com"), "INBOX");
-      assertTrue("onNewMail must fire once the message is delivered", notified.await(5, TimeUnit.SECONDS));
-    } finally {
-      watcher.shutdown();
-      watcherThread.join(2000);
-    }
+    ImapIdleWatcher watcher = new ImapIdleWatcher(config, c -> fixture.connectStore());
+
+    Thread deliverer = new Thread(() -> {
+      try {
+        Thread.sleep(300); // give await() time to connect and enter idle() first
+        fixture.appendMessage(messageFrom("sender@example.com"), "INBOX");
+      } catch (Exception ignored) {
+      }
+    });
+    deliverer.start();
+
+    long start = System.currentTimeMillis();
+    watcher.await(60_000); // huge budget: a correct await() must return long before this elapses
+    long elapsed = System.currentTimeMillis() - start;
+
+    deliverer.join(2000);
+    assertTrue("await() must return soon after the message arrives, not wait out the full budget (elapsed=" + elapsed + "ms)",
+        elapsed < 5000);
+  }
+
+  @Test
+  public void awaitReturnsOnceTheBudgetIsExhaustedWhenNoMailArrives() throws Exception {
+    MailAccountConfiguration config = fixture.accountConfig("idle-test");
+    ImapIdleWatcher watcher = new ImapIdleWatcher(config, c -> fixture.connectStore());
+
+    long start = System.currentTimeMillis();
+    watcher.await(1000);
+    long elapsed = System.currentTimeMillis() - start;
+
+    assertTrue("await() must not return noticeably before its budget (elapsed=" + elapsed + "ms)", elapsed >= 900);
+    assertTrue("await() must return once its budget is exhausted (elapsed=" + elapsed + "ms)", elapsed < 5000);
   }
 
   private MimeMessage messageFrom(String address) throws Exception {

@@ -37,8 +37,9 @@ One thread is started per account declared in `configurations`. Each account is 
 its own schedule (`runEvery`, see below), backing off automatically (up to 30 minutes) if a
 cycle keeps failing (e.g. the IMAP server is unreachable).
 
-A second, dedicated connection per account watches the INBOX via IMAP IDLE (RFC 2177) and
-triggers a processing cycle the instant new mail arrives.
+Between cycles, the account watches its INBOX via IMAP IDLE (RFC 2177), so new mail triggers the
+next cycle immediately instead of waiting out `runEvery`. Falls back to plain polling if the
+server doesn't support IDLE.
 
 ## Configuration file
 
@@ -67,7 +68,7 @@ Each entry in `configurations` is one IMAP account:
 | `port` | yes | IMAP server port. |
 | `username` | yes | IMAP login. |
 | `password` | yes | IMAP password. |
-| `runEvery` | yes | Seconds between processing cycles. Only a fallback cadence for the INBOX (see [Running IMF](#running-imf) — IMAP IDLE triggers a cycle immediately on new mail when the server supports it); every other part of a cycle (folder skeleton, rule learning, manual reprocessing, spam corpus scan) has no faster path, so this is still the real interval for those. |
+| `runEvery` | yes | Seconds between processing cycles (see [Running IMF](#running-imf) for how IMAP IDLE affects this). |
 | `classifierSpamFolderName` | no | Folder treated as "Spam" for classifier corpus labeling. Defaults to `"Spam"`. |
 | `classifierExcludedFolders` | no | Folder names (anywhere in the tree) to skip entirely for classifier corpus collection — neither `SPAM` nor `HAM`, just ignored, like `INBOX`/`imf-rules/` already are. See [Classifier corpus collection](#classifier-corpus-collection). |
 | `rules` | no | List of manually-configured rules for this account (see [Matchers and actions](#matchers-and-actions)). Absent/empty means only learned rules (if any) apply. |

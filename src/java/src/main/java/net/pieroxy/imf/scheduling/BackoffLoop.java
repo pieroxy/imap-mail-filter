@@ -1,40 +1,40 @@
 package net.pieroxy.imf.scheduling;
 
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Generic "run / wait" loop with exponential backoff on failure (reset on the next success) and
  * clean shutdown on interruption. The first cycle runs immediately (no wait before the very
- * first run); the wait only happens between cycles. The inter-cycle wait can be cut short via
- * {@link #wake()}, letting an external event (e.g. IMAP IDLE noticing new mail) trigger an early
- * cycle without shrinking the normal interval. Knows nothing about the work it runs, which makes
- * it testable independently of any mail account.
+ * first run); the wait only happens between cycles, via a pluggable {@link Waiter} (a plain
+ * {@code Thread.sleep} by default) — a custom one (e.g. IMAP IDLE) can return before delayMs is
+ * up when something worth an early cycle happens. Knows nothing about the work it runs, which
+ * makes it testable independently of any mail account.
  */
 public class BackoffLoop {
   public interface Task {
     void run() throws Exception;
   }
 
+  /** How the loop waits between cycles. Must return by delayMs at the latest. */
+  public interface Waiter {
+    void await(long delayMs) throws InterruptedException;
+  }
+
   private final static Logger LOGGER = Logger.getLogger(BackoffLoop.class.getName());
-  private final static Object WAKE = new Object();
 
   private final long initialDelayMs;
   private final long maxDelayMs;
-  // Capacity 1: several wake() calls before the loop actually wakes up collapse into a single
-  // early cycle, which is all a caller needs ("run soon"), not one extra cycle per call.
-  private final LinkedBlockingQueue<Object> wakeSignal = new LinkedBlockingQueue<>(1);
+  private final Waiter waiter;
 
   public BackoffLoop(long initialDelayMs, long maxDelayMs) {
-    this.initialDelayMs = initialDelayMs;
-    this.maxDelayMs = maxDelayMs;
+    this(initialDelayMs, maxDelayMs, Thread::sleep);
   }
 
-  /** Cuts the current inter-cycle wait short, if any, so the next cycle starts right away. */
-  public void wake() {
-    wakeSignal.offer(WAKE);
+  public BackoffLoop(long initialDelayMs, long maxDelayMs, Waiter waiter) {
+    this.initialDelayMs = initialDelayMs;
+    this.maxDelayMs = maxDelayMs;
+    this.waiter = waiter;
   }
 
   public void run(String name, Task task) {
@@ -43,7 +43,7 @@ public class BackoffLoop {
     while (!Thread.currentThread().isInterrupted()) {
       if (!firstRun) {
         try {
-          wakeSignal.poll(delayMs, TimeUnit.MILLISECONDS);
+          waiter.await(delayMs);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           break;
