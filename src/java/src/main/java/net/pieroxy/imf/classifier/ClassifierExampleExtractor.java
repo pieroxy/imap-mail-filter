@@ -38,6 +38,9 @@ public final class ClassifierExampleExtractor {
     example.setMailDate(message.getSentDate() != null
         ? DateTimeFormatter.ISO_INSTANT.format(message.getSentDate().toInstant())
         : null);
+    example.setReceivedDate(message.getReceivedDate() != null
+        ? DateTimeFormatter.ISO_INSTANT.format(message.getReceivedDate().toInstant())
+        : null);
     Address[] from = message.getFrom();
     Address[] to = message.getRecipients(Message.RecipientType.TO);
     example.setFrom(addresses(from));

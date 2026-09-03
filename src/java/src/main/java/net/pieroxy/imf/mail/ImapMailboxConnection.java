@@ -141,6 +141,10 @@ public class ImapMailboxConnection implements ImapMailbox {
       profile.add(FetchProfile.Item.ENVELOPE);
       profile.add(FetchProfile.Item.CONTENT_INFO);
       profile.add(IMAPFolder.FetchProfileItem.HEADERS);
+      // getReceivedDate() (INTERNALDATE) is its own IMAP attribute, not part of HEADERS —
+      // without prefetching it too, every message would cost one more individual round trip,
+      // exactly the mistake this batched fetch exists to avoid.
+      profile.add(IMAPFolder.FetchProfileItem.INTERNALDATE);
       folder.fetch(messages, profile);
     }
     return messages;

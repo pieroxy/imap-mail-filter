@@ -6,13 +6,14 @@ import java.util.List;
  * A record of the training corpus: whatever might feed a future classifier (subject, from/to
  * with their display name, best-effort originating IP, a few more headers —
  * In-Reply-To/References, Precedence, List-Id, List-Unsubscribe, Return-Path/Reply-To
- * consistency with From — plus the MIME structure's attachment filenames), labeled SPAM/HAM
- * based on the IMAP folder it came from.
+ * consistency with From — plus the MIME structure's attachment filenames and the server-recorded
+ * vs. self-reported send date), labeled SPAM/HAM based on the IMAP folder it came from.
  */
 public class ClassifierExample {
   private String messageId;
   private String fetchDate;
   private String mailDate;
+  private String receivedDate;
   private List<String> from;
   private String fromDisplayName;
   private List<String> to;
@@ -60,6 +61,20 @@ public class ClassifierExample {
 
   public void setMailDate(String mailDate) {
     this.mailDate = mailDate;
+  }
+
+  /**
+   * When the IMAP server itself recorded this message as received (INTERNALDATE) — set by the
+   * server, not the sender, so unlike {@link #getMailDate()} (the self-reported {@code Date:}
+   * header) it can't be forged by whoever sent the message. Compared against mailDate to catch a
+   * sender's clock lying about when a message was sent (see {@link HeaderFeatureGenerator}).
+   */
+  public String getReceivedDate() {
+    return receivedDate;
+  }
+
+  public void setReceivedDate(String receivedDate) {
+    this.receivedDate = receivedDate;
   }
 
   public List<String> getFrom() {

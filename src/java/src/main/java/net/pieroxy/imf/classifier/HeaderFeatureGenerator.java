@@ -2,6 +2,9 @@ package net.pieroxy.imf.classifier;
 
 import opennlp.tools.doccat.FeatureGenerator;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -76,6 +79,8 @@ public class HeaderFeatureGenerator implements FeatureGenerator {
         features.add("attachmentExt=" + ext);
       }
     }
+
+    features.add("dateDelta=" + bucketDateDelta(example.getMailDate(), example.getReceivedDate()));
     return features;
   }
 
@@ -89,6 +94,27 @@ public class HeaderFeatureGenerator implements FeatureGenerator {
     if (count == 1) return "1";
     if (count <= 3) return "2-3";
     return "4+";
+  }
+
+  /**
+   * How far the sender's self-reported {@code Date:} header (mailDate, forgeable) diverges from
+   * when the message actually landed on the server (receivedDate, INTERNALDATE — not forgeable
+   * by the sender). A small negative gap (received shortly after the claimed send time) is the
+   * normal case; a mail claiming to have been sent *after* it was actually received is
+   * impossible in reality and a red flag; a mailDate far in the past relative to receipt is
+   * unusual too (a replayed or badly clock-skewed message).
+   */
+  private static String bucketDateDelta(String mailDate, String receivedDate) {
+    if (mailDate == null || receivedDate == null) return "unknown";
+    try {
+      Duration transit = Duration.between(Instant.parse(mailDate), Instant.parse(receivedDate));
+      long transitMinutes = transit.toMinutes(); // received - sent: normally a small positive value
+      if (transitMinutes < -5) return "future"; // claims to have been sent after it was received
+      if (transitMinutes <= 6 * 60) return "normal"; // ordinary transit time plus some clock skew tolerance
+      return "stale"; // received long after its claimed send date
+    } catch (DateTimeParseException e) {
+      return "unknown";
+    }
   }
 
   private static String orAbsent(String value) {

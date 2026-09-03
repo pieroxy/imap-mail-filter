@@ -97,6 +97,9 @@ public class ClassifierExampleExtractorTest {
     assertNull(example.getReplyToMismatch());
     assertNull(example.getMessageId());
     assertTrue(example.getAttachmentExtensions().isEmpty());
+    // A plain, locally-built message has no INTERNALDATE (that's an IMAP server attribute) —
+    // only a real IMAPMessage populates this; see ClassifierCorpusScannerTest for that path.
+    assertNull(example.getReceivedDate());
   }
 
   @Test

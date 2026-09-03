@@ -182,4 +182,40 @@ public class HeaderFeatureGeneratorTest {
     four.setAttachmentExtensions(List.of("pdf", "pdf", "pdf", "pdf"));
     assertTrue(featuresFor(four).contains("attachmentCount=4+"));
   }
+
+  @Test
+  public void dateDeltaIsUnknownWhenEitherDateIsMissing() {
+    assertTrue(featuresFor(blankExample()).contains("dateDelta=unknown")); // both missing
+
+    ClassifierExample onlyMailDate = blankExample();
+    onlyMailDate.setMailDate("2026-01-01T12:00:00Z");
+    assertTrue(featuresFor(onlyMailDate).contains("dateDelta=unknown"));
+  }
+
+  @Test
+  public void dateDeltaIsNormalForOrdinaryTransitTime() {
+    ClassifierExample e = blankExample();
+    e.setMailDate("2026-01-01T12:00:00Z");
+    e.setReceivedDate("2026-01-01T12:00:30Z"); // received 30s after it claims to have been sent
+
+    assertTrue(featuresFor(e).contains("dateDelta=normal"));
+  }
+
+  @Test
+  public void dateDeltaIsFutureWhenReceivedBeforeItsClaimedSendTime() {
+    ClassifierExample e = blankExample();
+    e.setMailDate("2026-01-01T12:00:00Z");
+    e.setReceivedDate("2026-01-01T11:00:00Z"); // received an hour before it claims to have been sent
+
+    assertTrue(featuresFor(e).contains("dateDelta=future"));
+  }
+
+  @Test
+  public void dateDeltaIsStaleWhenReceivedLongAfterItsClaimedSendTime() {
+    ClassifierExample e = blankExample();
+    e.setMailDate("2026-01-01T12:00:00Z");
+    e.setReceivedDate("2026-01-08T12:00:00Z"); // received a full week after its claimed send date
+
+    assertTrue(featuresFor(e).contains("dateDelta=stale"));
+  }
 }

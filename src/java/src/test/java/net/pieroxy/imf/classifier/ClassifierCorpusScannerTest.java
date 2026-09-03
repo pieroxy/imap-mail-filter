@@ -84,6 +84,20 @@ public class ClassifierCorpusScannerTest {
   }
 
   @Test
+  public void capturesTheServerRecordedReceivedDateNotJustTheSelfReportedMailDate() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
+    fixture.appendMessage(message("Weekly team sync", "colleague@example.com"), "Archive");
+
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account").scan(new ClassifierScanState(), LocalDate.now());
+    }
+
+    ClassifierExample example = store.readAll().get(0);
+    assertTrue("receivedDate must come from the server's own INTERNALDATE, not be left null",
+        example.getReceivedDate() != null && !example.getReceivedDate().isBlank());
+  }
+
+  @Test
   public void scanSpamFolderNowIgnoresOtherFolders() throws Exception {
     ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
     fixture.appendMessage(message("Weekly team sync", "colleague@example.com"), "Archive");
