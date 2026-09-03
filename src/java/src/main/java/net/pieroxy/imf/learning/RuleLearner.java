@@ -30,7 +30,10 @@ import java.util.logging.Logger;
  * {@code learningShortcuts} (see {@link LearningShortcutConfiguration}) offers a second, flatter
  * entry point onto the same mechanism: a single {@code imf-rules/<name>} folder bound to one
  * fixed (matcher type, action) pair, for the handful of combinations actually used day to day —
- * without needing an IMAP client subscribed to the full discovery tree above.
+ * without needing an IMAP client subscribed to the full discovery tree above. The discovery tree
+ * itself can be skipped entirely (see the {@code discoveryTreeDisabled} constructor parameter)
+ * for a client that shows every folder unconditionally regardless of subscription state, once
+ * shortcuts cover what's actually used.
  */
 public class RuleLearner {
   private final static Logger LOGGER = Logger.getLogger(RuleLearner.class.getName());
@@ -40,15 +43,28 @@ public class RuleLearner {
   private final ImapMailbox mailbox;
   private final LearnedRulesStore store;
   private final List<LearningShortcutConfiguration> shortcuts;
+  private final boolean discoveryTreeDisabled;
 
   public RuleLearner(ImapMailbox mailbox, LearnedRulesStore store) {
     this(mailbox, store, List.of());
   }
 
   public RuleLearner(ImapMailbox mailbox, LearnedRulesStore store, List<LearningShortcutConfiguration> shortcuts) {
+    this(mailbox, store, shortcuts, false);
+  }
+
+  /**
+   * @param discoveryTreeDisabled skips the {@code <MATCHER_TYPE>/<ACTION_TYPE>} discovery tree
+   *                              entirely (see {@code MailAccountConfiguration.discoveryTreeDisabled})
+   *                              — only {@code imf-rules/Done} and any configured shortcut
+   *                              folders are created/maintained.
+   */
+  public RuleLearner(ImapMailbox mailbox, LearnedRulesStore store, List<LearningShortcutConfiguration> shortcuts,
+                      boolean discoveryTreeDisabled) {
     this.mailbox = mailbox;
     this.store = store;
     this.shortcuts = shortcuts != null ? shortcuts : List.of();
+    this.discoveryTreeDisabled = discoveryTreeDisabled;
     validateShortcuts(this.shortcuts);
   }
 
@@ -114,9 +130,11 @@ public class RuleLearner {
   /** Creates the "ready to use" folder tree (the key level, e.g. "Spam", is left for the user to create). */
   public void ensureFolderSkeleton() throws MessagingException {
     mailbox.getOrCreateFolder(ROOT_FOLDER, DONE_FOLDER);
-    for (MatcherType matcherType : MatcherType.learnableValues()) {
-      for (ActionType actionType : ActionType.learnableValues()) {
-        mailbox.getOrCreateFolder(ROOT_FOLDER, matcherType.name(), actionType.name());
+    if (!discoveryTreeDisabled) {
+      for (MatcherType matcherType : MatcherType.learnableValues()) {
+        for (ActionType actionType : ActionType.learnableValues()) {
+          mailbox.getOrCreateFolder(ROOT_FOLDER, matcherType.name(), actionType.name());
+        }
       }
     }
     for (LearningShortcutConfiguration shortcut : shortcuts) {
@@ -127,11 +145,13 @@ public class RuleLearner {
   /** @return true if at least one new rule was learned during this call. */
   public boolean learnFromExamples() throws MessagingException {
     boolean learnedSomething = false;
-    for (MatcherType matcherType : MatcherType.learnableValues()) {
-      for (ActionType actionType : ActionType.learnableValues()) {
-        Folder actionFolder = mailbox.getOrCreateFolder(ROOT_FOLDER, matcherType.name(), actionType.name());
-        for (Folder keyFolder : mailbox.listSubfolders(actionFolder)) {
-          learnedSomething |= learnFromFolder(matcherType, actionType, keyFolder.getName(), keyFolder);
+    if (!discoveryTreeDisabled) {
+      for (MatcherType matcherType : MatcherType.learnableValues()) {
+        for (ActionType actionType : ActionType.learnableValues()) {
+          Folder actionFolder = mailbox.getOrCreateFolder(ROOT_FOLDER, matcherType.name(), actionType.name());
+          for (Folder keyFolder : mailbox.listSubfolders(actionFolder)) {
+            learnedSomething |= learnFromFolder(matcherType, actionType, keyFolder.getName(), keyFolder);
+          }
         }
       }
     }

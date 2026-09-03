@@ -47,6 +47,15 @@ public class MailAccountConfiguration {
    */
   private List<LearningShortcutConfiguration> learningShortcuts;
 
+  /**
+   * Skips creating/maintaining the {@code <MATCHER_TYPE>/<ACTION_TYPE>} discovery tree under
+   * {@code imf-rules/} entirely (default: false, tree created as usual) — for a mail client that
+   * shows every IMAP folder unconditionally regardless of subscription state (e.g. Apple Mail),
+   * where the tree is pure clutter once {@link #learningShortcuts} covers what's actually used.
+   * {@code imf-rules/Done} and any configured shortcut folders are unaffected.
+   */
+  private boolean discoveryTreeDisabled;
+
   public String getHost() {
     return host;
   }
@@ -133,6 +142,14 @@ public class MailAccountConfiguration {
 
   public void setLearningShortcuts(List<LearningShortcutConfiguration> learningShortcuts) {
     this.learningShortcuts = learningShortcuts;
+  }
+
+  public boolean isDiscoveryTreeDisabled() {
+    return discoveryTreeDisabled;
+  }
+
+  public void setDiscoveryTreeDisabled(boolean discoveryTreeDisabled) {
+    this.discoveryTreeDisabled = discoveryTreeDisabled;
   }
 
   public int getPort() {

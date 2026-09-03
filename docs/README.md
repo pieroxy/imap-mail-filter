@@ -74,6 +74,7 @@ Each entry in `configurations` is one IMAP account:
 | `classifierCorpusScanBatchSize` | no | Cap on messages fetched/processed in one corpus scan cycle for this account. `0` or absent defaults to 500. Lower it on a slow link or server; raise it to catch up faster on a fast one. |
 | `rules` | no | List of manually-configured rules for this account (see [Matchers and actions](#matchers-and-actions)). Absent/empty means only learned rules (if any) apply. |
 | `learningShortcuts` | no | Named flat `imf-rules/<name>` folders bound to a fixed (matcher type, action) pair, as an alternative to the full discovery tree. See [Learning shortcuts](#learning-shortcuts). |
+| `discoveryTreeDisabled` | no | Skips creating/maintaining the `<MATCHER_TYPE>/<ACTION_TYPE>` discovery tree under `imf-rules/` entirely. `imf-rules/Done` and any `learningShortcuts` folders are unaffected. Default `false`. Useful with a mail client that shows every IMAP folder unconditionally regardless of subscription state (e.g. Apple Mail), once shortcuts cover what's actually used. See [Learning shortcuts](#learning-shortcuts). |
 
 Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP option.
 
@@ -311,6 +312,12 @@ key is still extracted from each example, exactly as in the discovery tree, so s
 non-learnable matcher/action type, a missing `action.key`, a matcher `key`/`keys`, a name reused
 by two shortcuts, or a name colliding with a discovery-tree folder (a `MATCHER_TYPE` name, or
 `Done`) all fail loudly rather than being silently ignored.
+
+Subscribing an IMAP client to just the shortcuts (and not the discovery tree) works for clients
+that respect the IMAP-standard subscribed/unsubscribed state — but some (notably Apple Mail, on
+both iOS and macOS) show every folder regardless of that state. For those, `discoveryTreeDisabled`
+(per account) skips creating the tree in the first place, once shortcuts cover what's actually
+used day to day.
 
 ## Manually reprocessing a message
 
