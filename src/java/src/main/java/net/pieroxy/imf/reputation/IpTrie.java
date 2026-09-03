@@ -8,7 +8,7 @@ package net.pieroxy.imf.reputation;
  * measurement of both approaches on a real dataset (Spamhaus DROP).
  * <p>
  * Only two possible children per node (bit 0 or 1): no need for binary search or a hash table
- * like {@link StringTree}, two direct references are enough and already optimal.
+ * the way a string-keyed tree would, two direct references are enough and already optimal.
  * <p>
  * A node reached during the descent and marked "terminal" means: all the high-order bits walked
  * so far match a registered CIDR block, so any IP passing through this node is covered,
