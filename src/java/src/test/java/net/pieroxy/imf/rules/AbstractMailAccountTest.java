@@ -69,6 +69,6 @@ public abstract class AbstractMailAccountTest {
   protected MailAccount accountWith(MailFilterRuleConfiguration... rules) {
     MailAccountConfiguration config = fixture.accountConfig("test-account");
     config.setRules(List.of(rules));
-    return new MailAccount(config, tempFolder.getRoot().getAbsolutePath(), 0, c -> fixture.connectAsImapMailbox());
+    return new MailAccount(config, tempFolder.getRoot().getAbsolutePath(), c -> fixture.connectAsImapMailbox());
   }
 }

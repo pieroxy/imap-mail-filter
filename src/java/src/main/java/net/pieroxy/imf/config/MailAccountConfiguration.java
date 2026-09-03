@@ -25,6 +25,16 @@ public class MailAccountConfiguration {
    * "SpamML" or "Spam/ML"), so it doesn't feed itself training examples.
    */
   private List<String> classifierExcludedFolders;
+  /** Number of days of classifier corpus files to keep for this account (0 or absent = disabled). */
+  private int classifierCorpusRetentionDays;
+  /**
+   * Cap on messages fetched/processed in one classifier corpus scan cycle for this account (0 or
+   * absent = {@link net.pieroxy.imf.classifier.ClassifierCorpusScanner}'s built-in default of
+   * 500). Bounds how much of the account's IMAP connection a single cycle can monopolize when
+   * catching up on a large backlog (e.g. the first scan of a folder with years of history) —
+   * lower it on a slow link or server, raise it to catch up faster on a fast one.
+   */
+  private int classifierCorpusScanBatchSize;
 
   private List<MailFilterRuleConfiguration> rules;
 
@@ -91,6 +101,22 @@ public class MailAccountConfiguration {
 
   public void setClassifierExcludedFolders(List<String> classifierExcludedFolders) {
     this.classifierExcludedFolders = classifierExcludedFolders;
+  }
+
+  public int getClassifierCorpusRetentionDays() {
+    return classifierCorpusRetentionDays;
+  }
+
+  public void setClassifierCorpusRetentionDays(int classifierCorpusRetentionDays) {
+    this.classifierCorpusRetentionDays = classifierCorpusRetentionDays;
+  }
+
+  public int getClassifierCorpusScanBatchSize() {
+    return classifierCorpusScanBatchSize;
+  }
+
+  public void setClassifierCorpusScanBatchSize(int classifierCorpusScanBatchSize) {
+    this.classifierCorpusScanBatchSize = classifierCorpusScanBatchSize;
   }
 
   public List<MailFilterRuleConfiguration> getRules() {

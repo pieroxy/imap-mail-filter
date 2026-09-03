@@ -49,33 +49,18 @@ public class MailAccount implements Runnable {
   private final ImapMailboxFactory mailboxFactory;
   private LocalDate lastSkeletonEnsureDate;
 
-  public MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays) {
-    this(config, dataFolder, classifierCorpusRetentionDays, 0);
-  }
-
-  /**
-   * @param classifierCorpusScanBatchSize caps how many messages a corpus scan cycle fetches/processes
-   *                                       at once (0 or absent = {@link ClassifierCorpusScanner}'s
-   *                                       own default); see {@code Configuration.classifierCorpusScanBatchSize}.
-   */
-  public MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays, int classifierCorpusScanBatchSize) {
-    this(config, dataFolder, classifierCorpusRetentionDays, classifierCorpusScanBatchSize, ImapMailboxConnection::connect);
+  public MailAccount(MailAccountConfiguration config, String dataFolder) {
+    this(config, dataFolder, ImapMailboxConnection::connect);
   }
 
   /** Visible for tests: lets a mailbox factory be injected without real IMAPS/TLS. */
-  MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays, ImapMailboxFactory mailboxFactory) {
-    this(config, dataFolder, classifierCorpusRetentionDays, 0, mailboxFactory);
-  }
-
-  /** Visible for tests: lets a mailbox factory be injected without real IMAPS/TLS, alongside a custom scan batch size. */
-  MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays,
-              int classifierCorpusScanBatchSize, ImapMailboxFactory mailboxFactory) {
+  MailAccount(MailAccountConfiguration config, String dataFolder, ImapMailboxFactory mailboxFactory) {
     this.config = config;
     this.stateStore = new MailAccountStateStore(dataFolder, config.getDisplayName());
     this.learnedRulesStore = new LearnedRulesStore(dataFolder, config.getDisplayName());
     this.ruleCatalog = new RuleCatalog(config.getRules(), learnedRulesStore);
-    this.classifierCorpusRetentionDays = classifierCorpusRetentionDays;
-    this.classifierCorpusScanBatchSize = classifierCorpusScanBatchSize;
+    this.classifierCorpusRetentionDays = config.getClassifierCorpusRetentionDays();
+    this.classifierCorpusScanBatchSize = config.getClassifierCorpusScanBatchSize();
     this.classifierScanStateStore = new ClassifierScanStateStore(dataFolder, config.getDisplayName());
     this.classifierCorpusStore = new ClassifierCorpusStore(dataFolder, config.getDisplayName(), classifierCorpusRetentionDays);
     this.subjectClassifierTrainer = new SubjectClassifierTrainer(classifierCorpusStore);

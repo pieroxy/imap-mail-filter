@@ -54,8 +54,6 @@ field-for-field into Java objects — the JSON keys match the Java field names e
 | `dataFolder` | yes | Directory where IMF persists its own state: per-account UID cursors, learned rules, classifier corpus. Created if missing. |
 | `logFile` | no | Path to a log file. If absent, IMF only logs to the console. |
 | `keepLogFiles` | no | Number of rotated, lz4-compressed daily log files to keep. Only relevant if `logFile` is set; `0` or absent disables rotation. |
-| `classifierCorpusRetentionDays` | no | Enables classifier corpus collection when `> 0` (see [Classifier corpus collection](#classifier-corpus-collection)). `0` or absent disables it. |
-| `classifierCorpusScanBatchSize` | no | Cap on messages fetched/processed in one corpus scan cycle. `0` or absent defaults to 500. Lower it on a slow link or server; raise it to catch up faster on a fast one. |
 | `reputationLists` | no | IP/domain reputation lists to download and refresh (see [Reputation lists](#reputation-lists)). Absent means the feature is off. |
 
 ### Account fields
@@ -72,6 +70,8 @@ Each entry in `configurations` is one IMAP account:
 | `runEvery` | yes | Seconds between processing cycles (see [Running IMF](#running-imf) for how IMAP IDLE affects this). |
 | `classifierSpamFolderName` | no | Folder treated as "Spam" for classifier corpus labeling. Defaults to `"Spam"`. |
 | `classifierExcludedFolders` | no | Folder names (anywhere in the tree) to skip entirely for classifier corpus collection — neither `SPAM` nor `HAM`, just ignored, like `INBOX`/`imf-rules/` already are. See [Classifier corpus collection](#classifier-corpus-collection). |
+| `classifierCorpusRetentionDays` | no | Enables classifier corpus collection for this account when `> 0` (see [Classifier corpus collection](#classifier-corpus-collection)). `0` or absent disables it. |
+| `classifierCorpusScanBatchSize` | no | Cap on messages fetched/processed in one corpus scan cycle for this account. `0` or absent defaults to 500. Lower it on a slow link or server; raise it to catch up faster on a fast one. |
 | `rules` | no | List of manually-configured rules for this account (see [Matchers and actions](#matchers-and-actions)). Absent/empty means only learned rules (if any) apply. |
 | `learningShortcuts` | no | Named flat `imf-rules/<name>` folders bound to a fixed (matcher type, action) pair, as an alternative to the full discovery tree. See [Learning shortcuts](#learning-shortcuts). |
 
@@ -84,7 +84,6 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
   "dataFolder": "/var/lib/imf",
   "logFile": "/var/log/imf/imf.log",
   "keepLogFiles": 14,
-  "classifierCorpusRetentionDays": 90,
   "configurations": [
     {
       "displayName": "personal",
@@ -95,6 +94,7 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
       "runEvery": 600,
       "classifierSpamFolderName": "Spam",
       "classifierExcludedFolders": ["SpamML"],
+      "classifierCorpusRetentionDays": 90,
       "rules": [
         {
           "matcher": { "type": "SPF_RESULT_EQUALS", "key": "fail", "logLevel": "DEBUG" },
