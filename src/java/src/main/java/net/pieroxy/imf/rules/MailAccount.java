@@ -39,6 +39,7 @@ public class MailAccount implements Runnable {
   private final LearnedRulesStore learnedRulesStore;
   private final RuleCatalog ruleCatalog;
   private final int classifierCorpusRetentionDays;
+  private final int classifierCorpusScanBatchSize;
   private final ClassifierScanStateStore classifierScanStateStore;
   private final ClassifierCorpusStore classifierCorpusStore;
   private final SubjectClassifierTrainer subjectClassifierTrainer;
@@ -49,16 +50,32 @@ public class MailAccount implements Runnable {
   private LocalDate lastSkeletonEnsureDate;
 
   public MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays) {
-    this(config, dataFolder, classifierCorpusRetentionDays, ImapMailboxConnection::connect);
+    this(config, dataFolder, classifierCorpusRetentionDays, 0);
+  }
+
+  /**
+   * @param classifierCorpusScanBatchSize caps how many messages a corpus scan cycle fetches/processes
+   *                                       at once (0 or absent = {@link ClassifierCorpusScanner}'s
+   *                                       own default); see {@code Configuration.classifierCorpusScanBatchSize}.
+   */
+  public MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays, int classifierCorpusScanBatchSize) {
+    this(config, dataFolder, classifierCorpusRetentionDays, classifierCorpusScanBatchSize, ImapMailboxConnection::connect);
   }
 
   /** Visible for tests: lets a mailbox factory be injected without real IMAPS/TLS. */
   MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays, ImapMailboxFactory mailboxFactory) {
+    this(config, dataFolder, classifierCorpusRetentionDays, 0, mailboxFactory);
+  }
+
+  /** Visible for tests: lets a mailbox factory be injected without real IMAPS/TLS, alongside a custom scan batch size. */
+  MailAccount(MailAccountConfiguration config, String dataFolder, int classifierCorpusRetentionDays,
+              int classifierCorpusScanBatchSize, ImapMailboxFactory mailboxFactory) {
     this.config = config;
     this.stateStore = new MailAccountStateStore(dataFolder, config.getDisplayName());
     this.learnedRulesStore = new LearnedRulesStore(dataFolder, config.getDisplayName());
     this.ruleCatalog = new RuleCatalog(config.getRules(), learnedRulesStore);
     this.classifierCorpusRetentionDays = classifierCorpusRetentionDays;
+    this.classifierCorpusScanBatchSize = classifierCorpusScanBatchSize;
     this.classifierScanStateStore = new ClassifierScanStateStore(dataFolder, config.getDisplayName());
     this.classifierCorpusStore = new ClassifierCorpusStore(dataFolder, config.getDisplayName(), classifierCorpusRetentionDays);
     this.subjectClassifierTrainer = new SubjectClassifierTrainer(classifierCorpusStore);
@@ -144,8 +161,8 @@ public class MailAccount implements Runnable {
   private void scanSpamFolderForClassifierCorpus(ImapMailbox mailbox) {
     ClassifierScanState state = classifierScanStateStore.load();
     try {
-      new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName, classifierExcludedFolders, accountLabel())
-          .scanSpamFolderNow(state);
+      new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName, classifierExcludedFolders,
+          accountLabel(), classifierCorpusScanBatchSize).scanSpamFolderNow(state);
       classifierScanStateStore.save(state);
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Classifier corpus [" + accountLabel() + "] spam scan failed", e);
@@ -182,7 +199,7 @@ public class MailAccount implements Runnable {
     boolean caughtUpToday;
     try {
       boolean moreWorkPending = new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName,
-          classifierExcludedFolders, accountLabel()).scan(state, today);
+          classifierExcludedFolders, accountLabel(), classifierCorpusScanBatchSize).scan(state, today);
       caughtUpToday = !moreWorkPending;
       if (caughtUpToday) {
         state.setLastScanDate(today.toString());

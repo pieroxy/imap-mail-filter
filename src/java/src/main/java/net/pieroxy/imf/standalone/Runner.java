@@ -50,7 +50,8 @@ public class Runner {
     ReputationRegistryHolder.set(reputationRegistry);
 
     config.getConfigurations().forEach(conf -> {
-      MailAccount account = new MailAccount(conf, config.getDataFolder(), config.getClassifierCorpusRetentionDays());
+      MailAccount account = new MailAccount(conf, config.getDataFolder(), config.getClassifierCorpusRetentionDays(),
+          config.getClassifierCorpusScanBatchSize());
       Thread t = new Thread(account, "mail-account-" + conf.getDisplayName());
       accountThreads.add(t);
       t.start();

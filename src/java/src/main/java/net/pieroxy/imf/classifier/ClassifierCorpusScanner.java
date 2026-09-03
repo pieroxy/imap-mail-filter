@@ -45,22 +45,24 @@ public class ClassifierCorpusScanner {
   private final static Logger LOGGER = Logger.getLogger(ClassifierCorpusScanner.class.getName());
   private final static String LEARNING_ROOT_FOLDER = "imf-rules";
   /**
-   * Cap on messages processed per call to scan(), enforced within a single folder too (not just
-   * across folders): a folder with thousands of unfetched messages (e.g. its very first scan)
-   * would otherwise monopolize the account's IMAP connection for a single, uninterruptible,
-   * unlogged stretch — delaying normal INBOX processing by however long that takes, with nothing
-   * in the logs to say whether it's still working or stuck. scan() returns as soon as this total
-   * is reached, from wherever it happened to be reached, including mid-folder; MailAccount then
-   * relaunches it on the next cycle (not the next day) as long as there's backlog left to catch
-   * up on.
+   * Default cap on messages processed per call to scan(), used unless the caller supplies its
+   * own (see the constructor taking maxMessagesPerScan) — enforced within a single folder too
+   * (not just across folders): a folder with thousands of unfetched messages (e.g. its very
+   * first scan) would otherwise monopolize the account's IMAP connection for a single,
+   * uninterruptible, unlogged stretch — delaying normal INBOX processing by however long that
+   * takes, with nothing in the logs to say whether it's still working or stuck. scan() returns
+   * as soon as this total is reached, from wherever it happened to be reached, including
+   * mid-folder; MailAccount then relaunches it on the next cycle (not the next day) as long as
+   * there's backlog left to catch up on.
    */
-  final static int MAX_MESSAGES_PER_SCAN = 500;
+  final static int DEFAULT_MAX_MESSAGES_PER_SCAN = 500;
 
   private final ImapMailbox mailbox;
   private final ClassifierCorpusStore corpusStore;
   private final String spamFolderName;
   private final Set<String> excludedFolderNames;
   private final String logPrefix;
+  private final int maxMessagesPerScan;
   private int messagesProcessed;
 
   /**
@@ -70,6 +72,12 @@ public class ClassifierCorpusScanner {
    */
   public ClassifierCorpusScanner(ImapMailbox mailbox, ClassifierCorpusStore corpusStore, String spamFolderName,
                                   List<String> excludedFolderNames, String accountLabel) {
+    this(mailbox, corpusStore, spamFolderName, excludedFolderNames, accountLabel, DEFAULT_MAX_MESSAGES_PER_SCAN);
+  }
+
+  /** @param maxMessagesPerScan overrides {@link #DEFAULT_MAX_MESSAGES_PER_SCAN} when positive; a non-positive value falls back to the default. */
+  public ClassifierCorpusScanner(ImapMailbox mailbox, ClassifierCorpusStore corpusStore, String spamFolderName,
+                                  List<String> excludedFolderNames, String accountLabel, int maxMessagesPerScan) {
     this.mailbox = mailbox;
     this.corpusStore = corpusStore;
     this.spamFolderName = spamFolderName;
@@ -79,6 +87,7 @@ public class ClassifierCorpusScanner {
     this.excludedFolderNames = excludedFolderNames == null ? Set.of()
         : excludedFolderNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).collect(Collectors.toUnmodifiableSet());
     this.logPrefix = "Classifier corpus [" + accountLabel + "] ";
+    this.maxMessagesPerScan = maxMessagesPerScan > 0 ? maxMessagesPerScan : DEFAULT_MAX_MESSAGES_PER_SCAN;
   }
 
   /** @return true if the cap was reached (there's leftover work for the next call). */
@@ -112,7 +121,7 @@ public class ClassifierCorpusScanner {
   private boolean walk(Folder parent, ClassifierScanState state, List<ClassifierExample> newExamples,
                         Predicate<Folder> shouldScan, boolean enforceBudget) throws MessagingException {
     for (Folder folder : mailbox.listSubfolders(parent)) {
-      if (enforceBudget && messagesProcessed >= MAX_MESSAGES_PER_SCAN) return true;
+      if (enforceBudget && messagesProcessed >= maxMessagesPerScan) return true;
 
       String name = folder.getName();
       if ("INBOX".equalsIgnoreCase(name) || LEARNING_ROOT_FOLDER.equalsIgnoreCase(name) || isExcluded(name)) continue;
@@ -125,7 +134,7 @@ public class ClassifierCorpusScanner {
         if (walk(folder, state, newExamples, shouldScan, enforceBudget)) return true;
       }
     }
-    return enforceBudget && messagesProcessed >= MAX_MESSAGES_PER_SCAN;
+    return enforceBudget && messagesProcessed >= maxMessagesPerScan;
   }
 
   private boolean isExcluded(String folderName) {
@@ -144,7 +153,7 @@ public class ClassifierCorpusScanner {
       // existing history, not just what arrives after the scan).
       long lastUid = (progress != null && progress.getUidValidity() == uidValidity) ? progress.getLastUid() : 0;
 
-      int remainingBudget = enforceBudget ? MAX_MESSAGES_PER_SCAN - messagesProcessed : Integer.MAX_VALUE;
+      int remainingBudget = enforceBudget ? maxMessagesPerScan - messagesProcessed : Integer.MAX_VALUE;
       Message[] messages = mailbox.getMessagesSince(folder, lastUid, remainingBudget);
       boolean budgetExceeded = enforceBudget && messages.length >= remainingBudget;
       if (messages.length > 0) {

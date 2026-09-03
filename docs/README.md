@@ -55,6 +55,7 @@ field-for-field into Java objects — the JSON keys match the Java field names e
 | `logFile` | no | Path to a log file. If absent, IMF only logs to the console. |
 | `keepLogFiles` | no | Number of rotated, lz4-compressed daily log files to keep. Only relevant if `logFile` is set; `0` or absent disables rotation. |
 | `classifierCorpusRetentionDays` | no | Enables classifier corpus collection when `> 0` (see [Classifier corpus collection](#classifier-corpus-collection)). `0` or absent disables it. |
+| `classifierCorpusScanBatchSize` | no | Cap on messages fetched/processed in one corpus scan cycle. `0` or absent defaults to 500. Lower it on a slow link or server; raise it to catch up faster on a fast one. |
 | `reputationLists` | no | IP/domain reputation lists to download and refresh (see [Reputation lists](#reputation-lists)). Absent means the feature is off. |
 
 ### Account fields

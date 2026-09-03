@@ -157,7 +157,7 @@ public class ClassifierCorpusScannerTest {
   @Test
   public void stopsMidFolderOnceTheBudgetIsReachedAndResumesNextTime() throws Exception {
     ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
-    int total = ClassifierCorpusScanner.MAX_MESSAGES_PER_SCAN + 5;
+    int total = ClassifierCorpusScanner.DEFAULT_MAX_MESSAGES_PER_SCAN + 5;
     Message[] messages = new Message[total];
     for (int i = 0; i < total; i++) {
       messages[i] = message("Newsletter " + i, "sender@example.com");
@@ -173,7 +173,7 @@ public class ClassifierCorpusScannerTest {
           .scan(state, LocalDate.now());
     }
     assertTrue("the first pass must stop at the budget, mid-folder", budgetExceededFirstPass);
-    assertEquals(ClassifierCorpusScanner.MAX_MESSAGES_PER_SCAN, store.readAll().size());
+    assertEquals(ClassifierCorpusScanner.DEFAULT_MAX_MESSAGES_PER_SCAN, store.readAll().size());
 
     boolean budgetExceededSecondPass;
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
@@ -182,6 +182,40 @@ public class ClassifierCorpusScannerTest {
     }
     assertFalse("the second pass must finish covering the rest of the folder", budgetExceededSecondPass);
     assertEquals("all messages must be captured across the two passes", total, store.readAll().size());
+  }
+
+  @Test
+  public void aCustomBatchSizeOverridesTheDefaultCap() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
+    Message[] messages = new Message[5];
+    for (int i = 0; i < 5; i++) {
+      messages[i] = message("Newsletter " + i, "sender@example.com");
+    }
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      mailbox.getOrCreateFolder("Archive").appendMessages(messages);
+    }
+
+    boolean budgetExceeded;
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      budgetExceeded = new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account", 3)
+          .scan(new ClassifierScanState(), LocalDate.now());
+    }
+    assertTrue("a custom batch size of 3 must cap the scan just like the default does at 500", budgetExceeded);
+    assertEquals(3, store.readAll().size());
+  }
+
+  @Test
+  public void aNonPositiveCustomBatchSizeFallsBackToTheDefault() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
+    fixture.appendMessage(message("Weekly team sync", "colleague@example.com"), "Archive");
+
+    boolean budgetExceeded;
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      budgetExceeded = new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account", 0)
+          .scan(new ClassifierScanState(), LocalDate.now());
+    }
+    assertFalse("0 must fall back to the default cap, not cap at zero messages", budgetExceeded);
+    assertEquals(1, store.readAll().size());
   }
 
   @Test
