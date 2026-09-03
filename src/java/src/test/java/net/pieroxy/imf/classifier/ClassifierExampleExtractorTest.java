@@ -5,11 +5,14 @@ import org.junit.Test;
 import javax.mail.Message;
 import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
@@ -93,6 +96,7 @@ public class ClassifierExampleExtractorTest {
     assertNull(example.getReplyToDomain());
     assertNull(example.getReplyToMismatch());
     assertNull(example.getMessageId());
+    assertTrue(example.getAttachmentExtensions().isEmpty());
   }
 
   @Test
@@ -230,5 +234,99 @@ public class ClassifierExampleExtractorTest {
     ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
 
     assertNull(example.getIp());
+  }
+
+  @Test
+  public void noAttachmentsOnAPlainTextMessage() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setText("Hello");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertTrue(example.getAttachmentExtensions().isEmpty());
+  }
+
+  @Test
+  public void extractsAttachmentExtensionLowercased() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    MimeMultipart multipart = new MimeMultipart();
+    MimeBodyPart body = new MimeBodyPart();
+    body.setText("Please find attached");
+    multipart.addBodyPart(body);
+    MimeBodyPart attachment = new MimeBodyPart();
+    attachment.setText("dummy content");
+    attachment.setFileName("Invoice.PDF");
+    multipart.addBodyPart(attachment);
+    message.setContent(multipart);
+    message.saveChanges();
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.SPAM, Instant.now());
+
+    assertEquals(List.of("pdf"), example.getAttachmentExtensions());
+  }
+
+  @Test
+  public void extractsOneExtensionPerAttachmentIncludingDuplicates() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    MimeMultipart multipart = new MimeMultipart();
+    for (String filename : new String[]{"a.exe", "b.exe", "c.zip"}) {
+      MimeBodyPart part = new MimeBodyPart();
+      part.setText("dummy");
+      part.setFileName(filename);
+      multipart.addBodyPart(part);
+    }
+    message.setContent(multipart);
+    message.saveChanges();
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.SPAM, Instant.now());
+
+    assertEquals(3, example.getAttachmentExtensions().size());
+    assertEquals(2, example.getAttachmentExtensions().stream().filter("exe"::equals).count());
+    assertTrue(example.getAttachmentExtensions().contains("zip"));
+  }
+
+  @Test
+  public void attachmentWithNoDotInFilenameGetsASentinelExtension() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    MimeMultipart multipart = new MimeMultipart();
+    MimeBodyPart attachment = new MimeBodyPart();
+    attachment.setText("dummy");
+    attachment.setFileName("readme");
+    multipart.addBodyPart(attachment);
+    message.setContent(multipart);
+    message.saveChanges();
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.SPAM, Instant.now());
+
+    assertEquals(List.of("(none)"), example.getAttachmentExtensions());
+  }
+
+  @Test
+  public void findsAttachmentsNestedInsideAnInnerMultipart() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    MimeMultipart outer = new MimeMultipart(); // multipart/mixed
+
+    MimeMultipart alternative = new MimeMultipart("alternative"); // the text/plain+text/html body, no filenames
+    MimeBodyPart plainText = new MimeBodyPart();
+    plainText.setText("Hello");
+    alternative.addBodyPart(plainText);
+    MimeBodyPart html = new MimeBodyPart();
+    html.setContent("<p>Hello</p>", "text/html");
+    alternative.addBodyPart(html);
+    MimeBodyPart alternativeWrapper = new MimeBodyPart();
+    alternativeWrapper.setContent(alternative);
+    outer.addBodyPart(alternativeWrapper);
+
+    MimeBodyPart attachment = new MimeBodyPart();
+    attachment.setText("dummy");
+    attachment.setFileName("photo.png");
+    outer.addBodyPart(attachment);
+
+    message.setContent(outer);
+    message.saveChanges();
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertEquals(List.of("png"), example.getAttachmentExtensions());
   }
 }

@@ -121,11 +121,13 @@ public class ImapMailboxConnection implements ImapMailbox {
     }
     Message[] messages = result.toArray(new Message[0]);
     // Without this batched fetch, every individual access to a header (Subject/From/To/Date/
-    // Received) triggers its own IMAP command per message: on a folder with several thousand
-    // messages (years of archives), that can take tens of minutes instead of a few seconds.
+    // Received) or to the MIME structure (attachment filenames, for the classifier corpus)
+    // triggers its own IMAP command per message: on a folder with several thousand messages
+    // (years of archives), that can take tens of minutes instead of a few seconds.
     if (messages.length > 0) {
       FetchProfile profile = new FetchProfile();
       profile.add(FetchProfile.Item.ENVELOPE);
+      profile.add(FetchProfile.Item.CONTENT_INFO);
       profile.add("Received");
       folder.fetch(messages, profile);
     }

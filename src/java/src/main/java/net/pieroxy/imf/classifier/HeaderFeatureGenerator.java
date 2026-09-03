@@ -65,7 +65,30 @@ public class HeaderFeatureGenerator implements FeatureGenerator {
     features.add("replyToDomain=" + orAbsent(example.getReplyToDomain()));
     features.add("returnPathMismatch=" + triState(example.getReturnPathMismatch()));
     features.add("replyToMismatch=" + triState(example.getReplyToMismatch()));
+
+    List<String> attachmentExtensions = example.getAttachmentExtensions();
+    int attachmentCount = attachmentExtensions == null ? 0 : attachmentExtensions.size();
+    features.add("attachmentCount=" + bucketAttachmentCount(attachmentCount));
+    if (attachmentCount == 0) {
+      features.add("attachmentExt=" + ABSENT);
+    } else {
+      for (String ext : new LinkedHashSet<>(attachmentExtensions)) {
+        features.add("attachmentExt=" + ext);
+      }
+    }
     return features;
+  }
+
+  /**
+   * Bucketed rather than a raw number: doccat's features are presence-based, not numerically
+   * valued (see the class javadoc), so "3" and "4" need to fall in the same bucket to be treated
+   * as similar evidence instead of two unrelated, individually rare feature values.
+   */
+  private static String bucketAttachmentCount(int count) {
+    if (count == 0) return "0";
+    if (count == 1) return "1";
+    if (count <= 3) return "2-3";
+    return "4+";
   }
 
   private static String orAbsent(String value) {

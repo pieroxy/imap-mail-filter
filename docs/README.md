@@ -404,11 +404,10 @@ value to match) and how it behaves before a model exists.
 ### Header classifier training
 
 Same rhythm as the subject classifier above, but a separate model over a different set of
-features — derived from headers (sender/recipient domains, `In-Reply-To`, `List-Id`,
-`Precedence`, `Return-Path`/`Reply-To` alignment with `From`...) rather than the `Subject:` text
-— trained and written independently to
-`classifier-corpus/<displayName>/header-model.bin`. Same minimum (**at least 50 examples of each
-class**) before it bothers writing a model.
+features — derived from headers and MIME structure (sender/recipient domains, `In-Reply-To`,
+`List-Id`, `Precedence`, `Return-Path`/`Reply-To` alignment with `From`, attachment count and
+filename extensions...) — written to `classifier-corpus/<displayName>/header-model.bin`. Same
+minimum (**at least 50 examples of each class**) before it bothers writing a model.
 
 Use [`HEADER_CLASSIFIER_EQUALS`](matchers/header-classifier-equals.md) in a rule to act on this.
 Nothing ties the two classifiers together — either can be used alone, together, or compared

@@ -151,4 +151,35 @@ public class HeaderFeatureGeneratorTest {
     assertTrue(features.contains("returnPathMismatch=true"));
     assertTrue(features.contains("replyToMismatch=false"));
   }
+
+  @Test
+  public void attachmentCountIsZeroAndExtensionIsAbsentWhenNoAttachments() {
+    Collection<String> features = featuresFor(blankExample()); // attachmentExtensions left null
+    assertTrue(features.contains("attachmentCount=0"));
+    assertTrue(features.contains("attachmentExt=(absent)"));
+  }
+
+  @Test
+  public void emitsOneAttachmentExtensionFeaturePerDistinctExtension() {
+    ClassifierExample e = blankExample();
+    e.setAttachmentExtensions(List.of("exe", "exe", "zip"));
+
+    Set<String> features = Set.copyOf(featuresFor(e));
+    assertTrue(features.contains("attachmentCount=2-3"));
+    assertTrue(features.contains("attachmentExt=exe"));
+    assertTrue(features.contains("attachmentExt=zip"));
+    long extFeatureCount = features.stream().filter(f -> f.startsWith("attachmentExt=")).count();
+    assertEquals("the two 'exe' attachments must dedupe into one feature", 2, extFeatureCount);
+  }
+
+  @Test
+  public void attachmentCountBucketsLargerCountsTogether() {
+    ClassifierExample one = blankExample();
+    one.setAttachmentExtensions(List.of("pdf"));
+    assertTrue(featuresFor(one).contains("attachmentCount=1"));
+
+    ClassifierExample four = blankExample();
+    four.setAttachmentExtensions(List.of("pdf", "pdf", "pdf", "pdf"));
+    assertTrue(featuresFor(four).contains("attachmentCount=4+"));
+  }
 }

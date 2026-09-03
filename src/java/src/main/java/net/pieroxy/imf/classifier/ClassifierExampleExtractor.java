@@ -5,23 +5,29 @@ import net.pieroxy.imf.utils.MailTools;
 import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import javax.mail.Multipart;
+import javax.mail.Part;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
+import java.io.IOException;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Builds a {@link ClassifierExample} from a message: only headers
+ * Builds a {@link ClassifierExample} from a message: mostly headers
  * (Subject/From/To/Date/Received/In-Reply-To/References/Precedence/List-Id/List-Unsubscribe/
- * Return-Path/Reply-To), never the body — stays lightweight and never risks marking \Seen just
- * by reading it for the corpus.
+ * Return-Path/Reply-To) plus the MIME structure's attachment filenames — never the actual body
+ * content (text/HTML), so this stays lightweight (a BODYSTRUCTURE fetch, not the message's full
+ * bytes) and never risks marking \Seen just by reading it for the corpus.
  */
 public final class ClassifierExampleExtractor {
   private static final Pattern IPV4_PATTERN = Pattern.compile("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b");
+  private static final String NO_EXTENSION = "(none)";
 
   private ClassifierExampleExtractor() {}
 
@@ -53,6 +59,10 @@ public final class ClassifierExampleExtractor {
     example.setReturnPathMismatch(mismatch(fromDomain, returnPathDomain));
     example.setReplyToDomain(replyToDomain);
     example.setReplyToMismatch(mismatch(fromDomain, replyToDomain));
+
+    List<String> attachmentExtensions = new ArrayList<>();
+    collectAttachmentExtensions(message, attachmentExtensions);
+    example.setAttachmentExtensions(attachmentExtensions);
 
     example.setLabel(label);
     return example;
@@ -98,6 +108,39 @@ public final class ClassifierExampleExtractor {
     if (received == null || received.length == 0) return null;
     Matcher m = IPV4_PATTERN.matcher(received[received.length - 1]);
     return m.find() ? m.group() : null;
+  }
+
+  /**
+   * Recursively walks the MIME tree (fetched as BODYSTRUCTURE, not the actual body bytes — see
+   * ImapMailboxConnection's FetchProfile.Item.CONTENT_INFO for the corpus scan's batched
+   * prefetch of this) collecting one lowercase extension per attachment-like part found — any
+   * part carrying a filename, not just ones marked Content-Disposition: attachment, since some
+   * mailers omit that but still name the part.
+   */
+  private static void collectAttachmentExtensions(Part part, List<String> extensionsOut) throws MessagingException {
+    if (!part.isMimeType("multipart/*")) {
+      String filename = part.getFileName();
+      if (filename != null && !filename.isBlank()) {
+        extensionsOut.add(extensionOf(filename));
+      }
+      return;
+    }
+    try {
+      Object content = part.getContent();
+      if (content instanceof Multipart multipart) {
+        for (int i = 0; i < multipart.getCount(); i++) {
+          collectAttachmentExtensions(multipart.getBodyPart(i), extensionsOut);
+        }
+      }
+    } catch (IOException e) {
+      // Malformed/undecodable part: no attachment info recoverable from it, not worth failing
+      // the whole example extraction over.
+    }
+  }
+
+  private static String extensionOf(String filename) {
+    int dot = filename.lastIndexOf('.');
+    return dot >= 0 && dot < filename.length() - 1 ? filename.substring(dot + 1).toLowerCase(Locale.ROOT) : NO_EXTENSION;
   }
 
   private static boolean headerPresent(Message message, String name) throws MessagingException {

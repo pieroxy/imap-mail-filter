@@ -6,7 +6,8 @@ import java.util.List;
  * A record of the training corpus: whatever might feed a future classifier (subject, from/to
  * with their display name, best-effort originating IP, a few more headers —
  * In-Reply-To/References, Precedence, List-Id, List-Unsubscribe, Return-Path/Reply-To
- * consistency with From), labeled SPAM/HAM based on the IMAP folder it came from.
+ * consistency with From — plus the MIME structure's attachment filenames), labeled SPAM/HAM
+ * based on the IMAP folder it came from.
  */
 public class ClassifierExample {
   private String messageId;
@@ -27,6 +28,7 @@ public class ClassifierExample {
   private String replyToDomain;
   private Boolean replyToMismatch;
   private ClassifierLabel label;
+  private List<String> attachmentExtensions;
 
   /**
    * Raw Message-ID header; null if absent (rare, malformed mail). Identifies the same message
@@ -187,5 +189,18 @@ public class ClassifierExample {
 
   public void setLabel(ClassifierLabel label) {
     this.label = label;
+  }
+
+  /**
+   * Filename extension (lowercase, no dot) of each attachment-like MIME part found anywhere in
+   * the message, one entry per attachment (duplicates possible, e.g. two ".pdf"s); empty if none.
+   * The count is this list's size — no separate field, so the two can never drift apart.
+   */
+  public List<String> getAttachmentExtensions() {
+    return attachmentExtensions;
+  }
+
+  public void setAttachmentExtensions(List<String> attachmentExtensions) {
+    this.attachmentExtensions = attachmentExtensions;
   }
 }
