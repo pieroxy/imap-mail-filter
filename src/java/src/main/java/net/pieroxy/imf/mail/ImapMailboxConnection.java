@@ -128,14 +128,19 @@ public class ImapMailboxConnection implements ImapMailbox {
     }
     Message[] messages = result.toArray(new Message[0]);
     // Without this batched fetch, every individual access to a header (Subject/From/To/Date/
-    // Received) or to the MIME structure (attachment filenames, for the classifier corpus)
-    // triggers its own IMAP command per message: on a folder with several thousand messages
-    // (years of archives), that can take tens of minutes instead of a few seconds.
+    // Received/Precedence/List-Id/...) or to the MIME structure (attachment filenames, for the
+    // classifier corpus) triggers its own IMAP round trip per message: on a folder with several
+    // thousand messages, that's thousands of extra round trips — cheap enough on a fast loopback
+    // to go unnoticed, but genuinely slow wherever it isn't. HEADERS (not individually-named
+    // items like "Received") is used deliberately: ClassifierExampleExtractor reads a specific
+    // set of header names today, but naming each one here would silently need updating every
+    // time that set changes — HEADERS fetches all of them in this one batch regardless, via
+    // BODY.PEEK[HEADER] (never marks \Seen, same as the individually-named items it replaces).
     if (messages.length > 0) {
       FetchProfile profile = new FetchProfile();
       profile.add(FetchProfile.Item.ENVELOPE);
       profile.add(FetchProfile.Item.CONTENT_INFO);
-      profile.add("Received");
+      profile.add(IMAPFolder.FetchProfileItem.HEADERS);
       folder.fetch(messages, profile);
     }
     return messages;

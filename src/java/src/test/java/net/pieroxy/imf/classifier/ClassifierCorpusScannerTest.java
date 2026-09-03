@@ -125,6 +125,22 @@ public class ClassifierCorpusScannerTest {
   }
 
   @Test
+  public void scanningNeverMarksMessagesSeen() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
+    fixture.appendMessage(message("Weekly team sync", "colleague@example.com"), "Archive");
+
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account").scan(new ClassifierScanState(), LocalDate.now());
+    }
+
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      Message[] messages = mailbox.getAllMessages(mailbox.getOrCreateFolder("Archive"));
+      assertFalse("scanning the corpus (headers + MIME structure) must never mark a message \\Seen",
+          messages[0].isSet(Flags.Flag.SEEN));
+    }
+  }
+
+  @Test
   public void stopsMidFolderOnceTheBudgetIsReachedAndResumesNextTime() throws Exception {
     ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
     int total = ClassifierCorpusScanner.MAX_MESSAGES_PER_SCAN + 5;
