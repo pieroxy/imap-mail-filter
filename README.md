@@ -47,7 +47,6 @@ A few things worth understanding before you dive in:
 
 * Feed the classifier more than just the subject — sender, recipient, IP.
 * Simple web UI to edit more complex rules.
-* Trie-based storage for domain reputation lists — huge lists like NRD7 (~2.5M entries) currently sit in a flat in-memory set; a trie sharing structure label-by-label would use far less RAM.
 * More matchers:
     * Recipient-based: TO_EQUALS/CC_EQUALS/recipient-domain matching
     * Subject: CONTAINS, MATCHES (regex)
