@@ -194,6 +194,7 @@ A rule is a `matcher` + an `action`. When a matcher matches a message, its actio
 | [`FROM_DOMAIN_REPUTATION_EQUALS`](matchers/from-domain-reputation-equals.md) | Same as above, on the `From:` domain against domain reputation lists. |
 | [`AND`](matchers/and.md) | Composite: all children must match. |
 | [`OR`](matchers/or.md) | Composite: any child matching is enough. |
+| [`NOT`](matchers/not.md) | Composite: matches if its single child does not. |
 
 **Actions** (`net.pieroxy.imf.rules.actions`):
 
@@ -211,7 +212,7 @@ Every matcher and action config accepts an optional `logLevel` field (`"DEBUG"`,
 — it never affects sibling or child nodes. `"DEBUG"` maps to `java.util.logging`'s `FINE` level
 (there is no native `DEBUG` level in `java.util.logging`). See [Logging](#logging).
 
-Composite matchers/actions (`AND`/`OR`) take a `children` array of nested matcher/action
+Composite matchers/actions (`AND`/`OR`/`NOT`) take a `children` array of nested matcher/action
 configs instead of `key`/`keys`.
 
 ## Rule evaluation order
@@ -259,8 +260,8 @@ IMF automatically creates the `<MATCHER_TYPE>/<ACTION_TYPE>` skeleton for every 
 matcher/action combination each cycle — you only need to create the final `<key>` folder
 yourself (its name becomes the action's key, e.g. the target folder for `MOVE_TO`).
 
-Only "learnable" matcher/action types support this (everything except the composite `AND`/`OR`
-types, which are reserved for manual config). Each cycle, for every example message found:
+Only "learnable" matcher/action types support this (everything except the composite `AND`/`OR`/
+`NOT` types, which are reserved for manual config). Each cycle, for every example message found:
 
 1. The matcher's key is extracted from the example (e.g. its sender's domain).
 2. The rule is persisted to `<dataFolder>/<displayName>-learned-rules.json` — a separate file

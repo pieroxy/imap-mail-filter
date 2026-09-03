@@ -11,6 +11,7 @@ import net.pieroxy.imf.rules.matchers.implementations.FromDomainReputationMatche
 import net.pieroxy.imf.rules.matchers.implementations.FromExactMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.HeaderClassifierMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.IpReputationMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.NotMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.OrMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SpfResultMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SubjectClassifierMatcher;
@@ -47,7 +48,9 @@ public enum MatcherType {
   IP_REPUTATION_EQUALS(IpReputationMatcher::new, false),
   FROM_DOMAIN_REPUTATION_EQUALS(FromDomainReputationMatcher::new, false),
   AND(AndMatcher::new, false),
-  OR(OrMatcher::new, false);
+  OR(OrMatcher::new, false),
+  // Not learnable, same reasoning as AND/OR: reserved for manual config.json rules.
+  NOT(NotMatcher::new, false);
 
   private final MatcherProvider provider;
   private final boolean learnable;

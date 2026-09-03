@@ -14,6 +14,7 @@ import java.util.Properties;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Verifies the recursive construction (Matcher.build) and evaluation of composite AND/OR
@@ -93,5 +94,58 @@ public class CompositeMatcherTest {
 
     assertEquals("OrMatcher(FromExactMatcher(alice@example.com))",
             or.matches(messageFrom("alice@example.com")).debugString());
+  }
+
+  @Test
+  public void notMatchesExactlyWhenItsChildDoesNot() throws Exception {
+    Matcher not = Matcher.build(composite(MatcherType.NOT, leaf("alice@example.com")));
+
+    assertFalse(not.matches(messageFrom("alice@example.com")).matched());
+    assertTrue(not.matches(messageFrom("bob@example.com")).matched());
+  }
+
+  @Test
+  public void notDebugStringDescribesTheNegatedChild() throws Exception {
+    // The child didn't match (that's why NOT did) — MatchResult.debugString() is null for a
+    // non-match, so there's nothing per-message to surface from it; describe() (the child's
+    // config-level description) is what's shown instead.
+    Matcher not = Matcher.build(composite(MatcherType.NOT, leaf("alice@example.com")));
+
+    assertEquals("NotMatcher(FROM_EQUALS(alice@example.com))",
+            not.matches(messageFrom("bob@example.com")).debugString());
+  }
+
+  @Test
+  public void notWithZeroChildrenFailsFastAtBuildTime() {
+    MailFilterRuleMatcherConfiguration config = composite(MatcherType.NOT);
+    try {
+      Matcher.build(config);
+      fail("expected an IllegalArgumentException");
+    } catch (IllegalArgumentException expected) {
+      // NOT of nothing isn't meaningful — must be rejected at startup, not deferred to the first message.
+    }
+  }
+
+  @Test
+  public void notWithMultipleChildrenFailsFastAtBuildTime() {
+    MailFilterRuleMatcherConfiguration config = composite(MatcherType.NOT, leaf("alice@example.com"), leaf("bob@example.com"));
+    try {
+      Matcher.build(config);
+      fail("expected an IllegalArgumentException");
+    } catch (IllegalArgumentException expected) {
+      // Which of several children would NOT negate? Ambiguous, so rejected rather than guessed.
+    }
+  }
+
+  @Test
+  public void notCombinesWithAndOr() throws Exception {
+    // alice AND NOT(bob) — matches alice, rejects a message claiming to be both alice and bob
+    // (impossible for a real From header, but exercises the composition regardless).
+    Matcher rule = Matcher.build(composite(MatcherType.AND,
+            leaf("alice@example.com"),
+            composite(MatcherType.NOT, leaf("bob@example.com"))));
+
+    assertTrue(rule.matches(messageFrom("alice@example.com")).matched());
+    assertFalse(rule.matches(messageFrom("bob@example.com")).matched());
   }
 }

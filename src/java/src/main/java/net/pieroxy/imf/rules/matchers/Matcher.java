@@ -28,10 +28,19 @@ public abstract class Matcher {
     if (config.getChildren() != null) {
       matcher.children = config.getChildren().stream().map(Matcher::build).collect(Collectors.toList());
     }
+    matcher.validate();
     return matcher;
   }
 
   public abstract MatchResult matches(Message message) throws MessagingException;
+
+  /**
+   * Structural check once children are set (e.g. a composite requiring an exact child count) —
+   * no-op by default. Runs at startup (see {@code RuleCatalog}, built eagerly), not deferred to
+   * the first message, so a misconfigured rule fails loudly right away rather than repeatedly on
+   * every message inspected.
+   */
+  protected void validate() {}
 
   /**
    * Computes the config key from an example message (rule learning via the imf-rules/

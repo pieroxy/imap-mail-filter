@@ -19,6 +19,7 @@ public class MatcherTypeTest {
   public void compositeTypesAreNotLearnable() {
     assertFalse(MatcherType.learnableValues().contains(MatcherType.AND));
     assertFalse(MatcherType.learnableValues().contains(MatcherType.OR));
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.NOT));
   }
 
   /**
