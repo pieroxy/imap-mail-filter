@@ -45,14 +45,16 @@ public class ClassifierCorpusScanner {
   private final static Logger LOGGER = Logger.getLogger(ClassifierCorpusScanner.class.getName());
   private final static String LEARNING_ROOT_FOLDER = "imf-rules";
   /**
-   * Cap on messages processed per call to scan(). On an account used for years, the very first
-   * pass can represent thousands of messages across all folders; without a cap, a single cycle
-   * could monopolize the account's IMAP connection (and thus delay normal INBOX processing by
-   * as much) for a very long time. scan() returns as soon as this total is reached; MailAccount
-   * then relaunches it on the next cycle (not the next day) as long as there's backlog left to
-   * catch up on.
+   * Cap on messages processed per call to scan(), enforced within a single folder too (not just
+   * across folders): a folder with thousands of unfetched messages (e.g. its very first scan)
+   * would otherwise monopolize the account's IMAP connection for a single, uninterruptible,
+   * unlogged stretch — delaying normal INBOX processing by however long that takes, with nothing
+   * in the logs to say whether it's still working or stuck. scan() returns as soon as this total
+   * is reached, from wherever it happened to be reached, including mid-folder; MailAccount then
+   * relaunches it on the next cycle (not the next day) as long as there's backlog left to catch
+   * up on.
    */
-  private final static int MAX_MESSAGES_PER_SCAN = 500;
+  final static int MAX_MESSAGES_PER_SCAN = 500;
 
   private final ImapMailbox mailbox;
   private final ClassifierCorpusStore corpusStore;
@@ -117,7 +119,7 @@ public class ClassifierCorpusScanner {
 
       int type = folder.getType();
       if ((type & Folder.HOLDS_MESSAGES) != 0 && shouldScan.test(folder)) {
-        scanFolder(folder, state, newExamples);
+        if (scanFolder(folder, state, newExamples, enforceBudget)) return true;
       }
       if ((type & Folder.HOLDS_FOLDERS) != 0) {
         if (walk(folder, state, newExamples, shouldScan, enforceBudget)) return true;
@@ -130,7 +132,8 @@ public class ClassifierCorpusScanner {
     return excludedFolderNames.contains(folderName.toLowerCase(Locale.ROOT));
   }
 
-  private void scanFolder(Folder folder, ClassifierScanState state, List<ClassifierExample> newExamples) {
+  /** @return true if the per-scan budget was reached while fetching this folder (there's leftover work in it for next time). */
+  private boolean scanFolder(Folder folder, ClassifierScanState state, List<ClassifierExample> newExamples, boolean enforceBudget) {
     String fullName = folder.getFullName();
     ClassifierLabel label = spamFolderName.equalsIgnoreCase(folder.getName()) ? ClassifierLabel.SPAM : ClassifierLabel.HAM;
     try {
@@ -141,9 +144,12 @@ public class ClassifierCorpusScanner {
       // existing history, not just what arrives after the scan).
       long lastUid = (progress != null && progress.getUidValidity() == uidValidity) ? progress.getLastUid() : 0;
 
-      Message[] messages = mailbox.getMessagesSince(folder, lastUid);
+      int remainingBudget = enforceBudget ? MAX_MESSAGES_PER_SCAN - messagesProcessed : Integer.MAX_VALUE;
+      Message[] messages = mailbox.getMessagesSince(folder, lastUid, remainingBudget);
+      boolean budgetExceeded = enforceBudget && messages.length >= remainingBudget;
       if (messages.length > 0) {
-        LOGGER.info(logPrefix + messages.length + " new message(s) in " + fullName + " (" + label + ")");
+        LOGGER.info(logPrefix + messages.length + " new message(s) in " + fullName + " (" + label + ")"
+            + (budgetExceeded ? " — budget reached, more may remain here for next cycle" : ""));
       }
       long newLastUid = lastUid;
       Instant fetchDate = Instant.now();
@@ -156,9 +162,13 @@ public class ClassifierCorpusScanner {
         newLastUid = Math.max(newLastUid, mailbox.getUid(folder, message));
       }
       messagesProcessed += messages.length;
+      // Saved even when capped mid-folder: the next call resumes right after the last message
+      // actually fetched here, rather than re-fetching this same batch from scratch.
       state.setFolderProgress(fullName, uidValidity, newLastUid);
+      return budgetExceeded;
     } catch (MessagingException e) {
       LOGGER.log(Level.WARNING, logPrefix + "Failed to scan folder " + fullName, e);
+      return false;
     } finally {
       try {
         mailbox.closeReadOnly(folder);

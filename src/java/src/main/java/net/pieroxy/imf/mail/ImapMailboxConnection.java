@@ -109,7 +109,7 @@ public class ImapMailboxConnection implements ImapMailbox {
   }
 
   @Override
-  public Message[] getMessagesSince(Folder folder, long lastUid) throws MessagingException {
+  public Message[] getMessagesSince(Folder folder, long lastUid, int maxResults) throws MessagingException {
     openReadOnly(folder);
     IMAPFolder imapFolder = (IMAPFolder) folder;
     Message[] candidates = imapFolder.getMessagesByUID(lastUid + 1, UIDFolder.LASTUID);
@@ -117,7 +117,14 @@ public class ImapMailboxConnection implements ImapMailbox {
     for (Message m : candidates) {
       // Same as for the INBOX: getMessagesByUID can return the lower bound even if its UID is
       // actually <= lastUid.
-      if (imapFolder.getUID(m) > lastUid) result.add(m);
+      if (imapFolder.getUID(m) > lastUid) {
+        result.add(m);
+        // Capped here, before the batched fetch below: on a folder with years of unfetched
+        // history, that fetch (envelope + MIME structure for every candidate) is the expensive
+        // part, not the cheap UID resolution above — capping only the processing loop
+        // afterward wouldn't stop a single call from still trying to fetch everything at once.
+        if (result.size() >= maxResults) break;
+      }
     }
     Message[] messages = result.toArray(new Message[0]);
     // Without this batched fetch, every individual access to a header (Subject/From/To/Date/

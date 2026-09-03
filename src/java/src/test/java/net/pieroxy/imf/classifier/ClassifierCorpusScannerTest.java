@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -121,6 +122,36 @@ public class ClassifierCorpusScannerTest {
 
     assertEquals("the daily scan must not re-capture what the frequent scan already saw",
         1, store.readAll().size());
+  }
+
+  @Test
+  public void stopsMidFolderOnceTheBudgetIsReachedAndResumesNextTime() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
+    int total = ClassifierCorpusScanner.MAX_MESSAGES_PER_SCAN + 5;
+    Message[] messages = new Message[total];
+    for (int i = 0; i < total; i++) {
+      messages[i] = message("Newsletter " + i, "sender@example.com");
+    }
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      mailbox.getOrCreateFolder("Archive").appendMessages(messages);
+    }
+
+    ClassifierScanState state = new ClassifierScanState();
+    boolean budgetExceededFirstPass;
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      budgetExceededFirstPass = new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account")
+          .scan(state, LocalDate.now());
+    }
+    assertTrue("the first pass must stop at the budget, mid-folder", budgetExceededFirstPass);
+    assertEquals(ClassifierCorpusScanner.MAX_MESSAGES_PER_SCAN, store.readAll().size());
+
+    boolean budgetExceededSecondPass;
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      budgetExceededSecondPass = new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account")
+          .scan(state, LocalDate.now());
+    }
+    assertFalse("the second pass must finish covering the rest of the folder", budgetExceededSecondPass);
+    assertEquals("all messages must be captured across the two passes", total, store.readAll().size());
   }
 
   @Test

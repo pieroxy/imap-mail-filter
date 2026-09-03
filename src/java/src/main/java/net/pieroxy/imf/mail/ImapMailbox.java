@@ -37,7 +37,13 @@ public interface ImapMailbox extends AutoCloseable {
    */
   long getUidValidity(Folder folder) throws MessagingException;
 
-  Message[] getMessagesSince(Folder folder, long lastUid) throws MessagingException;
+  /**
+   * @param maxResults caps how many messages this call fetches, not just how many it returns —
+   *                    a folder with far more than that many unfetched messages (e.g. its very
+   *                    first scan) still only costs one bounded batched fetch, not one sized to
+   *                    the whole backlog.
+   */
+  Message[] getMessagesSince(Folder folder, long lastUid, int maxResults) throws MessagingException;
 
   long getUid(Folder folder, Message message) throws MessagingException;
 
