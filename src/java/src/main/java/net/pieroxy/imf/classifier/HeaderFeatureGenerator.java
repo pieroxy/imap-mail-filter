@@ -11,7 +11,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Structured features from a {@link ClassifierExample}'s headers — not a bag-of-words. Doccat's
@@ -46,20 +45,9 @@ public class HeaderFeatureGenerator implements FeatureGenerator {
     }
 
     List<String> features = new ArrayList<>();
-    features.add("fromDomain=" + orAbsent(singleDomain(example.getFrom())));
-    for (String domain : distinctDomains(example.getTo())) {
-      features.add("toDomain=" + domain);
-    }
-    if (example.getTo() == null || example.getTo().isEmpty()) {
-      features.add("toDomain=" + ABSENT);
-    }
     for (String word : words(example.getFromDisplayName())) {
       features.add("fromNameWord=" + word);
     }
-    for (String word : words(example.getToDisplayName())) {
-      features.add("toNameWord=" + word);
-    }
-    features.add("ipPrefix=" + orAbsent(ipPrefix(example.getIp())));
     features.add("reply=" + example.isReply());
     features.add("listUnsubscribe=" + example.isListUnsubscribePresent());
     features.add("precedence=" + orAbsent(example.getPrecedence()));
@@ -125,40 +113,8 @@ public class HeaderFeatureGenerator implements FeatureGenerator {
     return value == null ? "unknown" : value.toString();
   }
 
-  /** Only when the list has exactly one address — same convention as FromDomainMatcher/SpfIdentityExtractor: an ambiguous From shouldn't silently pick one. */
-  private static String singleDomain(List<String> addresses) {
-    return addresses != null && addresses.size() == 1 ? domainOf(addresses.get(0)) : null;
-  }
-
-  private static Set<String> distinctDomains(List<String> addresses) {
-    Set<String> domains = new LinkedHashSet<>();
-    if (addresses != null) {
-      for (String address : addresses) {
-        String domain = domainOf(address);
-        if (domain != null) {
-          domains.add(domain);
-        }
-      }
-    }
-    return domains;
-  }
-
-  private static String domainOf(String address) {
-    if (address == null) return null;
-    int at = address.lastIndexOf('@');
-    if (at < 0 || at >= address.length() - 1) return null;
-    return address.substring(at + 1).toLowerCase(Locale.ROOT);
-  }
-
   private static List<String> words(String joinedNames) {
     if (joinedNames == null || joinedNames.isBlank()) return List.of();
     return List.of(joinedNames.toLowerCase(Locale.ROOT).split("\\s+"));
-  }
-
-  /** First 3 octets: a raw IP is essentially unique to one sender (no generalization value), but a /24-ish prefix can still catch a recurring subnet/ISP block. */
-  private static String ipPrefix(String ip) {
-    if (ip == null) return null;
-    String[] parts = ip.split("\\.", -1);
-    return parts.length == 4 ? parts[0] + "." + parts[1] + "." + parts[2] : null;
   }
 }

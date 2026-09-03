@@ -33,69 +33,19 @@ public class HeaderFeatureGeneratorTest {
   }
 
   @Test
-  public void emitsFromDomainWhenExactlyOneFromAddress() {
-    ClassifierExample e = blankExample();
-    e.setFrom(List.of("alice@Example.com"));
-
-    assertTrue(featuresFor(e).contains("fromDomain=example.com"));
-  }
-
-  @Test
-  public void fromDomainIsAbsentWhenZeroOrMultipleFromAddresses() {
-    ClassifierExample e = blankExample();
-    assertTrue(featuresFor(e).contains("fromDomain=(absent)"));
-
-    e.setFrom(List.of("a@x.com", "b@y.com"));
-    assertTrue(featuresFor(e).contains("fromDomain=(absent)"));
-  }
-
-  @Test
-  public void emitsOneToDomainFeaturePerDistinctRecipientDomain() {
-    ClassifierExample e = blankExample();
-    e.setTo(List.of("bob@example.com", "carol@example.com", "dave@other.example"));
-
-    Set<String> features = Set.copyOf(featuresFor(e));
-    assertTrue(features.contains("toDomain=example.com"));
-    assertTrue(features.contains("toDomain=other.example"));
-    long toDomainCount = features.stream().filter(f -> f.startsWith("toDomain=")).count();
-    assertEquals("bob and carol share example.com and dedupe into one feature; dave's domain is distinct",
-        2, toDomainCount);
-  }
-
-  @Test
-  public void toDomainIsAbsentWhenNoRecipients() {
-    assertTrue(featuresFor(blankExample()).contains("toDomain=(absent)"));
-  }
-
-  @Test
   public void emitsOneWordFeaturePerDisplayNameWordLowercased() {
     ClassifierExample e = blankExample();
     e.setFromDisplayName("Alice Smith");
-    e.setToDisplayName("Bob");
 
     Collection<String> features = featuresFor(e);
     assertTrue(features.contains("fromNameWord=alice"));
     assertTrue(features.contains("fromNameWord=smith"));
-    assertTrue(features.contains("toNameWord=bob"));
   }
 
   @Test
-  public void emitsNoNameWordFeaturesWhenDisplayNamesAreAbsent() {
+  public void emitsNoNameWordFeaturesWhenDisplayNameIsAbsent() {
     Collection<String> features = featuresFor(blankExample());
-    assertFalse(features.stream().anyMatch(f -> f.startsWith("fromNameWord=") || f.startsWith("toNameWord=")));
-  }
-
-  @Test
-  public void emitsIpPrefixAsFirstThreeOctets() {
-    ClassifierExample e = blankExample();
-    e.setIp("203.0.113.42");
-
-    assertTrue(featuresFor(e).contains("ipPrefix=203.0.113"));
-  }
-
-  @Test
-  public void ipPrefixIsAbsentWhenIpIsMissing() {
-    assertTrue(featuresFor(blankExample()).contains("ipPrefix=(absent)"));
+    assertFalse(features.stream().anyMatch(f -> f.startsWith("fromNameWord=")));
   }
 
   @Test
