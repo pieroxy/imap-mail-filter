@@ -5,14 +5,16 @@ import net.pieroxy.imf.classifier.ClassifierExample;
 import net.pieroxy.imf.classifier.ClassifierLabel;
 import net.pieroxy.imf.classifier.SubjectClassifierTrainer;
 import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
-import net.pieroxy.imf.rules.matchers.SubjectClassifierContext;
-import org.junit.After;
+import net.pieroxy.imf.rules.RuleContext;
+import net.pieroxy.imf.rules.matchers.Matcher;
+import net.pieroxy.imf.rules.matchers.MatcherType;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import javax.mail.Session;
 import javax.mail.internet.MimeMessage;
+import java.io.File;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,19 +35,12 @@ public class SubjectClassifierMatcherTest {
   @Rule
   public TemporaryFolder tmp = new TemporaryFolder();
 
-  @After
-  public void clearContext() {
-    // The context is a ThreadLocal (see SubjectClassifierContext): the test thread is reused
-    // from one test to the next, so it must be cleared to avoid leaking between tests.
-    SubjectClassifierContext.set(null);
-  }
-
-  private static SubjectClassifierMatcher matcherFor(String threshold) {
+  /** modelFile null = no account context available, same as an unrelated matcher would see. */
+  private static SubjectClassifierMatcher matcherFor(String threshold, File modelFile) {
     MailFilterRuleMatcherConfiguration config = new MailFilterRuleMatcherConfiguration();
+    config.setType(MatcherType.SUBJECT_CLASSIFIER_EQUALS);
     config.setKey(threshold);
-    SubjectClassifierMatcher matcher = new SubjectClassifierMatcher();
-    matcher.setConfig(config);
-    return matcher;
+    return (SubjectClassifierMatcher) Matcher.build(config, new RuleContext(modelFile, null));
   }
 
   private MimeMessage messageWithSubject(String subject) throws Exception {
@@ -57,7 +52,7 @@ public class SubjectClassifierMatcherTest {
   @Test
   public void rejectsAMalformedThreshold() {
     try {
-      matcherFor("not-a-threshold");
+      matcherFor("not-a-threshold", null);
       fail("should have thrown");
     } catch (IllegalArgumentException expected) {
       // ok
@@ -67,7 +62,7 @@ public class SubjectClassifierMatcherTest {
   @Test
   public void rejectsAMissingThreshold() {
     try {
-      matcherFor(null);
+      matcherFor(null, null);
       fail("should have thrown");
     } catch (IllegalArgumentException expected) {
       // ok
@@ -76,9 +71,9 @@ public class SubjectClassifierMatcherTest {
 
   @Test
   public void doesNotMatchWhenMessageHasNoSubject() throws Exception {
-    SubjectClassifierMatcher matcher = matcherFor(">0.5");
-    // No context set at all: if the subject check didn't short-circuit first, this would blow
-    // up instead of returning notMatched().
+    SubjectClassifierMatcher matcher = matcherFor(">0.5", null);
+    // No model file at all: if the subject check didn't short-circuit first, this would blow up
+    // instead of returning notMatched().
     MimeMessage message = new MimeMessage(session);
 
     assertFalse(matcher.matches(message).matched());
@@ -86,7 +81,7 @@ public class SubjectClassifierMatcherTest {
 
   @Test
   public void announcesInactiveStateAssoonAsConfiguredNotAtFirstMessage() throws Exception {
-    SubjectClassifierContext.set(tmp.newFile("does-not-exist.bin"));
+    File modelFile = tmp.newFile("does-not-exist.bin");
     tmp.getRoot().listFiles((dir, name) -> name.equals("does-not-exist.bin"))[0].delete(); // the file must not exist
 
     // setConfig() logs on ITS OWN logger (derived from the config), not accessible yet before
@@ -101,7 +96,7 @@ public class SubjectClassifierMatcherTest {
     Logger root = Logger.getLogger("");
     root.addHandler(capture);
     try {
-      matcherFor(">0.5"); // the check + log must happen here, not on the first matches() call
+      matcherFor(">0.5", modelFile); // the check + log must happen here, not on the first matches() call
     } finally {
       root.removeHandler(capture);
     }
@@ -112,9 +107,9 @@ public class SubjectClassifierMatcherTest {
 
   @Test
   public void doesNotReannounceInactiveStateOnEveryMessageAfterTheInitialCheck() throws Exception {
-    SubjectClassifierContext.set(tmp.newFile("does-not-exist.bin"));
+    File modelFile = tmp.newFile("does-not-exist.bin");
     tmp.getRoot().listFiles((dir, name) -> name.equals("does-not-exist.bin"))[0].delete();
-    SubjectClassifierMatcher matcher = matcherFor(">0.5"); // already logs "inactive" once here, not captured
+    SubjectClassifierMatcher matcher = matcherFor(">0.5", modelFile); // already logs "inactive" once here, not captured
 
     List<LogRecord> records = new ArrayList<>();
     Handler capture = new Handler() {
@@ -162,15 +157,14 @@ public class SubjectClassifierMatcherTest {
     store.append(LocalDate.now(), examples);
 
     new SubjectClassifierTrainer(store).train();
-    SubjectClassifierContext.set(store.getModelFile());
 
-    SubjectClassifierMatcher confidentSpam = matcherFor(">0.5");
+    SubjectClassifierMatcher confidentSpam = matcherFor(">0.5", store.getModelFile());
     assertTrue("a clearly spammy subject must cross the threshold",
         confidentSpam.matches(messageWithSubject("Buy cheap viagra now, free money")).matched());
     assertFalse("a clearly legitimate subject must not cross the threshold",
         confidentSpam.matches(messageWithSubject("Meeting notes from yesterday's sync")).matched());
 
-    SubjectClassifierMatcher confidentHam = matcherFor("<0.5");
+    SubjectClassifierMatcher confidentHam = matcherFor("<0.5", store.getModelFile());
     assertFalse("the < operator applies too: a spammy subject must not fall below the threshold",
         confidentHam.matches(messageWithSubject("Buy cheap viagra now, free money")).matched());
     assertTrue("a legitimate subject must fall below the threshold with <",

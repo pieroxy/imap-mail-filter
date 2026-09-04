@@ -2,9 +2,9 @@ package net.pieroxy.imf.rules.matchers.implementations;
 
 import net.pieroxy.imf.classifier.ClassifierLabel;
 import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
+import net.pieroxy.imf.rules.RuleContext;
 import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
-import net.pieroxy.imf.rules.matchers.SubjectClassifierContext;
 import opennlp.tools.doccat.DoccatModel;
 import opennlp.tools.doccat.DocumentCategorizerME;
 import opennlp.tools.tokenize.SimpleTokenizer;
@@ -36,10 +36,16 @@ public class SubjectClassifierMatcher extends Matcher {
 
   private String operator;
   private double threshold;
+  private File modelFile;
 
   private DocumentCategorizerME categorizer;
   private long loadedModelMtime = -1;
   private boolean loggedInactive;
+
+  @Override
+  protected void bindContext(RuleContext context) {
+    modelFile = context.subjectModelFile();
+  }
 
   @Override
   public void setConfig(MailFilterRuleMatcherConfiguration config) {
@@ -98,11 +104,10 @@ public class SubjectClassifierMatcher extends Matcher {
    * depending on that invalidation cycle.
    */
   private DocumentCategorizerME loadCategorizer() {
-    File modelFile = SubjectClassifierContext.get();
     if (modelFile == null) {
-      // Shouldn't happen in normal use (MailAccount.run() sets the context before any
-      // processing on this thread); report it clearly rather than failing further down.
-      logInactiveOnce("no classifier model context for this thread");
+      // Shouldn't happen in normal use (Matcher.build() binds the account's RuleContext before
+      // this runs); report it clearly rather than failing further down.
+      logInactiveOnce("no classifier model context for this account");
       return null;
     }
 

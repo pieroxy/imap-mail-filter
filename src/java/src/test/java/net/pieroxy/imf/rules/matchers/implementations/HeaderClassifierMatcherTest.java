@@ -5,8 +5,9 @@ import net.pieroxy.imf.classifier.ClassifierExample;
 import net.pieroxy.imf.classifier.ClassifierLabel;
 import net.pieroxy.imf.classifier.HeaderClassifierTrainer;
 import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
-import net.pieroxy.imf.rules.matchers.HeaderClassifierContext;
-import org.junit.After;
+import net.pieroxy.imf.rules.RuleContext;
+import net.pieroxy.imf.rules.matchers.Matcher;
+import net.pieroxy.imf.rules.matchers.MatcherType;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -14,6 +15,7 @@ import org.junit.rules.TemporaryFolder;
 import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import java.io.File;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,19 +36,12 @@ public class HeaderClassifierMatcherTest {
   @Rule
   public TemporaryFolder tmp = new TemporaryFolder();
 
-  @After
-  public void clearContext() {
-    // ThreadLocal (see HeaderClassifierContext): the test thread is reused from one test to the
-    // next, so it must be cleared to avoid leaking between tests.
-    HeaderClassifierContext.set(null);
-  }
-
-  private static HeaderClassifierMatcher matcherFor(String threshold) {
+  /** modelFile null = no account context available, same as an unrelated matcher would see. */
+  private static HeaderClassifierMatcher matcherFor(String threshold, File modelFile) {
     MailFilterRuleMatcherConfiguration config = new MailFilterRuleMatcherConfiguration();
+    config.setType(MatcherType.HEADER_CLASSIFIER_EQUALS);
     config.setKey(threshold);
-    HeaderClassifierMatcher matcher = new HeaderClassifierMatcher();
-    matcher.setConfig(config);
-    return matcher;
+    return (HeaderClassifierMatcher) Matcher.build(config, new RuleContext(null, modelFile));
   }
 
   private static ClassifierExample example(ClassifierLabel label) {
@@ -77,7 +72,7 @@ public class HeaderClassifierMatcherTest {
   @Test
   public void rejectsAMalformedThreshold() {
     try {
-      matcherFor("not-a-threshold");
+      matcherFor("not-a-threshold", null);
       fail("should have thrown");
     } catch (IllegalArgumentException expected) {
       // ok
@@ -87,7 +82,7 @@ public class HeaderClassifierMatcherTest {
   @Test
   public void rejectsAMissingThreshold() {
     try {
-      matcherFor(null);
+      matcherFor(null, null);
       fail("should have thrown");
     } catch (IllegalArgumentException expected) {
       // ok
@@ -96,7 +91,7 @@ public class HeaderClassifierMatcherTest {
 
   @Test
   public void doesNotMatchWhenNoModelContextIsSet() throws Exception {
-    HeaderClassifierMatcher matcher = matcherFor(">0.5");
+    HeaderClassifierMatcher matcher = matcherFor(">0.5", null);
     MimeMessage message = new MimeMessage(session);
 
     assertFalse(matcher.matches(message).matched());
@@ -104,7 +99,7 @@ public class HeaderClassifierMatcherTest {
 
   @Test
   public void announcesInactiveStateAssoonAsConfiguredNotAtFirstMessage() throws Exception {
-    HeaderClassifierContext.set(tmp.newFile("does-not-exist.bin"));
+    File modelFile = tmp.newFile("does-not-exist.bin");
     tmp.getRoot().listFiles((dir, name) -> name.equals("does-not-exist.bin"))[0].delete();
 
     List<LogRecord> records = new ArrayList<>();
@@ -116,7 +111,7 @@ public class HeaderClassifierMatcherTest {
     Logger root = Logger.getLogger("");
     root.addHandler(capture);
     try {
-      matcherFor(">0.5"); // the check + log must happen here, not on the first matches() call
+      matcherFor(">0.5", modelFile); // the check + log must happen here, not on the first matches() call
     } finally {
       root.removeHandler(capture);
     }
@@ -127,9 +122,9 @@ public class HeaderClassifierMatcherTest {
 
   @Test
   public void doesNotReannounceInactiveStateOnEveryMessageAfterTheInitialCheck() throws Exception {
-    HeaderClassifierContext.set(tmp.newFile("does-not-exist.bin"));
+    File modelFile = tmp.newFile("does-not-exist.bin");
     tmp.getRoot().listFiles((dir, name) -> name.equals("does-not-exist.bin"))[0].delete();
-    HeaderClassifierMatcher matcher = matcherFor(">0.5"); // already logs "inactive" once here, not captured
+    HeaderClassifierMatcher matcher = matcherFor(">0.5", modelFile); // already logs "inactive" once here, not captured
 
     List<LogRecord> records = new ArrayList<>();
     Handler capture = new Handler() {
@@ -162,7 +157,6 @@ public class HeaderClassifierMatcherTest {
     store.append(LocalDate.now(), examples);
 
     new HeaderClassifierTrainer(store).train();
-    HeaderClassifierContext.set(store.getHeaderModelFile());
 
     MimeMessage spammy = new MimeMessage(session);
     spammy.setFrom(new InternetAddress("deals@spammy.example.net"));
@@ -175,11 +169,11 @@ public class HeaderClassifierMatcherTest {
     legit.addHeader("In-Reply-To", "<original@example.com>");
     legit.addHeader("Return-Path", "<alice@example.com>");
 
-    HeaderClassifierMatcher confidentSpam = matcherFor(">0.5");
+    HeaderClassifierMatcher confidentSpam = matcherFor(">0.5", store.getHeaderModelFile());
     assertTrue("clearly spammy headers must cross the threshold", confidentSpam.matches(spammy).matched());
     assertFalse("clearly legitimate headers must not cross the threshold", confidentSpam.matches(legit).matched());
 
-    HeaderClassifierMatcher confidentHam = matcherFor("<0.5");
+    HeaderClassifierMatcher confidentHam = matcherFor("<0.5", store.getHeaderModelFile());
     assertFalse("the < operator applies too: spammy headers must not fall below the threshold",
         confidentHam.matches(spammy).matched());
     assertTrue("legitimate headers must fall below the threshold with <", confidentHam.matches(legit).matched());

@@ -17,10 +17,15 @@ public class Rule {
   private final Matcher matcher;
   private final Action action;
 
+  /** Equivalent to {@link #Rule(MailFilterRuleConfiguration, RuleContext)} with no account context available. */
   public Rule(MailFilterRuleConfiguration config) {
+    this(config, RuleContext.EMPTY);
+  }
+
+  public Rule(MailFilterRuleConfiguration config, RuleContext context) {
     this.config = config;
-    matcher = Matcher.build(config.getMatcher());
-    action = Action.build(config.getAction());
+    matcher = Matcher.build(config.getMatcher(), context);
+    action = Action.build(config.getAction(), context);
   }
 
   /**

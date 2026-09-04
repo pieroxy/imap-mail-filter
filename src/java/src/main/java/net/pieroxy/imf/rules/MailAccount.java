@@ -13,8 +13,6 @@ import net.pieroxy.imf.mail.ImapIdleWatcher;
 import net.pieroxy.imf.mail.ImapMailbox;
 import net.pieroxy.imf.mail.ImapMailboxConnection;
 import net.pieroxy.imf.mail.ImapMailboxFactory;
-import net.pieroxy.imf.rules.matchers.HeaderClassifierContext;
-import net.pieroxy.imf.rules.matchers.SubjectClassifierContext;
 import net.pieroxy.imf.scheduling.BackoffLoop;
 
 import javax.mail.Message;
@@ -58,11 +56,15 @@ public class MailAccount implements Runnable {
     this.config = config;
     this.stateStore = new MailAccountStateStore(dataFolder, config.getDisplayName());
     this.learnedRulesStore = new LearnedRulesStore(dataFolder, config.getDisplayName());
-    this.ruleCatalog = new RuleCatalog(config.getRules(), learnedRulesStore);
     this.classifierCorpusRetentionDays = config.getClassifierCorpusRetentionDays();
     this.classifierCorpusScanBatchSize = config.getClassifierCorpusScanBatchSize();
     this.classifierScanStateStore = new ClassifierScanStateStore(dataFolder, config.getDisplayName());
     this.classifierCorpusStore = new ClassifierCorpusStore(dataFolder, config.getDisplayName(), classifierCorpusRetentionDays);
+    // Built before ruleCatalog and handed to it: SubjectClassifierMatcher/HeaderClassifierMatcher
+    // have no other way to know which account's model file to load, since they're built without
+    // context by MatcherType.getImplementation() — see RuleContext.
+    RuleContext ruleContext = new RuleContext(classifierCorpusStore.getModelFile(), classifierCorpusStore.getHeaderModelFile());
+    this.ruleCatalog = new RuleCatalog(config.getRules(), learnedRulesStore, ruleContext);
     this.subjectClassifierTrainer = new SubjectClassifierTrainer(classifierCorpusStore);
     this.headerClassifierTrainer = new HeaderClassifierTrainer(classifierCorpusStore);
     String spamFolderName = config.getClassifierSpamFolderName();
@@ -74,12 +76,6 @@ public class MailAccount implements Runnable {
 
   @Override
   public void run() {
-    // Once and for all on THIS thread, before any processing: SubjectClassifierMatcher has no
-    // other way to know which account (hence which model) it belongs to, since it's built
-    // without context by MatcherType.getImplementation(). This holds because this thread is
-    // dedicated to this account for the whole lifetime of the process (see SubjectClassifierContext).
-    SubjectClassifierContext.set(classifierCorpusStore.getModelFile());
-    HeaderClassifierContext.set(classifierCorpusStore.getHeaderModelFile());
     LOGGER.info("Starting account " + config.getDisplayName());
     // Builds the Matcher/Action tree right away rather than waiting for the first message:
     // RuleCatalog is normally lazy (see inspect()), but some matchers (like

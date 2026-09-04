@@ -5,7 +5,7 @@ import net.pieroxy.imf.classifier.ClassifierExampleExtractor;
 import net.pieroxy.imf.classifier.ClassifierLabel;
 import net.pieroxy.imf.classifier.HeaderFeatureGenerator;
 import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
-import net.pieroxy.imf.rules.matchers.HeaderClassifierContext;
+import net.pieroxy.imf.rules.RuleContext;
 import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 import opennlp.tools.doccat.DoccatModel;
@@ -47,10 +47,16 @@ public class HeaderClassifierMatcher extends Matcher {
   }
 
   private ReputationThreshold threshold;
+  private File modelFile;
 
   private DocumentCategorizerME categorizer;
   private long loadedModelMtime = -1;
   private boolean loggedInactive;
+
+  @Override
+  protected void bindContext(RuleContext context) {
+    modelFile = context.headerModelFile();
+  }
 
   @Override
   public void setConfig(MailFilterRuleMatcherConfiguration config) {
@@ -80,9 +86,8 @@ public class HeaderClassifierMatcher extends Matcher {
 
   /** Loads/reloads the model if needed — same self-detecting-mtime mechanism as {@link SubjectClassifierMatcher#loadCategorizer()}. */
   private DocumentCategorizerME loadCategorizer() {
-    File modelFile = HeaderClassifierContext.get();
     if (modelFile == null) {
-      logInactiveOnce("no classifier model context for this thread");
+      logInactiveOnce("no classifier model context for this account");
       return null;
     }
 

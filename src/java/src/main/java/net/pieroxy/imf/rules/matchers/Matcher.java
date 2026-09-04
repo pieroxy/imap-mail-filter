@@ -2,6 +2,7 @@ package net.pieroxy.imf.rules.matchers;
 
 import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
 import net.pieroxy.imf.logging.LogLevels;
+import net.pieroxy.imf.rules.RuleContext;
 
 import javax.mail.Message;
 import javax.mail.MessagingException;
@@ -18,15 +19,24 @@ public abstract class Matcher {
   private List<Matcher> children = Collections.emptyList();
   private Logger logger = Logger.getLogger(Matcher.class.getName());
 
+  /** Equivalent to {@link #build(MailFilterRuleMatcherConfiguration, RuleContext)} with no account context available. */
+  public static Matcher build(MailFilterRuleMatcherConfiguration config) {
+    return build(config, RuleContext.EMPTY);
+  }
+
   /**
    * Recursively builds the matcher tree described by the config (composite matchers like
-   * AND/OR reference other matchers via their "children").
+   * AND/OR/NOT reference other matchers via their "children"). {@code context} is bound before
+   * {@link #setConfig}, not after: a matcher that needs it (e.g. to check right away whether it
+   * has a usable model — see {@code SubjectClassifierMatcher}) does that check from within
+   * {@code setConfig}, so the context must already be in place by then.
    */
-  public static Matcher build(MailFilterRuleMatcherConfiguration config) {
+  public static Matcher build(MailFilterRuleMatcherConfiguration config, RuleContext context) {
     Matcher matcher = config.getType().getImplementation();
+    matcher.bindContext(context);
     matcher.setConfig(config);
     if (config.getChildren() != null) {
-      matcher.children = config.getChildren().stream().map(Matcher::build).collect(Collectors.toList());
+      matcher.children = config.getChildren().stream().map(c -> Matcher.build(c, context)).collect(Collectors.toList());
     }
     matcher.validate();
     return matcher;
@@ -41,6 +51,15 @@ public abstract class Matcher {
    * every message inspected.
    */
   protected void validate() {}
+
+  /**
+   * Account-level context (see {@link RuleContext}) this matcher was built with — no-op by
+   * default, since most matcher types don't need it. Only {@code SubjectClassifierMatcher}/
+   * {@code HeaderClassifierMatcher} override this today, to learn which account's model file to
+   * load; overriding it rather than reading a field directly is what lets {@link #build} bind it
+   * uniformly regardless of matcher type.
+   */
+  protected void bindContext(RuleContext context) {}
 
   /**
    * Computes the config key from an example message (rule learning via the imf-rules/

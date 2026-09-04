@@ -17,11 +17,18 @@ import java.util.stream.Collectors;
 public class RuleCatalog {
   private final List<MailFilterRuleConfiguration> manualRules;
   private final LearnedRulesStore learnedRulesStore;
+  private final RuleContext context;
   private List<Rule> rules;
 
+  /** Equivalent to {@link #RuleCatalog(List, LearnedRulesStore, RuleContext)} with no account context available. */
   public RuleCatalog(List<MailFilterRuleConfiguration> manualRules, LearnedRulesStore learnedRulesStore) {
+    this(manualRules, learnedRulesStore, RuleContext.EMPTY);
+  }
+
+  public RuleCatalog(List<MailFilterRuleConfiguration> manualRules, LearnedRulesStore learnedRulesStore, RuleContext context) {
     this.manualRules = manualRules != null ? manualRules : List.of();
     this.learnedRulesStore = learnedRulesStore;
+    this.context = context;
   }
 
   /** Builds on first call, then returns the same list until invalidate() is called. */
@@ -74,6 +81,6 @@ public class RuleCatalog {
   private List<Rule> build() {
     List<MailFilterRuleConfiguration> configs = new ArrayList<>(manualRules);
     configs.addAll(learnedRulesStore.load());
-    return configs.stream().map(Rule::new).collect(Collectors.toList());
+    return configs.stream().map(c -> new Rule(c, context)).collect(Collectors.toList());
   }
 }
