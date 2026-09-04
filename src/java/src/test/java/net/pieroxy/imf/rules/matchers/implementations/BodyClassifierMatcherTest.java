@@ -154,7 +154,7 @@ public class BodyClassifierMatcherTest {
         "Reminder dentist appointment Friday morning", "Photos from the weekend trip attached",
         "Updated schedule for next sprint below", "Thanks for the feedback yesterday appreciated",
     };
-    for (int i = 0; i < 6; i++) { // 60 examples per class: comfortably above the minimum (50)
+    for (int i = 0; i < 16; i++) { // 160 examples per class: comfortably above the minimum (150)
       for (String s : spamBodies) examples.add(example(s, ClassifierLabel.SPAM));
       for (String s : hamBodies) examples.add(example(s, ClassifierLabel.HAM));
     }

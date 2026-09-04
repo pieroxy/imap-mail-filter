@@ -34,10 +34,16 @@ import java.util.stream.Collectors;
  * Separate model file ({@link ClassifierCorpusStore#getBodyModelFile()}) from the other two
  * classifiers, so all three can run and be evaluated side by side — same reasoning as
  * {@link HeaderClassifierTrainer}.
+ * <p>
+ * Both {@link #MIN_EXAMPLES_PER_CLASS} and the cutoff below are more conservative than
+ * {@link SubjectClassifierTrainer}'s: body text has a much larger vocabulary than a subject
+ * line, so the same corpus size that's safe for subjects leaves this model estimating far more
+ * parameters from far less repetition per word — a recipe for memorizing this training set's
+ * quirks (a name, a URL, a one-off phrase) rather than learning anything that generalizes.
  */
 public class BodyClassifierTrainer {
   private final static Logger LOGGER = Logger.getLogger(BodyClassifierTrainer.class.getName());
-  static final int MIN_EXAMPLES_PER_CLASS = 50;
+  static final int MIN_EXAMPLES_PER_CLASS = 150;
   private static final String[] NO_TOKENS = new String[0];
 
   private final ClassifierCorpusStore corpusStore;
@@ -69,9 +75,11 @@ public class BodyClassifierTrainer {
 
     TrainingParameters params = new TrainingParameters();
     params.put(TrainingParameters.ALGORITHM_PARAM, NaiveBayesTrainer.NAIVE_BAYES_VALUE);
-    // Same reasoning as the subject classifier: this corpus size is small enough that the
-    // default cutoff (5 occurrences minimum) would eliminate most of the useful words.
-    params.put(TrainingParameters.CUTOFF_PARAM, 1);
+    // Unlike the subject classifier's cutoff=1: body text's vocabulary is large enough that a
+    // word appearing only once or twice in the whole corpus (a name, a URL, a one-off phrase) is
+    // noise, not signal — a stricter cutoff drops those before they can be memorized, without
+    // depending on corpus size the way MIN_EXAMPLES_PER_CLASS alone would.
+    params.put(TrainingParameters.CUTOFF_PARAM, 3);
 
     DoccatFactory factory = new DoccatFactory(new FeatureGenerator[]{new BagOfWordsFeatureGenerator(), new BodyFeatureGenerator()});
     DoccatModel model = DocumentCategorizerME.train("en", toStream(samples), params, factory);

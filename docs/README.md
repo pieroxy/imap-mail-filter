@@ -428,15 +428,22 @@ the others (e.g. via `keepProcessing`, see [Rule evaluation order](#rule-evaluat
 
 ### Body classifier training
 
-Same rhythm and minimum (**at least 50 examples of each class**) as the other two, but trained
-on the message body's visible text — the HTML part stripped down to text (tags, scripts, and
-styles removed via [Jsoup](https://jsoup.org/)), or a `text/plain` part used as-is when no HTML
-part exists at all — written to `classifier-corpus/<displayName>/body-model.bin`. Bag-of-words
-like the subject classifier (free text, not structured facts), plus one extra feature for which
-kind of part the body came from (`html`, `plain`, or absent for a message with no body at all,
-e.g. image-only or attachment-only) — a signal a bag-of-words model can't otherwise recover, since
-stripping HTML down to text makes it indistinguishable from a plain-text part with the same
-wording.
+Same rhythm as the other two, but trained on the message body's visible text — the HTML part
+stripped down to text (tags, scripts, and styles removed via [Jsoup](https://jsoup.org/)), or a
+`text/plain` part used as-is when no HTML part exists at all — written to
+`classifier-corpus/<displayName>/body-model.bin`. Bag-of-words like the subject classifier (free
+text, not structured facts), plus one extra feature for which kind of part the body came from
+(`html`, `plain`, or absent for a message with no body at all, e.g. image-only or
+attachment-only) — a signal a bag-of-words model can't otherwise recover, since stripping HTML
+down to text makes it indistinguishable from a plain-text part with the same wording.
+
+Two training parameters are more conservative here than for the subject/header classifiers,
+because body text's vocabulary is much larger than a subject line's: training is skipped until
+there are **at least 150 examples of each class** (not 50), and words occurring fewer than 3
+times across the whole corpus are dropped rather than kept (subject/header keep every word,
+however rare). Both guard against the same risk — a word seen once or twice (a name, a URL, a
+one-off phrase) getting memorized as if it generalized, rather than genuinely learning what
+distinguishes spam from ham.
 
 Body text isn't truncated: kept in full, on purpose, until real corpus volume shows what length
 is actually worth capping.
