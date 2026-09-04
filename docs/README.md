@@ -376,6 +376,14 @@ rhythms:
 
 Files older than `classifierCorpusRetentionDays` days are pruned once a day.
 
+A message received more than `classifierCorpusRetentionDays` days ago (per the server's own
+INTERNALDATE, not the sender's self-reported `Date:` header) is skipped during the scan itself,
+not just pruned afterward — it would just get pruned right away otherwise, so there's no point
+fetching and storing it in the first place. This matters most on a folder's very first scan (e.g.
+a years-old Archive or Sent folder): without it, the scan would spend its whole per-cycle budget
+walking through history that's already outside the retention window before ever reaching
+anything the corpus will actually keep.
+
 ### Excluding a folder from the corpus
 
 `classifierExcludedFolders` skips a folder (matched by name, anywhere in the tree) entirely —

@@ -14,7 +14,10 @@ import javax.mail.Message;
 import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 
@@ -243,5 +246,42 @@ public class ClassifierCorpusScannerTest {
     List<ClassifierExample> examples = store.readAll();
     assertEquals("only Archive should be captured, SpamML is excluded", 1, examples.size());
     assertEquals("Weekly team sync", examples.get(0).getSubject());
+  }
+
+  @Test
+  public void skipsMessagesOlderThanTheRetentionWindow() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
+    MimeMessage oldMessage = message("Ancient newsletter", "sender@example.com");
+    oldMessage.setSentDate(Date.from(Instant.now().minus(400, ChronoUnit.DAYS))); // appendMessages() uses this as INTERNALDATE
+    MimeMessage recentMessage = message("Recent newsletter", "sender@example.com");
+    recentMessage.setSentDate(new Date());
+    fixture.appendMessage(oldMessage, "Archive");
+    fixture.appendMessage(recentMessage, "Archive");
+
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account",
+          ClassifierCorpusScanner.DEFAULT_MAX_MESSAGES_PER_SCAN, 300).scan(new ClassifierScanState(), LocalDate.now());
+    }
+
+    List<ClassifierExample> examples = store.readAll();
+    assertEquals("the 400-day-old message must be skipped, it would just be pruned anyway (retentionDays=300)",
+        1, examples.size());
+    assertEquals("Recent newsletter", examples.get(0).getSubject());
+  }
+
+  @Test
+  public void zeroRetentionDaysDisablesTheAgeFilter() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
+    MimeMessage oldMessage = message("Ancient newsletter", "sender@example.com");
+    oldMessage.setSentDate(Date.from(Instant.now().minus(3650, ChronoUnit.DAYS)));
+    fixture.appendMessage(oldMessage, "Archive");
+
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account",
+          ClassifierCorpusScanner.DEFAULT_MAX_MESSAGES_PER_SCAN, 0).scan(new ClassifierScanState(), LocalDate.now());
+    }
+
+    assertEquals("retentionDays=0 must disable the filter, same as the constructors that don't take it",
+        1, store.readAll().size());
   }
 }

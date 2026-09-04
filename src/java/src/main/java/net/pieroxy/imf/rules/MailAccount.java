@@ -147,7 +147,7 @@ public class MailAccount implements Runnable {
     ClassifierScanState state = classifierScanStateStore.load();
     try {
       new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName, classifierExcludedFolders,
-          accountLabel(), classifierCorpusScanBatchSize).scanSpamFolderNow(state);
+          accountLabel(), classifierCorpusScanBatchSize, classifierCorpusRetentionDays).scanSpamFolderNow(state);
       classifierScanStateStore.save(state);
     } catch (Exception e) {
       LOGGER.log(Level.WARNING, "Classifier corpus [" + accountLabel() + "] spam scan failed", e);
@@ -184,7 +184,7 @@ public class MailAccount implements Runnable {
     boolean caughtUpToday;
     try {
       boolean moreWorkPending = new ClassifierCorpusScanner(mailbox, classifierCorpusStore, classifierSpamFolderName,
-          classifierExcludedFolders, accountLabel(), classifierCorpusScanBatchSize).scan(state, today);
+          classifierExcludedFolders, accountLabel(), classifierCorpusScanBatchSize, classifierCorpusRetentionDays).scan(state, today);
       caughtUpToday = !moreWorkPending;
       if (caughtUpToday) {
         state.setLastScanDate(today.toString());

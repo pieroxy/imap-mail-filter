@@ -8,7 +8,9 @@ import javax.mail.MessagingException;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -40,6 +42,14 @@ import java.util.stream.Collectors;
  * configured for Spam, wrongly labeled HAM — worse than not learning from it at all, it would
  * poison the corpus with spam classified as legitimate. Excluding it also avoids the feedback
  * loop (the classifier training on its own past verdicts).
+ * <p>
+ * A message older than retentionDays is skipped rather than extracted and stored: it would just
+ * get pruned by {@link ClassifierCorpusStore#pruneOlderThan} anyway (retention there is keyed on
+ * when a message was scanned, not on the message's own date, so without this a huge Archive
+ * folder's very first scan would spend its whole per-cycle budget — one extra IMAP round trip
+ * per message just for the body text, see ClassifierExampleExtractor — walking through decades
+ * of history that would only get discarded a moment later). The UID cursor still advances past a
+ * skipped message, so this backlog is walked through quickly rather than revisited every cycle.
  */
 public class ClassifierCorpusScanner {
   private final static Logger LOGGER = Logger.getLogger(ClassifierCorpusScanner.class.getName());
@@ -63,6 +73,7 @@ public class ClassifierCorpusScanner {
   private final Set<String> excludedFolderNames;
   private final String logPrefix;
   private final int maxMessagesPerScan;
+  private final int retentionDays;
   private int messagesProcessed;
 
   /**
@@ -72,12 +83,18 @@ public class ClassifierCorpusScanner {
    */
   public ClassifierCorpusScanner(ImapMailbox mailbox, ClassifierCorpusStore corpusStore, String spamFolderName,
                                   List<String> excludedFolderNames, String accountLabel) {
-    this(mailbox, corpusStore, spamFolderName, excludedFolderNames, accountLabel, DEFAULT_MAX_MESSAGES_PER_SCAN);
+    this(mailbox, corpusStore, spamFolderName, excludedFolderNames, accountLabel, DEFAULT_MAX_MESSAGES_PER_SCAN, 0);
   }
 
   /** @param maxMessagesPerScan overrides {@link #DEFAULT_MAX_MESSAGES_PER_SCAN} when positive; a non-positive value falls back to the default. */
   public ClassifierCorpusScanner(ImapMailbox mailbox, ClassifierCorpusStore corpusStore, String spamFolderName,
                                   List<String> excludedFolderNames, String accountLabel, int maxMessagesPerScan) {
+    this(mailbox, corpusStore, spamFolderName, excludedFolderNames, accountLabel, maxMessagesPerScan, 0);
+  }
+
+  /** @param retentionDays a message received more than this many days ago is skipped entirely (see the class javadoc); 0 or negative disables the filter. */
+  public ClassifierCorpusScanner(ImapMailbox mailbox, ClassifierCorpusStore corpusStore, String spamFolderName,
+                                  List<String> excludedFolderNames, String accountLabel, int maxMessagesPerScan, int retentionDays) {
     this.mailbox = mailbox;
     this.corpusStore = corpusStore;
     this.spamFolderName = spamFolderName;
@@ -88,6 +105,7 @@ public class ClassifierCorpusScanner {
         : excludedFolderNames.stream().map(name -> name.toLowerCase(Locale.ROOT)).collect(Collectors.toUnmodifiableSet());
     this.logPrefix = "Classifier corpus [" + accountLabel + "] ";
     this.maxMessagesPerScan = maxMessagesPerScan > 0 ? maxMessagesPerScan : DEFAULT_MAX_MESSAGES_PER_SCAN;
+    this.retentionDays = retentionDays;
   }
 
   /** @return true if the cap was reached (there's leftover work for the next call). */
@@ -162,13 +180,23 @@ public class ClassifierCorpusScanner {
       }
       long newLastUid = lastUid;
       Instant fetchDate = Instant.now();
+      Instant cutoff = retentionDays > 0 ? fetchDate.minus(retentionDays, ChronoUnit.DAYS) : null;
+      int skippedForAge = 0;
       for (Message message : messages) {
-        try {
-          newExamples.add(ClassifierExampleExtractor.extract(message, label, fetchDate));
-        } catch (Exception e) {
-          LOGGER.log(Level.WARNING, logPrefix + "Failed to extract example from " + fullName, e);
+        if (cutoff != null && isOlderThan(message, cutoff)) {
+          skippedForAge++;
+        } else {
+          try {
+            newExamples.add(ClassifierExampleExtractor.extract(message, label, fetchDate));
+          } catch (Exception e) {
+            LOGGER.log(Level.WARNING, logPrefix + "Failed to extract example from " + fullName, e);
+          }
         }
         newLastUid = Math.max(newLastUid, mailbox.getUid(folder, message));
+      }
+      if (skippedForAge > 0) {
+        LOGGER.info(logPrefix + skippedForAge + " message(s) in " + fullName + " skipped: older than "
+            + retentionDays + " day(s) (would be pruned anyway)");
       }
       messagesProcessed += messages.length;
       // Saved even when capped mid-folder: the next call resumes right after the last message
@@ -184,6 +212,22 @@ public class ClassifierCorpusScanner {
       } catch (MessagingException e) {
         LOGGER.log(Level.WARNING, logPrefix + "Failed to close folder " + fullName, e);
       }
+    }
+  }
+
+  /**
+   * Server-recorded INTERNALDATE (already prefetched in the batch, see
+   * ImapMailboxConnection#getMessagesSince), not the self-reported {@code Date:} header: always
+   * present and not forgeable by the sender, unlike mailDate. A message whose received date can't
+   * be determined is never treated as too old — missing metadata is a reason to keep it, not to
+   * silently drop otherwise-valid data.
+   */
+  private static boolean isOlderThan(Message message, Instant cutoff) {
+    try {
+      Date receivedDate = message.getReceivedDate();
+      return receivedDate != null && receivedDate.toInstant().isBefore(cutoff);
+    } catch (MessagingException e) {
+      return false;
     }
   }
 }
