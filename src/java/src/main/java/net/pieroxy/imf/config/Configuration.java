@@ -9,6 +9,7 @@ public class Configuration {
   private int keepLogFiles;
   /** IP/domain reputation sources (see {@link ReputationListConfig}) — absent = feature disabled. */
   private List<ReputationListConfig> reputationLists;
+  private WebServerConfiguration webServer;
 
   public List<MailAccountConfiguration> getConfigurations() {
     return configurations;

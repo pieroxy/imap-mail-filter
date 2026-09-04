@@ -45,6 +45,8 @@ public class MatcherTypeTest {
   @Test
   public void subjectClassifierIsNotLearnable() {
     assertFalse(MatcherType.learnableValues().contains(MatcherType.SUBJECT_CLASSIFIER_EQUALS));
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.HEADER_CLASSIFIER_EQUALS));
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.BODY_CLASSIFIER_EQUALS));
   }
 
   /**

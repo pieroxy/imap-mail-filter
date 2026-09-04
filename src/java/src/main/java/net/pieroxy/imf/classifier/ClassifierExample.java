@@ -6,8 +6,9 @@ import java.util.List;
  * A record of the training corpus: whatever might feed a future classifier (subject, from/to
  * with their display name, best-effort originating IP, a few more headers —
  * In-Reply-To/References, Precedence, List-Id, List-Unsubscribe, Return-Path/Reply-To
- * consistency with From — plus the MIME structure's attachment filenames and the server-recorded
- * vs. self-reported send date), labeled SPAM/HAM based on the IMAP folder it came from.
+ * consistency with From — plus the MIME structure's attachment filenames, the server-recorded
+ * vs. self-reported send date, and the message body's visible text), labeled SPAM/HAM based on
+ * the IMAP folder it came from.
  */
 public class ClassifierExample {
   private String messageId;
@@ -30,6 +31,8 @@ public class ClassifierExample {
   private Boolean replyToMismatch;
   private ClassifierLabel label;
   private List<String> attachmentExtensions;
+  private String bodyText;
+  private String bodySource;
 
   /**
    * Raw Message-ID header; null if absent (rare, malformed mail). Identifies the same message
@@ -217,5 +220,37 @@ public class ClassifierExample {
 
   public void setAttachmentExtensions(List<String> attachmentExtensions) {
     this.attachmentExtensions = attachmentExtensions;
+  }
+
+  /**
+   * The message body's visible text: the HTML part's text (tags/scripts/styles stripped, see
+   * {@link ClassifierExampleExtractor}) when one exists, since that's what a human actually sees
+   * — a plain-text alternative part is normally just a fallback nobody reads and is ignored when
+   * an HTML part is present; only used as-is (no stripping needed) when no HTML part exists at
+   * all. Null if the message has neither. Not truncated: kept as long as it comes, on purpose —
+   * revisit only once real corpus volume shows what length is actually reasonable.
+   */
+  public String getBodyText() {
+    return bodyText;
+  }
+
+  public void setBodyText(String bodyText) {
+    this.bodyText = bodyText;
+  }
+
+  /**
+   * Which MIME part {@link #getBodyText()} came from: {@code "html"} or {@code "plain"}; null if
+   * the message had neither (same condition as {@link #getBodyText()} being null). Kept as its
+   * own field rather than inferred from {@code bodyText} being present, because stripped HTML
+   * and a plain-text part look identical once reduced to text — this is exactly the distinction
+   * that stripping erases, and a bag-of-words model over the text alone can't recover it (see
+   * {@link BodyFeatureGenerator}).
+   */
+  public String getBodySource() {
+    return bodySource;
+  }
+
+  public void setBodySource(String bodySource) {
+    this.bodySource = bodySource;
   }
 }

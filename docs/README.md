@@ -21,6 +21,7 @@ configurable rules to new mail: move it, mark it read, or both. Rules can be wri
   - [Excluding a folder from the corpus](#excluding-a-folder-from-the-corpus)
   - [Subject classifier training](#subject-classifier-training)
   - [Header classifier training](#header-classifier-training)
+  - [Body classifier training](#body-classifier-training)
 - [Reputation lists](#reputation-lists)
 
 ## Running IMF
@@ -190,6 +191,7 @@ A rule is a `matcher` + an `action`. When a matcher matches a message, its actio
 | [`FCRDNS_RESULT_EQUALS`](matchers/fcrdns-result-equals.md) | Match a live-evaluated reverse DNS (FCrDNS) result on the connecting IP. |
 | [`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) | Match when a locally-trained model scores the subject above/below a threshold. |
 | [`HEADER_CLASSIFIER_EQUALS`](matchers/header-classifier-equals.md) | Match when a locally-trained model scores a message's headers above/below a threshold. |
+| [`BODY_CLASSIFIER_EQUALS`](matchers/body-classifier-equals.md) | Match when a locally-trained model scores a message's body text above/below a threshold. |
 | [`IP_REPUTATION_EQUALS`](matchers/ip-reputation-equals.md) | Match when the connecting IP's reputation score (from downloaded lists) crosses a threshold. |
 | [`FROM_DOMAIN_REPUTATION_EQUALS`](matchers/from-domain-reputation-equals.md) | Same as above, on the `From:` domain against domain reputation lists. |
 | [`AND`](matchers/and.md) | Composite: all children must match. |
@@ -354,6 +356,7 @@ Everything IMF persists lives under `dataFolder`, one file/folder per account (k
 | `classifier-corpus/<displayName>/classifier-YYYY-MM-DD.json.lz4` | One compressed file per day of collected corpus data. |
 | `classifier-corpus/<displayName>/subject-model.bin` | Trained subject classifier model (see below). Absent until enough data has been collected. |
 | `classifier-corpus/<displayName>/header-model.bin` | Trained header classifier model (see below). Absent until enough data has been collected. |
+| `classifier-corpus/<displayName>/body-model.bin` | Trained body classifier model (see below). Absent until enough data has been collected. |
 
 ## Classifier corpus collection
 
@@ -377,8 +380,9 @@ Files older than `classifierCorpusRetentionDays` days are pruned once a day.
 
 `classifierExcludedFolders` skips a folder (matched by name, anywhere in the tree) entirely —
 neither `SPAM` nor `HAM`. This matters most if a
-[`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md) or
-[`HEADER_CLASSIFIER_EQUALS`](matchers/header-classifier-equals.md) rule moves its own verdicts
+[`SUBJECT_CLASSIFIER_EQUALS`](matchers/subject-classifier-equals.md),
+[`HEADER_CLASSIFIER_EQUALS`](matchers/header-classifier-equals.md), or
+[`BODY_CLASSIFIER_EQUALS`](matchers/body-classifier-equals.md) rule moves its own verdicts
 into a dedicated folder (e.g. `"SpamML"`, or a `"Spam/ML"` subfolder) rather than straight into
 `classifierSpamFolderName`:
 
@@ -419,9 +423,25 @@ filename extensions...) — written to `classifier-corpus/<displayName>/header-m
 minimum (**at least 50 examples of each class**) before it bothers writing a model.
 
 Use [`HEADER_CLASSIFIER_EQUALS`](matchers/header-classifier-equals.md) in a rule to act on this.
-Nothing ties the two classifiers together — either can be used alone, together, or compared
-against each other (e.g. via `keepProcessing`, see
-[Rule evaluation order](#rule-evaluation-order)).
+Nothing ties the classifiers together — each can be used alone, together, or compared against
+the others (e.g. via `keepProcessing`, see [Rule evaluation order](#rule-evaluation-order)).
+
+### Body classifier training
+
+Same rhythm and minimum (**at least 50 examples of each class**) as the other two, but trained
+on the message body's visible text — the HTML part stripped down to text (tags, scripts, and
+styles removed via [Jsoup](https://jsoup.org/)), or a `text/plain` part used as-is when no HTML
+part exists at all — written to `classifier-corpus/<displayName>/body-model.bin`. Bag-of-words
+like the subject classifier (free text, not structured facts), plus one extra feature for which
+kind of part the body came from (`html`, `plain`, or absent for a message with no body at all,
+e.g. image-only or attachment-only) — a signal a bag-of-words model can't otherwise recover, since
+stripping HTML down to text makes it indistinguishable from a plain-text part with the same
+wording.
+
+Body text isn't truncated: kept in full, on purpose, until real corpus volume shows what length
+is actually worth capping.
+
+Use [`BODY_CLASSIFIER_EQUALS`](matchers/body-classifier-equals.md) in a rule to act on this.
 
 ## Reputation lists
 

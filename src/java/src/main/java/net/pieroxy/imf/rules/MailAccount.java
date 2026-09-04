@@ -1,5 +1,6 @@
 package net.pieroxy.imf.rules;
 
+import net.pieroxy.imf.classifier.BodyClassifierTrainer;
 import net.pieroxy.imf.classifier.ClassifierCorpusScanner;
 import net.pieroxy.imf.classifier.ClassifierCorpusStore;
 import net.pieroxy.imf.classifier.ClassifierScanState;
@@ -42,6 +43,7 @@ public class MailAccount implements Runnable {
   private final ClassifierCorpusStore classifierCorpusStore;
   private final SubjectClassifierTrainer subjectClassifierTrainer;
   private final HeaderClassifierTrainer headerClassifierTrainer;
+  private final BodyClassifierTrainer bodyClassifierTrainer;
   private final String classifierSpamFolderName;
   private final List<String> classifierExcludedFolders;
   private final ImapMailboxFactory mailboxFactory;
@@ -60,13 +62,15 @@ public class MailAccount implements Runnable {
     this.classifierCorpusScanBatchSize = config.getClassifierCorpusScanBatchSize();
     this.classifierScanStateStore = new ClassifierScanStateStore(dataFolder, config.getDisplayName());
     this.classifierCorpusStore = new ClassifierCorpusStore(dataFolder, config.getDisplayName(), classifierCorpusRetentionDays);
-    // Built before ruleCatalog and handed to it: SubjectClassifierMatcher/HeaderClassifierMatcher
-    // have no other way to know which account's model file to load, since they're built without
-    // context by MatcherType.getImplementation() — see RuleContext.
-    RuleContext ruleContext = new RuleContext(classifierCorpusStore.getModelFile(), classifierCorpusStore.getHeaderModelFile());
+    // Built before ruleCatalog and handed to it: SubjectClassifierMatcher/HeaderClassifierMatcher/
+    // BodyClassifierMatcher have no other way to know which account's model file to load, since
+    // they're built without context by MatcherType.getImplementation() — see RuleContext.
+    RuleContext ruleContext = new RuleContext(classifierCorpusStore.getModelFile(), classifierCorpusStore.getHeaderModelFile(),
+        classifierCorpusStore.getBodyModelFile());
     this.ruleCatalog = new RuleCatalog(config.getRules(), learnedRulesStore, ruleContext);
     this.subjectClassifierTrainer = new SubjectClassifierTrainer(classifierCorpusStore);
     this.headerClassifierTrainer = new HeaderClassifierTrainer(classifierCorpusStore);
+    this.bodyClassifierTrainer = new BodyClassifierTrainer(classifierCorpusStore);
     String spamFolderName = config.getClassifierSpamFolderName();
     this.classifierSpamFolderName = (spamFolderName == null || spamFolderName.isBlank()) ? "Spam" : spamFolderName;
     this.classifierExcludedFolders = config.getClassifierExcludedFolders() != null
@@ -200,11 +204,16 @@ public class MailAccount implements Runnable {
       } catch (Exception e) {
         LOGGER.log(Level.WARNING, "Subject classifier training failed for account " + config.getDisplayName(), e);
       }
-      // Separate try/catch: a failure training one classifier must not skip the other.
+      // Separate try/catch: a failure training one classifier must not skip the others.
       try {
         headerClassifierTrainer.train();
       } catch (Exception e) {
         LOGGER.log(Level.WARNING, "Header classifier training failed for account " + config.getDisplayName(), e);
+      }
+      try {
+        bodyClassifierTrainer.train();
+      } catch (Exception e) {
+        LOGGER.log(Level.WARNING, "Body classifier training failed for account " + config.getDisplayName(), e);
       }
     }
   }

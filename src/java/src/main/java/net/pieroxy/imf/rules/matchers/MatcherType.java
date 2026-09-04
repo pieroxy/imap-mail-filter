@@ -1,6 +1,7 @@
 package net.pieroxy.imf.rules.matchers;
 
 import net.pieroxy.imf.rules.matchers.implementations.AndMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.BodyClassifierMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.DkimResultMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.DmarcPolicyMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.DmarcResultMatcher;
@@ -43,6 +44,9 @@ public enum MatcherType {
   // subject text) and a different underlying model (Maxent on structured features rather than
   // Naive Bayes bag-of-words) — see HeaderClassifierTrainer/HeaderFeatureGenerator.
   HEADER_CLASSIFIER_EQUALS(HeaderClassifierMatcher::new, false),
+  // Same reasoning again, this time on the body's visible text (HTML stripped down to text) —
+  // see BodyClassifierTrainer/BodyFeatureGenerator.
+  BODY_CLASSIFIER_EQUALS(BodyClassifierMatcher::new, false),
   // Not learnable either: reputation comes from downloaded external lists (see
   // net.pieroxy.imf.reputation.ReputationRegistry), not from an example dropped in imf-rules/.
   IP_REPUTATION_EQUALS(IpReputationMatcher::new, false),

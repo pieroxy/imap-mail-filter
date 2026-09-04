@@ -1,6 +1,9 @@
 package net.pieroxy.imf.classifier;
 
+import com.sun.mail.imap.IMAPMessage;
 import net.pieroxy.imf.utils.MailTools;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 import javax.mail.Address;
 import javax.mail.Message;
@@ -21,9 +24,16 @@ import java.util.regex.Pattern;
 /**
  * Builds a {@link ClassifierExample} from a message: mostly headers
  * (Subject/From/To/Date/Received/In-Reply-To/References/Precedence/List-Id/List-Unsubscribe/
- * Return-Path/Reply-To) plus the MIME structure's attachment filenames — never the actual body
- * content (text/HTML), so this stays lightweight (a BODYSTRUCTURE fetch, not the message's full
- * bytes) and never risks marking \Seen just by reading it for the corpus.
+ * Return-Path/Reply-To) plus the MIME structure's attachment filenames, and the body's visible
+ * text (see {@link #extractBodyText}) — read via {@code Part.getContent()}/{@code Part.getFileName()}
+ * on whichever MIME part is picked, so unlike the rest of this class it isn't covered by the
+ * batched BODYSTRUCTURE/HEADERS prefetch (see {@code ImapMailboxConnection#getMessagesSince}):
+ * one extra IMAP round trip per message, for exactly the one part actually needed — never the
+ * whole message, never an attachment's bytes. javax.mail's IMAP provider doesn't reliably honor
+ * the session-wide "mail.imap.peek" property for this kind of read (same pitfall as
+ * {@link MailTools#readRawMessageWithoutMarkingSeen}), so {@link #extractBodyText} sets
+ * {@code IMAPMessage#setPeek(true)} on the message itself first — without it, this would mark
+ * every scanned message \Seen.
  */
 public final class ClassifierExampleExtractor {
   private static final Pattern IPV4_PATTERN = Pattern.compile("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b");
@@ -67,8 +77,80 @@ public final class ClassifierExampleExtractor {
     collectAttachmentExtensions(message, attachmentExtensions);
     example.setAttachmentExtensions(attachmentExtensions);
 
+    extractBody(message, example);
+
     example.setLabel(label);
     return example;
+  }
+
+  /**
+   * The body's visible text: the first {@code text/html} part found anywhere in the MIME tree,
+   * stripped down to its text (see {@link #stripHtml}) — that's what a human reading the message
+   * actually sees, unlike a {@code text/plain} alternative, which in practice is rarely more than
+   * an unread fallback for a personal mailbox. Only falls back to a {@code text/plain} part,
+   * used as-is, when no HTML part exists at all. Both {@link ClassifierExample#getBodyText()} and
+   * {@link ClassifierExample#getBodySource()} are left null if the message has neither (e.g. an
+   * image-only or attachment-only message).
+   */
+  private static void extractBody(Part part, ClassifierExample example) {
+    // Same pitfall as MailTools#readRawMessageWithoutMarkingSeen: javax.mail's IMAP provider
+    // doesn't reliably honor the "mail.imap.peek" session property for a body part's content
+    // (verified empirically — same as writeTo()), only IMAPMessage#setPeek set on this specific
+    // message right before reading it.
+    if (part instanceof IMAPMessage) {
+      ((IMAPMessage) part).setPeek(true);
+    }
+    BodyCandidate candidate = new BodyCandidate();
+    collectBodyCandidate(part, candidate);
+    if (candidate.html != null) {
+      example.setBodyText(stripHtml(candidate.html));
+      example.setBodySource("html");
+    } else if (candidate.plain != null) {
+      example.setBodyText(candidate.plain);
+      example.setBodySource("plain");
+    }
+  }
+
+  private static void collectBodyCandidate(Part part, BodyCandidate candidate) {
+    if (candidate.html != null) return; // already found the preferred kind, nothing left to look for
+    try {
+      if (part.isMimeType("multipart/*")) {
+        Object content = part.getContent();
+        if (content instanceof Multipart multipart) {
+          for (int i = 0; i < multipart.getCount() && candidate.html == null; i++) {
+            collectBodyCandidate(multipart.getBodyPart(i), candidate);
+          }
+        }
+        return;
+      }
+      // A filename means this is an attachment or an inline file (an embedded image, say), not
+      // body text — same signal collectAttachmentExtensions uses.
+      String filename = part.getFileName();
+      if (filename != null && !filename.isBlank()) return;
+
+      if (candidate.html == null && part.isMimeType("text/html")) {
+        Object content = part.getContent();
+        if (content instanceof String s) candidate.html = s;
+      } else if (candidate.plain == null && part.isMimeType("text/plain")) {
+        Object content = part.getContent();
+        if (content instanceof String s) candidate.plain = s;
+      }
+    } catch (MessagingException | IOException e) {
+      // Malformed/undecodable part: no body text recoverable from it, not worth failing the
+      // whole example extraction over — same tolerance as collectAttachmentExtensions.
+    }
+  }
+
+  /** Visible text only: strips tags/attributes, and script/style content along with them, collapsing whitespace. */
+  private static String stripHtml(String html) {
+    Document doc = Jsoup.parse(html);
+    doc.select("script, style").remove();
+    return doc.text();
+  }
+
+  private static final class BodyCandidate {
+    String html;
+    String plain;
   }
 
   private static List<String> addresses(Address[] addresses) throws MessagingException {

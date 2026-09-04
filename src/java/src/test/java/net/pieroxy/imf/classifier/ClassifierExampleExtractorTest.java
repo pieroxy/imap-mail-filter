@@ -332,4 +332,114 @@ public class ClassifierExampleExtractorTest {
 
     assertEquals(List.of("png"), example.getAttachmentExtensions());
   }
+
+  @Test
+  public void extractsPlainTextBodyWhenThatsAllThereIs() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setText("Hello there");
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertEquals("Hello there", example.getBodyText());
+    assertEquals("plain", example.getBodySource());
+  }
+
+  @Test
+  public void prefersTheHtmlPartOverPlainTextWhenBothArePresent() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    MimeMultipart alternative = new MimeMultipart("alternative");
+    MimeBodyPart plainText = new MimeBodyPart();
+    plainText.setText("plain fallback nobody reads");
+    alternative.addBodyPart(plainText);
+    MimeBodyPart html = new MimeBodyPart();
+    html.setContent("<html><body><p>Buy <b>now</b>!</p></body></html>", "text/html");
+    alternative.addBodyPart(html);
+    message.setContent(alternative);
+    message.saveChanges();
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.SPAM, Instant.now());
+
+    assertEquals("Buy now!", example.getBodyText());
+    assertEquals("html", example.getBodySource());
+  }
+
+  @Test
+  public void stripsScriptAndStyleContentAlongWithTheTags() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    message.setContent("<html><head><style>p{color:red}</style></head>"
+        + "<body><script>alert('x')</script><p>Real content</p></body></html>", "text/html");
+    message.saveChanges();
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.SPAM, Instant.now());
+
+    assertEquals("Real content", example.getBodyText());
+    assertEquals("html", example.getBodySource());
+  }
+
+  @Test
+  public void findsTheHtmlPartNestedInsideAnOuterMultipart() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    MimeMultipart outer = new MimeMultipart(); // multipart/mixed
+
+    MimeMultipart alternative = new MimeMultipart("alternative");
+    MimeBodyPart plainText = new MimeBodyPart();
+    plainText.setText("plain fallback");
+    alternative.addBodyPart(plainText);
+    MimeBodyPart html = new MimeBodyPart();
+    html.setContent("<p>Hello world</p>", "text/html");
+    alternative.addBodyPart(html);
+    MimeBodyPart alternativeWrapper = new MimeBodyPart();
+    alternativeWrapper.setContent(alternative);
+    outer.addBodyPart(alternativeWrapper);
+
+    MimeBodyPart attachment = new MimeBodyPart();
+    attachment.setText("dummy");
+    attachment.setFileName("photo.png");
+    outer.addBodyPart(attachment);
+
+    message.setContent(outer);
+    message.saveChanges();
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.HAM, Instant.now());
+
+    assertEquals("Hello world", example.getBodyText());
+    assertEquals("html", example.getBodySource());
+  }
+
+  @Test
+  public void anAttachmentNamedLikeAnHtmlFileIsNotMistakenForTheBody() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    MimeMultipart multipart = new MimeMultipart();
+    MimeBodyPart body = new MimeBodyPart();
+    body.setText("The real body");
+    multipart.addBodyPart(body);
+    MimeBodyPart attachment = new MimeBodyPart();
+    attachment.setContent("<p>not the body</p>", "text/html");
+    attachment.setFileName("newsletter.html");
+    multipart.addBodyPart(attachment);
+    message.setContent(multipart);
+    message.saveChanges();
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.SPAM, Instant.now());
+
+    assertEquals("The real body", example.getBodyText());
+    assertEquals("plain", example.getBodySource());
+  }
+
+  @Test
+  public void bodyTextIsNullForAnAttachmentOnlyMessage() throws Exception {
+    MimeMessage message = new MimeMessage(session);
+    MimeMultipart multipart = new MimeMultipart();
+    MimeBodyPart attachment = new MimeBodyPart();
+    attachment.setText("dummy");
+    attachment.setFileName("invoice.pdf");
+    multipart.addBodyPart(attachment);
+    message.setContent(multipart);
+    message.saveChanges();
+
+    ClassifierExample example = ClassifierExampleExtractor.extract(message, ClassifierLabel.SPAM, Instant.now());
+
+    assertNull(example.getBodyText());
+    assertNull(example.getBodySource());
+  }
 }

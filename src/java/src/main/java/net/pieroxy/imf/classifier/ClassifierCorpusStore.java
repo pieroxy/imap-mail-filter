@@ -126,6 +126,11 @@ public class ClassifierCorpusStore {
     return new File(accountFolder, "header-model.bin");
   }
 
+  /** Path to the trained body classification model for this account (see {@code BodyClassifierTrainer}) — separate file, separate model from the two above. */
+  public File getBodyModelFile() {
+    return new File(accountFolder, "body-model.bin");
+  }
+
   /** Deletes files dated more than keepDays days before today. No effect if keepDays<=0. */
   public void pruneOlderThan(LocalDate today) {
     if (keepDays <= 0) return;
