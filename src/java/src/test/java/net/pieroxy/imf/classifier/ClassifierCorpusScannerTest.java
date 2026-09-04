@@ -154,10 +154,20 @@ public class ClassifierCorpusScannerTest {
     }
   }
 
+  /**
+   * Uses a small custom cap (see {@code ClassifierCorpusScanner}'s maxMessagesPerScan
+   * constructor) rather than the real {@code DEFAULT_MAX_MESSAGES_PER_SCAN} (500): the
+   * pause/resume mechanic being tested here doesn't depend on the cap's actual value, and each
+   * message now costs a real IMAP round trip against GreenMail (body text extraction — see
+   * ClassifierExampleExtractor#extractBody), so 500+ real messages would make this one test
+   * dominate the whole suite's wall time for no added coverage. The literal default value is
+   * exercised separately, cheaply, by aNonPositiveCustomBatchSizeFallsBackToTheDefault.
+   */
   @Test
   public void stopsMidFolderOnceTheBudgetIsReachedAndResumesNextTime() throws Exception {
     ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
-    int total = ClassifierCorpusScanner.DEFAULT_MAX_MESSAGES_PER_SCAN + 5;
+    int cap = 3;
+    int total = cap + 2; // remaining after the first pass (2) must fit within the cap, so the second pass finishes
     Message[] messages = new Message[total];
     for (int i = 0; i < total; i++) {
       messages[i] = message("Newsletter " + i, "sender@example.com");
@@ -169,15 +179,15 @@ public class ClassifierCorpusScannerTest {
     ClassifierScanState state = new ClassifierScanState();
     boolean budgetExceededFirstPass;
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
-      budgetExceededFirstPass = new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account")
+      budgetExceededFirstPass = new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account", cap)
           .scan(state, LocalDate.now());
     }
     assertTrue("the first pass must stop at the budget, mid-folder", budgetExceededFirstPass);
-    assertEquals(ClassifierCorpusScanner.DEFAULT_MAX_MESSAGES_PER_SCAN, store.readAll().size());
+    assertEquals(cap, store.readAll().size());
 
     boolean budgetExceededSecondPass;
     try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
-      budgetExceededSecondPass = new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account")
+      budgetExceededSecondPass = new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account", cap)
           .scan(state, LocalDate.now());
     }
     assertFalse("the second pass must finish covering the rest of the folder", budgetExceededSecondPass);
