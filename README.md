@@ -35,7 +35,7 @@ Additionally:
 A few things worth understanding before you dive in:
 
 * **No UI, no manual rule editing** — the primary way to teach IMF a rule is to drop an example email into the right `imf-rules/` subfolder. See [Learning rules by example](docs/README.md#learning-rules-by-example).
-* **First match wins** — rules from `config.json` are evaluated before learned rules, in order; the first one that matches runs its action and evaluation stops there. See [Rule evaluation order](docs/README.md#rule-evaluation-order).
+* **First match wins** — rules are evaluated in the order they appear in `config.json` (learned rules included, wherever you place them — after everything else by default); the first one that matches runs its action and evaluation stops there. See [Rule evaluation order](docs/README.md#rule-evaluation-order).
 * **Everything is HAM except Spam** — for [classifier corpus collection](docs/README.md#classifier-corpus-collection), every folder is treated as legitimate mail (HAM) except the configured Spam folder. `INBOX`, `imf-rules/`, and any [excluded folders](docs/README.md#excluding-a-folder-from-the-corpus) (e.g. `SpamML`) are skipped entirely rather than counted as either.
 * **INBOX doesn't count** — INBOX is never scanned for the corpus, so mail you leave sitting there teaches the classifier nothing. Filing/archiving read mail into folders (an "inbox zero" habit) is what actually feeds it examples of legitimate mail.
 * **Unread in Spam means "review me"** — by convention (see the [starter config](config.example.json)), strong verdicts (SPF/DKIM/DMARC `fail`) are moved to Spam pre-marked read, while weaker, corroborating-only signals are left unread — a manual-review flag, since IMF has no UI to show confidence.

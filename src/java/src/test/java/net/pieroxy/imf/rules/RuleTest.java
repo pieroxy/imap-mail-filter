@@ -61,7 +61,7 @@ public class RuleTest {
 
     Rule rule = new Rule(config);
 
-    assertTrue(rule.apply(messageFrom("alice@example.com")));
+    assertTrue(rule.apply(messageFrom("alice@example.com")).ruleApplied());
   }
 
   @Test
@@ -72,7 +72,7 @@ public class RuleTest {
 
     Rule rule = new Rule(config);
 
-    assertFalse(rule.apply(messageFrom("carol@example.com")));
+    assertFalse(rule.apply(messageFrom("carol@example.com")).ruleApplied());
   }
 
   @Test
@@ -87,8 +87,8 @@ public class RuleTest {
 
     Rule rule = new Rule(config);
 
-    assertTrue(rule.apply(messageFrom("alice@example.com")));
-    assertFalse(rule.apply(messageFrom("bob@example.com")));
+    assertTrue(rule.apply(messageFrom("alice@example.com")).ruleApplied());
+    assertFalse(rule.apply(messageFrom("bob@example.com")).ruleApplied());
   }
 
   /**
@@ -122,22 +122,22 @@ public class RuleTest {
   }
 
   @Test
-  public void applyFirstMatchingReturnsFalseForEmptyList() throws Exception {
-    assertFalse(Rule.applyFirstMatching(List.of(), messageFrom("alice@example.com"), Logger.getLogger("test"), "test"));
+  public void evaluateReturnsFalseForEmptyList() throws Exception {
+    assertFalse(RuleHelper.evaluate(List.of(), messageFrom("alice@example.com"), Logger.getLogger("test"), "test").ruleApplied());
   }
 
   @Test
-  public void applyFirstMatchingReturnsFalseWhenNoRuleMatches() throws Exception {
+  public void evaluateReturnsFalseWhenNoRuleMatches() throws Exception {
     MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
     config.setMatcher(fromEquals("alice@example.com"));
     config.setAction(noopAction());
-    List<Rule> rules = List.of(new Rule(config));
+    List<RuleInterface> rules = List.of(new Rule(config));
 
-    assertFalse(Rule.applyFirstMatching(rules, messageFrom("bob@example.com"), Logger.getLogger("test"), "test"));
+    assertFalse(RuleHelper.evaluate(rules, messageFrom("bob@example.com"), Logger.getLogger("test"), "test").ruleApplied());
   }
 
   @Test
-  public void applyFirstMatchingSkipsNonMatchingRulesAndAppliesTheOneThatMatches() throws Exception {
+  public void evaluateSkipsNonMatchingRulesAndAppliesTheOneThatMatches() throws Exception {
     MailFilterRuleConfiguration first = new MailFilterRuleConfiguration();
     first.setMatcher(fromEquals("carol@example.com"));
     first.setAction(noopAction());
@@ -146,9 +146,9 @@ public class RuleTest {
     second.setMatcher(fromEquals("alice@example.com"));
     second.setAction(noopAction());
 
-    List<Rule> rules = Arrays.asList(new Rule(first), new Rule(second));
+    List<RuleInterface> rules = Arrays.asList(new Rule(first), new Rule(second));
 
-    assertTrue(Rule.applyFirstMatching(rules, messageFrom("alice@example.com"), Logger.getLogger("test"), "test"));
+    assertTrue(RuleHelper.evaluate(rules, messageFrom("alice@example.com"), Logger.getLogger("test"), "test").ruleApplied());
   }
 
   @Test
@@ -176,9 +176,9 @@ public class RuleTest {
     config.setMatcher(fromEquals("alice@example.com"));
     config.setAction(noopAction());
     config.setKeepProcessing(true);
-    List<Rule> rules = List.of(new Rule(config));
+    List<RuleInterface> rules = List.of(new Rule(config));
 
-    assertTrue(Rule.applyFirstMatching(rules, messageFrom("alice@example.com"), Logger.getLogger("test"), "test"));
+    assertTrue(RuleHelper.evaluate(rules, messageFrom("alice@example.com"), Logger.getLogger("test"), "test").ruleApplied());
   }
 
   /**
@@ -203,7 +203,7 @@ public class RuleTest {
     third.setMatcher(fromEquals("alice@example.com"));
     third.setAction(noopAction());
 
-    List<Rule> rules = Arrays.asList(new Rule(first), new Rule(second), new Rule(third));
+    List<RuleInterface> rules = Arrays.asList(new Rule(first), new Rule(second), new Rule(third));
 
     List<LogRecord> records = new ArrayList<>();
     Handler capture = new Handler() {
@@ -215,7 +215,7 @@ public class RuleTest {
     matcherLogger.addHandler(capture);
     boolean matched;
     try {
-      matched = Rule.applyFirstMatching(rules, messageFrom("alice@example.com"), Logger.getLogger("test"), "test");
+      matched = RuleHelper.evaluate(rules, messageFrom("alice@example.com"), Logger.getLogger("test"), "test").ruleApplied();
     } finally {
       matcherLogger.removeHandler(capture);
     }

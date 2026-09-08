@@ -219,11 +219,31 @@ configs instead of `key`/`keys`.
 
 ## Rule evaluation order
 
-For each new message, IMF walks the full rule list — **manually-configured rules first, in the
-order they appear in `config.json`, then learned rules** — and applies the **first one whose
-matcher matches**. A rule "applies" (and stops the search) as soon as its matcher matches, even
-if the action itself later fails; a failed action is logged but doesn't make IMF try the next
-rule instead.
+For each new message, IMF walks the rules in `config.json`, in the order they appear, and applies
+the **first one whose matcher matches**. A rule "applies" (and stops the search) as soon as its
+matcher matches, even if the action itself later fails; a failed action is logged but doesn't
+make IMF try the next rule instead.
+
+Learned rules always get a chance to run too, but *where* depends on `config.json`:
+
+* By default (no `LEARNED_RULES` entry anywhere in `rules`), they run **implicitly, after every
+  manually-configured rule** — the original, and still simplest, behavior.
+* Add an entry with `"type": "LEARNED_RULES"` (no `matcher`, no `action`) anywhere in `rules` to
+  run them at that exact position instead — useful when some manual rules (e.g. SPF/DKIM/DMARC
+  checks) should always take priority over anything learned, while others (e.g. a catch-all)
+  should only apply once the learned rules have had their say:
+
+  ```json
+  [
+    { "matcher": { "type": "SPF_RESULT_EQUALS", "key": "fail" }, "action": { "type": "MOVE_TO_AND_READ", "key": "Spam" } },
+    { "type": "LEARNED_RULES" },
+    { "matcher": { "type": "SUBJECT_STARTS_WITH", "key": "[ml-list] " }, "action": { "type": "MOVE_TO", "key": "Lists" } }
+  ]
+  ```
+
+  At most one `LEARNED_RULES` entry is allowed per account. If a manual rule earlier in the list
+  already stopped evaluation (a match without `keepProcessing`), the learned rules — wherever
+  they would have run — are skipped entirely, exactly as any rule after that point would be.
 
 Set `"keepProcessing": true` on a rule (alongside `matcher`/`action`, not inside either) to
 change that: its action still runs when it matches, but evaluation carries on to the next rule
