@@ -52,7 +52,10 @@ public class FromDomainMatcherTest {
     MimeMessage message = new MimeMessage(session);
     message.setFrom(new InternetAddress("jdupont@Hotmail.com"));
 
-    assertEquals("FromDomainMatcher(hotmail.com)", matcher.matches(message).debugString());
+    // The debug string names the candidate that matched (message's own casing), not the
+    // configured key's casing — matching is case-insensitive via a lowercase lookup set, and
+    // this string is for logs only (see Matcher.matchesKey).
+    assertEquals("FromDomainMatcher(Hotmail.com)", matcher.matches(message).debugString());
   }
 
   @Test

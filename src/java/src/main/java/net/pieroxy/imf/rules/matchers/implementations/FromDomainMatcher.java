@@ -1,5 +1,6 @@
 package net.pieroxy.imf.rules.matchers.implementations;
 
+import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
 import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 
@@ -17,6 +18,12 @@ import java.util.Optional;
  */
 public class FromDomainMatcher extends Matcher {
   @Override
+  public void setConfig(MailFilterRuleMatcherConfiguration config) {
+    super.setConfig(config);
+    initLookupSet(true);
+  }
+
+  @Override
   public MatchResult matches(Message message) throws MessagingException {
     var froms = message.getFrom();
     if (froms == null) {
@@ -25,7 +32,7 @@ public class FromDomainMatcher extends Matcher {
     }
     if (froms.length == 1) {
       String domain = extractDomain(froms[0]);
-      Optional<String> hit = domain != null ? matchingKey(domain, String::equalsIgnoreCase) : Optional.empty();
+      Optional<String> hit = matchesKey(domain, true);
       getLogger().fine(() -> "tested from domain=" + domain + " against " + describeKey()
               + " -> " + (hit.isPresent() ? "match" : "no match"));
       return hit.map(this::matched).orElseGet(this::notMatched);

@@ -1,5 +1,6 @@
 package net.pieroxy.imf.rules.matchers.implementations;
 
+import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
 import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
 
@@ -11,6 +12,12 @@ import java.util.Optional;
 
 public class FromExactMatcher extends Matcher {
   @Override
+  public void setConfig(MailFilterRuleMatcherConfiguration config) {
+    super.setConfig(config);
+    initLookupSet(false);
+  }
+
+  @Override
   public MatchResult matches(Message message) throws MessagingException {
     var froms = message.getFrom();
     if (froms == null) {
@@ -18,7 +25,7 @@ public class FromExactMatcher extends Matcher {
       return notMatched();
     }
     if (froms.length == 1) {
-      Optional<String> hit = matchingKey(froms[0].toString(), String::equals);
+      Optional<String> hit = matchesKey(froms[0].toString(), false);
       getLogger().fine(() -> "tested from=" + froms[0] + " against " + describeKey()
               + " -> " + (hit.isPresent() ? "match" : "no match"));
       return hit.map(this::matched).orElseGet(this::notMatched);

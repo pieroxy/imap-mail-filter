@@ -7,8 +7,10 @@ import net.pieroxy.imf.rules.RuleContext;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -18,6 +20,7 @@ public abstract class Matcher {
   private MailFilterRuleMatcherConfiguration config;
   private List<Matcher> children = Collections.emptyList();
   private Logger logger = Logger.getLogger(Matcher.class.getName());
+  private Set<String> lookupSet;
 
   /** Equivalent to {@link #build(MailFilterRuleMatcherConfiguration, RuleContext)} with no account context available. */
   public static Matcher build(MailFilterRuleMatcherConfiguration config) {
@@ -121,6 +124,37 @@ public abstract class Matcher {
       return Optional.of(config.getKey());
     }
     return Optional.empty();
+  }
+
+  /**
+   * Precomputes a hash-based lookup set from key/keys, for a "leaf" matcher whose test is a
+   * plain equality (case-sensitive or not) — unlike {@link #matchingKey}, which scans every key
+   * with an arbitrary comparator (needed by e.g. a "starts with" matcher, whose test isn't
+   * equality and so can't be hashed). Call once {@code config} is set (typically by overriding
+   * {@link #setConfig}); {@link #matchesKey} then does O(1) instead of {@link #matchingKey}'s
+   * O(number of keys) per message.
+   */
+  protected void initLookupSet(boolean caseInsensitive) {
+    Set<String> keys = config.getKeys() != null ? config.getKeys()
+        : (config.getKey() != null ? Set.of(config.getKey()) : Set.of());
+    if (!caseInsensitive) {
+      lookupSet = keys;
+      return;
+    }
+    Set<String> normalized = new HashSet<>(keys.size());
+    for (String key : keys) normalized.add(key.toLowerCase());
+    lookupSet = normalized;
+  }
+
+  /**
+   * O(1) counterpart to {@link #matchingKey}, for matchers built via {@link #initLookupSet}.
+   * Returns candidate itself when it matches — not necessarily the configured key's original
+   * casing (irrelevant here since {@link MatchResult#debugString} is for logs only).
+   */
+  protected Optional<String> matchesKey(String candidate, boolean caseInsensitive) {
+    if (candidate == null || lookupSet == null) return Optional.empty();
+    String needle = caseInsensitive ? candidate.toLowerCase() : candidate;
+    return lookupSet.contains(needle) ? Optional.of(candidate) : Optional.empty();
   }
 
   /** A match, with a readable description ("ClassName(detail)") for logs. */
