@@ -16,12 +16,19 @@ import net.pieroxy.imf.mail.ImapMailboxConnection;
 import net.pieroxy.imf.mail.ImapMailboxFactory;
 import net.pieroxy.imf.scheduling.BackoffLoop;
 
+import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Orchestrates processing for an account: schedules cycles (via {@link BackoffLoop}), fetches
@@ -32,6 +39,8 @@ import java.util.logging.Logger;
 public class MailAccount implements Runnable {
   private final static Logger LOGGER = Logger.getLogger(MailAccount.class.getName());
   private final static long MAX_BACKOFF_MS = 30 * 60 * 1000L; // 30 minutes
+  // A month is comfortably longer than anyone takes to notice and rescue a false positive from Spam.
+  private final static int PROCESSED_FINGERPRINT_RETENTION_DAYS = 30;
 
   private final MailAccountConfiguration config;
   private final MailAccountStateStore stateStore;
@@ -220,7 +229,12 @@ public class MailAccount implements Runnable {
 
   /**
    * Only processes messages whose UID is strictly greater than the last known UID, so a message
-   * is never inspected twice from one cycle to the next.
+   * is never inspected twice from one cycle to the next — except that a message manually moved
+   * back into a scanned folder (e.g. a false positive rescued from Spam back to INBOX) shows up
+   * there under a brand new UID, above the cursor, indistinguishable from genuinely new mail. To
+   * catch that case too, every inspected message is fingerprinted (see {@link #fingerprintOf}) and
+   * remembered regardless of UID/folder: seeing the same fingerprint again just advances the
+   * cursor past it, without re-running the rules (and re-undoing the user's manual rescue).
    */
   private void processNewMessages(ImapMailbox mailbox) throws MessagingException {
     MailAccountState state = stateStore.load();
@@ -234,16 +248,53 @@ public class MailAccount implements Runnable {
       state.setLastUid(mailbox.getUidNext() - 1);
     }
 
+    LocalDate today = LocalDate.now();
     for (Message message : mailbox.getMessagesSince(state.getLastUid())) {
       long uid = mailbox.getUid(message);
       try {
-        inspect(message);
+        String fingerprint = fingerprintOf(message);
+        if (state.isProcessed(fingerprint)) {
+          LOGGER.fine("Skipping message UID " + uid + " on account " + config.getDisplayName()
+              + ": already processed earlier (likely manually moved back into a scanned folder)");
+        } else {
+          inspect(message);
+          state.markProcessed(fingerprint, today);
+        }
       } catch (Exception e) {
         LOGGER.log(Level.WARNING, "Failed to inspect message UID " + uid + " on account " + config.getDisplayName(), e);
       }
       state.setLastUid(uid);
     }
+    state.pruneProcessedFingerprintsBefore(today.minusDays(PROCESSED_FINGERPRINT_RETENTION_DAYS));
 
     stateStore.save(state);
+  }
+
+  /**
+   * Identifies a message across folders/UIDs, without trusting anything the sender controls
+   * (a spammer-supplied Message-ID is sometimes missing, sometimes reused verbatim across an
+   * entire campaign — useless as a dedup key for exactly the mail this matters most for).
+   * {@link Message#getReceivedDate()} is the IMAP server's own INTERNALDATE — assigned once, at
+   * delivery, by the server itself — combined with From/To/Subject. RFC 3501 §6.4.7 has servers
+   * preserve both flags and internal date across COPY/MOVE, so this stays stable when a message
+   * is relocated, including by the user dragging it from one folder to another by hand.
+   */
+  private static String fingerprintOf(Message message) throws MessagingException {
+    String received = message.getReceivedDate() != null ? message.getReceivedDate().toInstant().toString() : "";
+    String from = addressesOf(message.getFrom());
+    String to = addressesOf(message.getRecipients(Message.RecipientType.TO));
+    String subject = message.getSubject() != null ? message.getSubject() : "";
+    String raw = String.join(" ", received, from, to, subject);
+    try {
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      return HexFormat.of().formatHex(digest.digest(raw.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 is a mandatory JDK algorithm", e);
+    }
+  }
+
+  private static String addressesOf(Address[] addresses) {
+    if (addresses == null) return "";
+    return Arrays.stream(addresses).map(Address::toString).collect(Collectors.joining(","));
   }
 }
