@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -70,6 +71,17 @@ public class FromDomainReputationMatcherTest {
     message.setFrom(new InternetAddress("sender@spammy.example.com"));
 
     assertTrue(matcher.matches(message).matched());
+  }
+
+  @Test
+  public void debugStringNamesTheReputationListThatMatched() throws Exception {
+    ReputationRegistry registry = registryWithDomainList("blocklist", 0.9, "spammy.example.com");
+    FromDomainReputationMatcher matcher = matcherFor(">0.5", Set.of("blocklist"), registry);
+
+    MimeMessage message = new MimeMessage(session);
+    message.setFrom(new InternetAddress("sender@spammy.example.com"));
+
+    assertEquals("FromDomainReputationMatcher[blocklist](score=0.9)", matcher.matches(message).debugString());
   }
 
   @Test

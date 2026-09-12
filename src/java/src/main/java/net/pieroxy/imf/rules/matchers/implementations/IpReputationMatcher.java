@@ -1,6 +1,7 @@
 package net.pieroxy.imf.rules.matchers.implementations;
 
 import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
+import net.pieroxy.imf.reputation.ReputationMatch;
 import net.pieroxy.imf.reputation.ReputationRegistry;
 import net.pieroxy.imf.reputation.ReputationRegistryHolder;
 import net.pieroxy.imf.rules.matchers.MatchResult;
@@ -10,7 +11,6 @@ import net.pieroxy.imf.spf.SpfIdentityExtractor;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.util.Optional;
-import java.util.OptionalDouble;
 import java.util.Set;
 
 /**
@@ -55,14 +55,15 @@ public class IpReputationMatcher extends Matcher {
       getLogger().fine(() -> "no connecting IP found on message, no match against " + threshold);
       return notMatched();
     }
-    OptionalDouble score = registry.ipScore(ip.get(), listIds);
-    if (score.isEmpty()) {
+    Optional<ReputationMatch> match = registry.ipScore(ip.get(), listIds);
+    if (match.isEmpty()) {
       getLogger().fine(() -> "ip=" + ip.get() + " not present in any referenced reputation list");
       return notMatched();
     }
-    boolean matched = threshold.test(score.getAsDouble());
-    getLogger().fine(() -> "ip=" + ip.get() + " reputation score=" + score.getAsDouble() + " against " + threshold
-        + " -> " + (matched ? "match" : "no match"));
-    return matched ? matched("score=" + score.getAsDouble()) : notMatched();
+    double score = match.get().score();
+    boolean matched = threshold.test(score);
+    getLogger().fine(() -> "ip=" + ip.get() + " reputation score=" + score + " (list=" + match.get().listId() + ") against "
+        + threshold + " -> " + (matched ? "match" : "no match"));
+    return matched ? matched(match.get().listId(), "score=" + score) : notMatched();
   }
 }

@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -79,6 +80,15 @@ public class IpReputationMatcherTest {
     IpReputationMatcher matcher = matcherFor(">0.5", Set.of("blocklist"), registry);
 
     assertTrue(matcher.matches(messageFromIp("203.0.113.10")).matched());
+  }
+
+  @Test
+  public void debugStringNamesTheReputationListThatMatched() throws Exception {
+    ReputationRegistry registry = registryWithIpList("blocklist", 0.9, "203.0.113.0/24");
+    IpReputationMatcher matcher = matcherFor(">0.5", Set.of("blocklist"), registry);
+
+    assertEquals("IpReputationMatcher[blocklist](score=0.9)",
+        matcher.matches(messageFromIp("203.0.113.10")).debugString());
   }
 
   @Test

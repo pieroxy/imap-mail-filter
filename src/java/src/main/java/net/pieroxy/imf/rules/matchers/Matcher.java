@@ -162,6 +162,17 @@ public abstract class Matcher {
     return MatchResult.matched(getClass().getSimpleName() + "(" + debugDetail + ")");
   }
 
+  /**
+   * Like {@link #matched(String)}, but with an extra tag right after the class name —
+   * {@code "ClassName[tag](detail)"} — for a matcher that picks one among several configured
+   * sub-resources (e.g. {@code IpReputationMatcher}/{@code FromDomainReputationMatcher}, whose
+   * {@code listIds} can name several reputation lists: {@code tag} says which one actually
+   * produced the match).
+   */
+  protected MatchResult matched(String tag, String debugDetail) {
+    return MatchResult.matched(getClass().getSimpleName() + "[" + tag + "](" + debugDetail + ")");
+  }
+
   protected MatchResult notMatched() {
     return MatchResult.notMatched();
   }

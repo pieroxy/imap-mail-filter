@@ -5,7 +5,7 @@ import net.pieroxy.imf.config.ReputationListConfig;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalDouble;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -142,17 +142,18 @@ public final class ReputationRegistry {
     return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
   }
 
-  /** @return le pire (max) score parmi les listes IP_CIDR de listIds qui contiennent ip ; vide si aucune ne matche. */
-  public OptionalDouble ipScore(String ip, Set<String> listIds) {
-    return score(ReputationListType.IP_CIDR, ip, listIds);
+  /** @return le pire (max) score parmi les listes IP_CIDR de listIds qui contiennent ip, et l'id de la liste correspondante ; vide si aucune ne matche. */
+  public Optional<ReputationMatch> ipScore(String ip, Set<String> listIds) {
+    return match(ReputationListType.IP_CIDR, ip, listIds);
   }
 
-  /** @return le pire (max) score parmi les listes DOMAIN de listIds qui contiennent domain ; vide si aucune ne matche. */
-  public OptionalDouble domainScore(String domain, Set<String> listIds) {
-    return score(ReputationListType.DOMAIN, domain, listIds);
+  /** @return le pire (max) score parmi les listes DOMAIN de listIds qui contiennent domain, et l'id de la liste correspondante ; vide si aucune ne matche. */
+  public Optional<ReputationMatch> domainScore(String domain, Set<String> listIds) {
+    return match(ReputationListType.DOMAIN, domain, listIds);
   }
 
-  private OptionalDouble score(ReputationListType expectedType, String value, Set<String> listIds) {
+  private Optional<ReputationMatch> match(ReputationListType expectedType, String value, Set<String> listIds) {
+    String bestId = null;
     double best = Double.NaN;
     for (String id : listIds) {
       ReputationListConfig cfg = configsById.get(id);
@@ -168,8 +169,9 @@ public final class ReputationRegistry {
       if (list == null || !list.contains(value)) continue;
       if (Double.isNaN(best) || cfg.getScore() > best) {
         best = cfg.getScore();
+        bestId = id;
       }
     }
-    return Double.isNaN(best) ? OptionalDouble.empty() : OptionalDouble.of(best);
+    return Double.isNaN(best) ? Optional.empty() : Optional.of(new ReputationMatch(bestId, best));
   }
 }

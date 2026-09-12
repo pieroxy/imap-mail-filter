@@ -8,7 +8,7 @@ import org.junit.rules.TemporaryFolder;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.List;
-import java.util.OptionalDouble;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -39,9 +39,10 @@ public class ReputationRegistryTest {
     ReputationRegistry registry = new ReputationRegistry(
         List.of(list("blocklist", ReputationListType.IP_CIDR, 1.0)), dataFolder);
 
-    OptionalDouble score = registry.ipScore("1.2.3.4", Set.of("blocklist"));
-    assertTrue(score.isPresent());
-    assertEquals(1.0, score.getAsDouble(), 0.0001);
+    Optional<ReputationMatch> match = registry.ipScore("1.2.3.4", Set.of("blocklist"));
+    assertTrue(match.isPresent());
+    assertEquals(1.0, match.get().score(), 0.0001);
+    assertEquals("blocklist", match.get().listId());
   }
 
   @Test
@@ -66,8 +67,9 @@ public class ReputationRegistryTest {
         list("mild", ReputationListType.IP_CIDR, 0.3),
         list("severe", ReputationListType.IP_CIDR, 0.9)), dataFolder);
 
-    OptionalDouble score = registry.ipScore("1.2.3.4", Set.of("mild", "severe"));
-    assertEquals(0.9, score.getAsDouble(), 0.0001);
+    Optional<ReputationMatch> match = registry.ipScore("1.2.3.4", Set.of("mild", "severe"));
+    assertEquals(0.9, match.get().score(), 0.0001);
+    assertEquals("severe", match.get().listId());
   }
 
   @Test
@@ -101,8 +103,9 @@ public class ReputationRegistryTest {
     ReputationRegistry registry = new ReputationRegistry(
         List.of(list("domain-list", ReputationListType.DOMAIN, 0.8)), dataFolder);
 
-    OptionalDouble score = registry.domainScore("Bad.Example.com", Set.of("domain-list"));
-    assertEquals(0.8, score.getAsDouble(), 0.0001);
+    Optional<ReputationMatch> match = registry.domainScore("Bad.Example.com", Set.of("domain-list"));
+    assertEquals(0.8, match.get().score(), 0.0001);
+    assertEquals("domain-list", match.get().listId());
   }
 
   @Test

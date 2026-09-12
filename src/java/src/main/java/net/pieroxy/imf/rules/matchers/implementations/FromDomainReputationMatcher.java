@@ -1,6 +1,7 @@
 package net.pieroxy.imf.rules.matchers.implementations;
 
 import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
+import net.pieroxy.imf.reputation.ReputationMatch;
 import net.pieroxy.imf.reputation.ReputationRegistry;
 import net.pieroxy.imf.reputation.ReputationRegistryHolder;
 import net.pieroxy.imf.rules.matchers.MatchResult;
@@ -10,7 +11,7 @@ import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
-import java.util.OptionalDouble;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -58,15 +59,16 @@ public class FromDomainReputationMatcher extends Matcher {
       getLogger().fine(() -> "From address has no domain part, no match against " + threshold);
       return notMatched();
     }
-    OptionalDouble score = registry.domainScore(domain, listIds);
-    if (score.isEmpty()) {
+    Optional<ReputationMatch> match = registry.domainScore(domain, listIds);
+    if (match.isEmpty()) {
       getLogger().fine(() -> "from domain=" + domain + " not present in any referenced reputation list");
       return notMatched();
     }
-    boolean matched = threshold.test(score.getAsDouble());
-    getLogger().fine(() -> "from domain=" + domain + " reputation score=" + score.getAsDouble() + " against " + threshold
-        + " -> " + (matched ? "match" : "no match"));
-    return matched ? matched("score=" + score.getAsDouble()) : notMatched();
+    double score = match.get().score();
+    boolean matched = threshold.test(score);
+    getLogger().fine(() -> "from domain=" + domain + " reputation score=" + score + " (list=" + match.get().listId()
+        + ") against " + threshold + " -> " + (matched ? "match" : "no match"));
+    return matched ? matched(match.get().listId(), "score=" + score) : notMatched();
   }
 
   private static String extractDomain(Address address) {
