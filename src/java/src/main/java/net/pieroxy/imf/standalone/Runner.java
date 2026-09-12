@@ -22,7 +22,7 @@ public class Runner {
   private final static String GIT_REV;
   private final static String MVN_VER;
   private static Configuration config;
-  private static final List<Thread> accountThreads = new ArrayList<>();
+  private static final List<MailAccount> accounts = new ArrayList<>();
   private static ReputationRegistry reputationRegistry;
 
   static {
@@ -51,9 +51,8 @@ public class Runner {
 
     config.getConfigurations().forEach(conf -> {
       MailAccount account = new MailAccount(conf, config.getDataFolder());
-      Thread t = new Thread(account, "mail-account-" + conf.getDisplayName());
-      accountThreads.add(t);
-      t.start();
+      accounts.add(account);
+      account.start();
     });
 
     Runtime.getRuntime().addShutdownHook(new Thread(Runner::shutdown, "shutdown-hook"));
@@ -61,14 +60,19 @@ public class Runner {
   }
 
   private static void shutdown() {
-    logDirectly("Shutting down, interrupting " + accountThreads.size() + " account thread(s)...");
+    logDirectly("Shutting down, interrupting " + accounts.size() + " account thread(s)...");
     // An IMAP cycle already in progress (blocking socket I/O) won't be interrupted on the spot;
     // this only prevents a new cycle from starting and lets an in-progress cycle finish within
-    // the timeout below.
-    accountThreads.forEach(Thread::interrupt);
-    for (Thread t : accountThreads) {
+    // the timeout below (see MailAccount#requestStop for the IMAP IDLE case).
+    accounts.forEach(MailAccount::requestStop);
+    // One shared deadline, not SHUTDOWN_JOIN_TIMEOUT_MS per account: accounts die concurrently in
+    // the background regardless of which one we're currently join()ing, so budgeting per-account
+    // would let a slow one after a fast one add its own full timeout on top for nothing.
+    long deadline = System.currentTimeMillis() + SHUTDOWN_JOIN_TIMEOUT_MS;
+    for (MailAccount account : accounts) {
       try {
-        t.join(SHUTDOWN_JOIN_TIMEOUT_MS);
+        long remainingMs = deadline - System.currentTimeMillis();
+        if (remainingMs > 0) account.join(remainingMs);
       } catch (InterruptedException ignored) {
         Thread.currentThread().interrupt();
       }

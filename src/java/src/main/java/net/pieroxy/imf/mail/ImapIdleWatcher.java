@@ -34,10 +34,12 @@ import java.util.logging.Logger;
  * keep them apart.
  * <p>
  * The wait is sliced into short IDLE calls rather than one continuous {@code idle()} for the
- * whole budget: keeps shutdown responsive (a blocked socket read can't be interrupted by {@code
- * Thread.interrupt()} — see {@code Runner.shutdown()} — so one long wait could otherwise delay
- * process exit by up to the full {@code runEvery}/backoff delay) and stays well under the ~29
- * minute IDLE duration servers are recommended to tolerate (RFC 2177).
+ * whole budget: a blocked socket read can't be interrupted by {@code Thread.interrupt()}, so
+ * without slicing, a slow server or a quiet mailbox could pin a wait in place for minutes with
+ * no way to cut it short. Slicing bounds that to {@link #SLICE_MS} on its own; {@link
+ * #interruptNow()} (see {@code Runner.shutdown()}) closes it out immediately instead of waiting
+ * for the slice to run out. Also stays well under the ~29 minute IDLE duration servers are
+ * recommended to tolerate (RFC 2177).
  */
 public class ImapIdleWatcher implements BackoffLoop.Waiter {
   private final static Logger LOGGER = Logger.getLogger(ImapIdleWatcher.class.getName());
@@ -48,6 +50,9 @@ public class ImapIdleWatcher implements BackoffLoop.Waiter {
   // Once a server proves it doesn't support IDLE, that's a static property of the server: no
   // point reconnecting to re-ask on every single wait for the rest of the process's lifetime.
   private volatile boolean idleUnsupported;
+  // Set for as long as idleForOneSlice() is actually blocked in idle() — read from another
+  // thread by interruptNow(), so it can close this specific connection out from under it.
+  private volatile Store activeStore;
 
   public ImapIdleWatcher(MailAccountConfiguration config) {
     this(config, ImapIdleWatcher::connectImaps);
@@ -92,9 +97,23 @@ public class ImapIdleWatcher implements BackoffLoop.Waiter {
     }
   }
 
+  /**
+   * Forces whichever slice is currently blocked in {@code idle()}, if any, to return right away —
+   * by closing its connection out from under it, the same way a new-mail notification or a slice
+   * timeout already do (see {@link #idleForOneSlice}). Safe to call from another thread; a no-op
+   * if no slice is in progress right now (e.g. between slices, or mid-{@code processMessages()}).
+   */
+  public void interruptNow() {
+    Store store = activeStore;
+    if (store != null) {
+      closeQuietly(store);
+    }
+  }
+
   /** @return true if new mail arrived in the INBOX during this slice. */
   private boolean idleForOneSlice(long sliceMs) throws MessagingException {
     Store store = storeConnector.connect(config);
+    activeStore = store;
     try {
       if (!((IMAPStore) store).hasCapability("IDLE")) {
         LOGGER.warning("IDLE watcher [" + config.getDisplayName() + "]: server does not advertise IDLE "
@@ -139,6 +158,7 @@ public class ImapIdleWatcher implements BackoffLoop.Waiter {
       }
       return newMail.get();
     } finally {
+      activeStore = null;
       closeQuietly(store);
     }
   }

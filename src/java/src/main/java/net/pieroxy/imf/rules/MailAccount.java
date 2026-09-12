@@ -56,6 +56,8 @@ public class MailAccount implements Runnable {
   private final String classifierSpamFolderName;
   private final List<String> classifierExcludedFolders;
   private final ImapMailboxFactory mailboxFactory;
+  private final ImapIdleWatcher idleWatcher;
+  private final Thread thread;
   private LocalDate lastSkeletonEnsureDate;
 
   public MailAccount(MailAccountConfiguration config, String dataFolder) {
@@ -85,6 +87,35 @@ public class MailAccount implements Runnable {
     this.classifierExcludedFolders = config.getClassifierExcludedFolders() != null
         ? config.getClassifierExcludedFolders() : List.of();
     this.mailboxFactory = mailboxFactory;
+    this.idleWatcher = new ImapIdleWatcher(config);
+    // Not started here: Thread's constructor only stores the Runnable, and this is only ever
+    // read (start()/requestStop()/join()) after construction completes — see Runner#main.
+    this.thread = new Thread(this, "mail-account-" + config.getDisplayName());
+  }
+
+  /** Starts this account's processing thread. */
+  public void start() {
+    thread.start();
+  }
+
+  /**
+   * For a responsive shutdown (see {@code Runner#shutdown}): interrupts this account's thread —
+   * which ends the wait between cycles if it's a plain sleep, and prevents a new cycle from
+   * starting once the current one (if any) finishes — and, since an IMAP IDLE wait is a blocked
+   * socket read that {@code Thread.interrupt()} alone can't reach, also forces that wait to end
+   * right away instead of leaving it to time out on its own (up to {@link ImapIdleWatcher}'s
+   * slice length). A no-op on the IDLE side if the thread is doing anything else right now (an
+   * active {@code processMessages()} cycle, say) — the interrupt alone is what handles that case,
+   * same as for a plain sleep.
+   */
+  public void requestStop() {
+    thread.interrupt();
+    idleWatcher.interruptNow();
+  }
+
+  /** Waits up to timeoutMs for this account's thread to finish — see {@link Thread#join(long)}. */
+  public void join(long timeoutMs) throws InterruptedException {
+    thread.join(timeoutMs);
   }
 
   @Override
@@ -106,7 +137,7 @@ public class MailAccount implements Runnable {
     // a watch that failed for this cycle). The watcher always closes its connection before a
     // cycle's own connection opens INBOX: some IMAP servers refuse a second, concurrent SELECT
     // of the same mailbox, so the two must never overlap.
-    new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS, new ImapIdleWatcher(config))
+    new BackoffLoop(config.getRunEvery() * 1000L, MAX_BACKOFF_MS, idleWatcher)
         .run(config.getDisplayName(), this::processMessages);
   }
 
