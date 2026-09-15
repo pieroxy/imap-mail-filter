@@ -270,6 +270,37 @@ public class ClassifierCorpusScannerTest {
   }
 
   @Test
+  public void aFolderEntirelyOutsideTheRetentionWindowIsSkippedWithoutFetchingIt() throws Exception {
+    ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
+    MimeMessage oldMessage = message("Ancient newsletter", "sender@example.com");
+    oldMessage.setSentDate(Date.from(Instant.now().minus(400, ChronoUnit.DAYS)));
+    fixture.appendMessage(oldMessage, "Archive");
+
+    ClassifierScanState state = new ClassifierScanState();
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account",
+          ClassifierCorpusScanner.DEFAULT_MAX_MESSAGES_PER_SCAN, 300).scan(state, LocalDate.now());
+    }
+
+    assertEquals("nothing in the folder is within the 300-day window: nothing should be captured",
+        0, store.readAll().size());
+
+    // A message that arrives afterwards must still be picked up normally — the folder being
+    // fully caught up (not "never scanned") shouldn't prevent future incremental scans.
+    MimeMessage recentMessage = message("Recent newsletter", "sender@example.com");
+    recentMessage.setSentDate(new Date());
+    fixture.appendMessage(recentMessage, "Archive");
+    try (ImapMailboxConnection mailbox = fixture.connectAsImapMailbox()) {
+      new ClassifierCorpusScanner(mailbox, store, "Spam", List.of(), "test-account",
+          ClassifierCorpusScanner.DEFAULT_MAX_MESSAGES_PER_SCAN, 300).scan(state, LocalDate.now());
+    }
+
+    List<ClassifierExample> examples = store.readAll();
+    assertEquals(1, examples.size());
+    assertEquals("Recent newsletter", examples.get(0).getSubject());
+  }
+
+  @Test
   public void zeroRetentionDaysDisablesTheAgeFilter() throws Exception {
     ClassifierCorpusStore store = new ClassifierCorpusStore(tempFolder.getRoot().getAbsolutePath(), "account", 30);
     MimeMessage oldMessage = message("Ancient newsletter", "sender@example.com");

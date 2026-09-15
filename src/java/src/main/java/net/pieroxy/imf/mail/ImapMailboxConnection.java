@@ -4,8 +4,12 @@ import com.sun.mail.imap.IMAPFolder;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 
 import javax.mail.*;
+import javax.mail.search.ComparisonTerm;
+import javax.mail.search.ReceivedDateTerm;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -153,6 +157,27 @@ public class ImapMailboxConnection implements ImapMailbox {
   @Override
   public long getUid(Folder folder, Message message) throws MessagingException {
     return ((IMAPFolder) folder).getUID(message);
+  }
+
+  @Override
+  public long lastUidBeforeCutoff(Folder folder, Instant cutoff) throws MessagingException {
+    openReadOnly(folder);
+    IMAPFolder imapFolder = (IMAPFolder) folder;
+    // SINCE compares against INTERNALDATE, date-only (no time-of-day) — same attribute
+    // ClassifierCorpusScanner's own per-message age filter uses (getReceivedDate()), just
+    // coarser; that filter still runs on whatever this returns, so the extra day of slack here
+    // is harmless.
+    Message[] matches = folder.search(new ReceivedDateTerm(ComparisonTerm.GE, Date.from(cutoff)));
+    if (matches.length == 0) {
+      // Nothing in the folder is recent enough: skip past all of it in one shot rather than
+      // crawling through years of history that would only get discarded message by message.
+      return imapFolder.getUIDNext() - 1;
+    }
+    long minUid = Long.MAX_VALUE;
+    for (Message m : matches) {
+      minUid = Math.min(minUid, imapFolder.getUID(m));
+    }
+    return minUid - 1;
   }
 
   @Override

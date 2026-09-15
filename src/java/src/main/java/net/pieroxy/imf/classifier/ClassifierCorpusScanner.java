@@ -166,10 +166,24 @@ public class ClassifierCorpusScanner {
     try {
       long uidValidity = mailbox.getUidValidity(folder);
       ClassifierScanState.FolderProgress progress = state.getFolderProgress(fullName);
+      Instant fetchDate = Instant.now();
+      Instant cutoff = retentionDays > 0 ? fetchDate.minus(retentionDays, ChronoUnit.DAYS) : null;
       // uidValidity differs from the stored one (or never scanned): the old UIDs no longer mean
-      // anything, so start over from 0 for this folder (unlike INBOX, here we want the whole
-      // existing history, not just what arrives after the scan).
-      long lastUid = (progress != null && progress.getUidValidity() == uidValidity) ? progress.getLastUid() : 0;
+      // anything, so start over for this folder (unlike INBOX, here we want the whole existing
+      // history, not just what arrives after the scan) — except when a retention cutoff is
+      // configured, in which case we jump straight to the oldest message still within it (see
+      // ImapMailbox#lastUidBeforeCutoff) instead of crawling from the very first message the
+      // folder ever received: on a folder with years of history, that crawl would otherwise burn
+      // many scan cycles fetching (and then discarding) messages far outside the retention
+      // window before ever reaching one actually worth keeping.
+      long lastUid;
+      if (progress != null && progress.getUidValidity() == uidValidity) {
+        lastUid = progress.getLastUid();
+      } else if (cutoff != null) {
+        lastUid = mailbox.lastUidBeforeCutoff(folder, cutoff);
+      } else {
+        lastUid = 0;
+      }
 
       int remainingBudget = enforceBudget ? maxMessagesPerScan - messagesProcessed : Integer.MAX_VALUE;
       Message[] messages = mailbox.getMessagesSince(folder, lastUid, remainingBudget);
@@ -179,8 +193,6 @@ public class ClassifierCorpusScanner {
             + (budgetExceeded ? " — budget reached, more may remain here for next cycle" : ""));
       }
       long newLastUid = lastUid;
-      Instant fetchDate = Instant.now();
-      Instant cutoff = retentionDays > 0 ? fetchDate.minus(retentionDays, ChronoUnit.DAYS) : null;
       int skippedForAge = 0;
       for (Message message : messages) {
         if (cutoff != null && isOlderThan(message, cutoff)) {

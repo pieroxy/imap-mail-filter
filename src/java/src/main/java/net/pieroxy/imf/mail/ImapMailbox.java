@@ -3,6 +3,7 @@ package net.pieroxy.imf.mail;
 import javax.mail.Folder;
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -46,6 +47,17 @@ public interface ImapMailbox extends AutoCloseable {
   Message[] getMessagesSince(Folder folder, long lastUid, int maxResults) throws MessagingException;
 
   long getUid(Folder folder, Message message) throws MessagingException;
+
+  /**
+   * UID immediately before the oldest message in folder whose INTERNALDATE is on/after cutoff —
+   * i.e. the value to seed {@link #getMessagesSince(Folder, long, int)} with to start right at
+   * the retention window's edge instead of the folder's very first message ever received. If
+   * nothing in the folder is within the window, returns (UIDNEXT - 1): fully caught up, nothing
+   * left to fetch there. Meant for a folder's first scan only (see ClassifierCorpusScanner) —
+   * resolved server-side via IMAP SEARCH, so a folder with years of history outside the window
+   * costs one cheap search instead of many batched fetches that would all get discarded anyway.
+   */
+  long lastUidBeforeCutoff(Folder folder, Instant cutoff) throws MessagingException;
 
   /** Closes folder without expunging (read-only, nothing to purge). */
   void closeReadOnly(Folder folder) throws MessagingException;
