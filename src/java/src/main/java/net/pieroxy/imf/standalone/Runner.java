@@ -10,6 +10,8 @@ import net.pieroxy.imf.logging.LoggingBootstrap;
 import net.pieroxy.imf.reputation.ReputationRegistry;
 import net.pieroxy.imf.reputation.ReputationRegistryHolder;
 import net.pieroxy.imf.rules.MailAccount;
+import net.pieroxy.imf.webserver.WebServerRunner;
+import org.apache.catalina.startup.Tomcat;
 
 import java.io.*;
 import java.time.LocalDateTime;
@@ -27,6 +29,7 @@ public class Runner {
   private static Configuration config;
   private static final List<MailAccount> accounts = new ArrayList<>();
   private static ReputationRegistry reputationRegistry;
+  private static Tomcat webServer;
 
   static {
     GIT_REV = readResourceFileAsString("GIT_REV");
@@ -60,6 +63,13 @@ public class Runner {
       account.start();
     });
 
+    if (config.getWebServer() != null && config.getWebServer().isEnabled()) {
+      // Not consumed yet — no auth is wired for this Hello World milestone — but resolved now so
+      // a bad "credentials" key fails fast at startup instead of silently once auth lands.
+      CredentialsResolver.resolve(config.getWebServer().getCredentials(), credentialsFile, "webServer");
+      webServer = WebServerRunner.start(config.getWebServer(), config.getDataFolder());
+    }
+
     Runtime.getRuntime().addShutdownHook(new Thread(Runner::shutdown, "shutdown-hook"));
     LOGGER.info("Started IMAP-MAIL-FILTER version " + MVN_VER + " rev " + GIT_REV);
   }
@@ -81,6 +91,9 @@ public class Runner {
       } catch (InterruptedException ignored) {
         Thread.currentThread().interrupt();
       }
+    }
+    if (webServer != null) {
+      WebServerRunner.stop(webServer);
     }
     if (reputationRegistry != null) {
       reputationRegistry.stop();

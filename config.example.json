@@ -3,6 +3,12 @@
   "logFile": "/var/log/imf/imf.log",
   "keepLogFiles": 14,
   "classifierCorpusRetentionDays": 90,
+  "webServer": {
+    "enabled": false,
+    "httpPort": 8080,
+    "address": "127.0.0.1",
+    "credentials": "webui"
+  },
   "reputationLists": [
     {
       "id": "spamhaus-drop",

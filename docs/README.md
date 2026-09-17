@@ -24,6 +24,7 @@ configurable rules to new mail: move it, mark it read, or both. Rules can be wri
   - [Header classifier training](#header-classifier-training)
   - [Body classifier training](#body-classifier-training)
 - [Reputation lists](#reputation-lists)
+- [Web server](#web-server)
 
 ## Running IMF
 
@@ -59,6 +60,7 @@ same directory — see [Credentials file](#credentials-file).
 | `logFile` | no | Path to a log file. If absent, IMF only logs to the console. |
 | `keepLogFiles` | no | Number of rotated, lz4-compressed daily log files to keep. Only relevant if `logFile` is set; `0` or absent disables rotation. |
 | `reputationLists` | no | IP/domain reputation lists to download and refresh (see [Reputation lists](#reputation-lists)). Absent means the feature is off. |
+| `webServer` | no | Embedded web server serving the web UI (see [Web server](#web-server)). Absent, or `enabled: false`, means the feature is off entirely — no Tomcat startup. |
 
 ### Account fields
 
@@ -547,3 +549,30 @@ See [`IP_REPUTATION_EQUALS`](matchers/ip-reputation-equals.md) and
 [`FROM_DOMAIN_REPUTATION_EQUALS`](matchers/from-domain-reputation-equals.md) for how a matcher
 references one or more lists (`listIds`) and a threshold (`key`, e.g. `">0.5"`) — when several
 referenced lists contain the same value, the worst (highest) score wins.
+
+## Web server
+
+IMF can embed a web server (Tomcat) serving a web UI, controlled by the top-level `webServer`
+block:
+
+```json
+"webServer": {
+  "enabled": true,
+  "httpPort": 8080,
+  "address": "127.0.0.1",
+  "credentials": "webui"
+}
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `enabled` | no | Turns the web server on. Absent, or `false`, means it's fully off: no Tomcat startup at all, no port bound. |
+| `httpPort` | yes if `enabled` | Port the web server listens on. |
+| `address` | no | Address to bind to. Absent binds all interfaces. |
+| `credentials` | yes if `enabled` | Key into `credentials.json`'s `credentials` map (see [Credentials file](#credentials-file)). |
+
+The UI itself is a static single-page app, built from `src/webapp` and embedded into the release
+jar — it's extracted fresh to `<dataFolder>/webapp-ui` on every startup, so an upgraded jar never
+serves a stale UI. Responses above 1KB are gzip-compressed automatically.
+
+The current UI is a placeholder ("Hello World") — the real UI and its API are still to come.
