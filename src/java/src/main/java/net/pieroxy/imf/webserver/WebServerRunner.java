@@ -1,6 +1,7 @@
 package net.pieroxy.imf.webserver;
 
 import net.pieroxy.imf.config.WebServerConfiguration;
+import net.pieroxy.imf.logging.OneLineLogFormatter;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.core.StandardContext;
@@ -21,6 +22,14 @@ public class WebServerRunner {
       "text/html,text/css,application/javascript,image/svg+xml,application/json";
 
   public static Tomcat start(WebServerConfiguration config, String dataFolder) throws LifecycleException, IOException {
+    // Tomcat's own logging shim (org.apache.juli.logging.DirectJDKLog) force-overwrites the root
+    // logger's ConsoleHandler formatter with a plain SimpleFormatter the first time any Tomcat
+    // class logs (see its static initializer) — undoing LoggingBootstrap's setup for every logger,
+    // IMF's own included, not just Tomcat's. This system property is DirectJDKLog's own supported
+    // hook to point it at a different formatter instead; it must be set before any Tomcat class
+    // loads, so first thing here.
+    System.setProperty("org.apache.juli.formatter", OneLineLogFormatter.class.getName());
+
     if (config.getHttpPort() <= 0) {
       throw new IllegalStateException("webServer.httpPort configured to an invalid value of " + config.getHttpPort());
     }
