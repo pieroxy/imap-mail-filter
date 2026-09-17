@@ -30,7 +30,7 @@ public class ImapIdleWatcherTest {
   @Test
   public void awaitReturnsAsSoonAsAMessageArrivesInTheInbox() throws Exception {
     MailAccountConfiguration config = fixture.accountConfig("idle-test");
-    ImapIdleWatcher watcher = new ImapIdleWatcher(config, c -> fixture.connectStore());
+    ImapIdleWatcher watcher = new ImapIdleWatcher(config, fixture.accountCredential(), (c, credential) -> fixture.connectStore());
 
     Thread deliverer = new Thread(() -> {
       try {
@@ -59,7 +59,7 @@ public class ImapIdleWatcherTest {
   @Test
   public void interruptNowCombinedWithThreadInterruptEndsAnInProgressWaitRightAway() throws Exception {
     MailAccountConfiguration config = fixture.accountConfig("idle-test");
-    ImapIdleWatcher watcher = new ImapIdleWatcher(config, c -> fixture.connectStore());
+    ImapIdleWatcher watcher = new ImapIdleWatcher(config, fixture.accountCredential(), (c, credential) -> fixture.connectStore());
 
     Thread waiter = new Thread(() -> {
       try {
@@ -83,7 +83,7 @@ public class ImapIdleWatcherTest {
   @Test
   public void awaitReturnsOnceTheBudgetIsExhaustedWhenNoMailArrives() throws Exception {
     MailAccountConfiguration config = fixture.accountConfig("idle-test");
-    ImapIdleWatcher watcher = new ImapIdleWatcher(config, c -> fixture.connectStore());
+    ImapIdleWatcher watcher = new ImapIdleWatcher(config, fixture.accountCredential(), (c, credential) -> fixture.connectStore());
 
     long start = System.currentTimeMillis();
     watcher.await(1000);

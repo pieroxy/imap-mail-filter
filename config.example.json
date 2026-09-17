@@ -52,8 +52,7 @@
       "displayName": "personal",
       "host": "imap.example.com",
       "port": 993,
-      "username": "me@example.com",
-      "password": "secret",
+      "credentials": "personal",
       "runEvery": 300,
       "classifierExcludedFolders": ["SpamML"],
       "rules": [

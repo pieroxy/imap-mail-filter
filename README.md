@@ -72,7 +72,9 @@ A few things worth understanding before you dive in:
 
 [`config.example.json`](config.example.json) is a reasonable config to start from: SPF, DKIM,
 DMARC, FCrDNS, and reputation lists all enabled, with sane logging. Copy it to your `dataFolder`
-as `config.json` and fill in `host`/`username`/`password`. What it does:
+as `config.json` and fill in `host`; copy
+[`credentials.example.json`](credentials.example.json) as `credentials.json` and fill in
+`username`/`password`. What it does:
 
 * **SPF/DKIM/DMARC `fail`** → Spam, pre-marked read — the strong, protocol-verified signals.
 * **SPF `softfail` + FCrDNS `fail`/`none`** (`AND`) → Spam, left unread for review.

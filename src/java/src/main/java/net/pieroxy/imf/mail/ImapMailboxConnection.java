@@ -1,6 +1,7 @@
 package net.pieroxy.imf.mail;
 
 import com.sun.mail.imap.IMAPFolder;
+import net.pieroxy.imf.config.Credential;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 
 import javax.mail.*;
@@ -35,11 +36,11 @@ public class ImapMailboxConnection implements ImapMailbox {
    * modify messages). The caller is responsible for closing the connection, ideally via a
    * try-with-resources.
    */
-  public static ImapMailboxConnection connect(MailAccountConfiguration config) throws MessagingException {
+  public static ImapMailboxConnection connect(MailAccountConfiguration config, Credential credential) throws MessagingException {
     Session session = Session.getDefaultInstance(peekProperties());
     session.setDebug(false);
     Store store = session.getStore("imaps");
-    store.connect(config.getHost(), config.getPort(), config.getUsername(), config.getPassword());
+    store.connect(config.getHost(), config.getPort(), credential.getUsername(), credential.getPassword());
     IMAPFolder inbox = (IMAPFolder) store.getFolder("INBOX");
     inbox.open(Folder.READ_WRITE);
     return new ImapMailboxConnection(store, inbox);

@@ -2,6 +2,7 @@ package net.pieroxy.imf.mail;
 
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetupTest;
+import net.pieroxy.imf.config.Credential;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 
 import javax.mail.Folder;
@@ -44,10 +45,16 @@ public class GreenMailImapFixture {
     config.setDisplayName(displayName);
     config.setHost("127.0.0.1");
     config.setPort(greenMail.getImap().getPort());
-    config.setUsername(USERNAME);
-    config.setPassword(PASSWORD);
     config.setRunEvery(60);
     return config;
+  }
+
+  /** Resolved credential matching {@link #accountConfig}, ready to hand to a test MailAccount. */
+  public Credential accountCredential() {
+    Credential credential = new Credential();
+    credential.setUsername(USERNAME);
+    credential.setPassword(PASSWORD);
+    return credential;
   }
 
   /** Plain (non-TLS) IMAP connection to this server — what connect() normally does via "imaps". */

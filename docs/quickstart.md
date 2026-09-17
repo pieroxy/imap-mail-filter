@@ -12,13 +12,16 @@ DMARC/FCrDNS checks — see [What is it?](../README.md#what-is-it)).
 mkdir imf && cd imf
 curl -LO https://github.com/pieroxy/imap-mail-filter/releases/latest/download/imf-core-1.0.0.jar
 curl -LO https://raw.githubusercontent.com/pieroxy/imap-mail-filter/main/config.example.json
+curl -LO https://raw.githubusercontent.com/pieroxy/imap-mail-filter/main/credentials.example.json
 mv config.example.json config.json
+mv credentials.example.json credentials.json
 ```
 
-Edit `config.json`:
+Edit `config.json` and `credentials.json`:
 
-- Fill in `host`, `username`, `password` (and `port`/`displayName` if needed) under
-  `configurations`.
+- In `credentials.json`, fill in `username`/`password` for the `personal` entry (or rename it —
+  just keep it matching the `credentials` key used in `config.json`).
+- In `config.json`, fill in `host` (and `port`/`displayName` if needed) under `configurations`.
 - For this first try, point `dataFolder` and `logFile` at plain local paths instead of the
   `/var/lib`/`/var/log` ones in the example — you don't have write access there yet, and you
   don't want to run as root just to test:
@@ -32,7 +35,8 @@ See the [configuration reference](README.md#configuration-file) for what every f
 the example file is a reasonable starting point (see
 [Starter configuration](../README.md#starter-configuration)), not something to use as-is.
 
-Then run it, passing the **directory containing `config.json`** (here, the current directory):
+Then run it, passing the **directory containing `config.json` and `credentials.json`** (here, the
+current directory):
 
 ```sh
 java -jar imf-core-1.0.0.jar .
@@ -57,12 +61,14 @@ sudo useradd --system --home /opt/imf --shell /usr/sbin/nologin imf
 sudo mkdir -p /opt/imf /var/lib/imf /var/log/imf
 ```
 
-Put the jar and your finished `config.json` (from step 1, with `dataFolder`/`logFile` switched
-back to `/var/lib/imf`/`/var/log/imf/imf.log` as in the example) into `/opt/imf`:
+Put the jar and your finished `config.json`/`credentials.json` (from step 1, with
+`dataFolder`/`logFile` switched back to `/var/lib/imf`/`/var/log/imf/imf.log` as in the example)
+into `/opt/imf`:
 
 ```sh
-sudo cp imf-core-1.0.0.jar config.json /opt/imf/
+sudo cp imf-core-1.0.0.jar config.json credentials.json /opt/imf/
 sudo chown -R imf:imf /opt/imf /var/lib/imf /var/log/imf
+sudo chmod 600 /opt/imf/credentials.json
 ```
 
 Find your `java` binary (`which java`), then create `/etc/systemd/system/imf.service`:

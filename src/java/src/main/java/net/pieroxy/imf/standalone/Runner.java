@@ -2,6 +2,9 @@ package net.pieroxy.imf.standalone;
 
 import com.google.gson.Gson;
 import net.pieroxy.imf.config.Configuration;
+import net.pieroxy.imf.config.Credential;
+import net.pieroxy.imf.config.CredentialsFile;
+import net.pieroxy.imf.config.CredentialsResolver;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 import net.pieroxy.imf.logging.LoggingBootstrap;
 import net.pieroxy.imf.reputation.ReputationRegistry;
@@ -43,6 +46,7 @@ public class Runner {
   public static void main(String[] args) throws Exception {
     Gson gson = new Gson();
     Runner.config = gson.fromJson(new FileReader(new File(args[0], "config.json")), Configuration.class);
+    CredentialsFile credentialsFile = gson.fromJson(new FileReader(new File(args[0], "credentials.json")), CredentialsFile.class);
     LoggingBootstrap.configure(config.getLogFile(), config.getKeepLogFiles());
 
     reputationRegistry = new ReputationRegistry(config.getReputationLists(), config.getDataFolder());
@@ -50,7 +54,8 @@ public class Runner {
     ReputationRegistryHolder.set(reputationRegistry);
 
     config.getConfigurations().forEach(conf -> {
-      MailAccount account = new MailAccount(conf, config.getDataFolder());
+      Credential credential = CredentialsResolver.resolve(conf.getCredentials(), credentialsFile, "mail account \"" + conf.getDisplayName() + "\"");
+      MailAccount account = new MailAccount(conf, credential, config.getDataFolder());
       accounts.add(account);
       account.start();
     });

@@ -10,6 +10,7 @@ configurable rules to new mail: move it, mark it read, or both. Rules can be wri
   - [Top-level fields](#top-level-fields)
   - [Account fields](#account-fields)
   - [Example `config.json`](#example-configjson)
+  - [Credentials file](#credentials-file)
 - [Matchers and actions](#matchers-and-actions)
 - [Rule evaluation order](#rule-evaluation-order)
 - [Learning rules by example](#learning-rules-by-example)
@@ -27,7 +28,7 @@ configurable rules to new mail: move it, mark it read, or both. Rules can be wri
 ## Running IMF
 
 IMF requires Java 17. Build a runnable jar with Maven, then run it with the path to a
-**directory containing `config.json`**:
+**directory containing `config.json` and `credentials.json`**:
 
 ```sh
 mvn clean package
@@ -46,6 +47,8 @@ server doesn't support IDLE.
 
 `config.json` (found in the directory passed on the command line) is a plain JSON file, parsed
 field-for-field into Java objects — the JSON keys match the Java field names exactly (camelCase).
+Credentials (IMAP logins, web server login) live in a separate `credentials.json` file in the
+same directory — see [Credentials file](#credentials-file).
 
 ### Top-level fields
 
@@ -66,8 +69,7 @@ Each entry in `configurations` is one IMAP account:
 | `displayName` | yes | Free-form name, used for logging, thread naming, and as the key for this account's state files on disk. Must be filesystem-safe and unique across accounts. |
 | `host` | yes | IMAP server hostname. |
 | `port` | yes | IMAP server port. |
-| `username` | yes | IMAP login. |
-| `password` | yes | IMAP password. |
+| `credentials` | yes | Key into `credentials.json`'s `credentials` map, resolved into the IMAP login/password at startup. See [Credentials file](#credentials-file). |
 | `runEvery` | yes | Seconds between processing cycles (see [Running IMF](#running-imf) for how IMAP IDLE affects this). |
 | `classifierSpamFolderName` | no | Folder treated as "Spam" for classifier corpus labeling. Defaults to `"Spam"`. |
 | `classifierExcludedFolders` | no | Folder names (anywhere in the tree) to skip entirely for classifier corpus collection — neither `SPAM` nor `HAM`, just ignored, like `INBOX`/`imf-rules/` already are. See [Classifier corpus collection](#classifier-corpus-collection). |
@@ -91,8 +93,7 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
       "displayName": "personal",
       "host": "imap.example.com",
       "port": 993,
-      "username": "me@example.com",
-      "password": "secret",
+      "credentials": "personal",
       "runEvery": 600,
       "classifierSpamFolderName": "Spam",
       "classifierExcludedFolders": ["SpamML"],
@@ -171,6 +172,27 @@ The `FCRDNS_RESULT_EQUALS: none` rule is here mainly to show the syntax — see
 production: it's a much weaker signal than SPF/DKIM/DMARC (plenty of legitimate small mail
 servers have no forward-confirmed reverse DNS), so it's usually better combined with another
 weak signal via `AND` than acted on alone.
+
+### Credentials file
+
+`credentials.json`, in the same directory as `config.json`, holds every secret (IMAP logins,
+web server login) instead of `config.json` itself — so `config.json` can be shared, backed up,
+or committed without leaking anything. Each account's `credentials` field is a key into this
+file's `credentials` map:
+
+```json
+{
+  "credentials": {
+    "personal": {
+      "username": "me@example.com",
+      "password": "secret"
+    }
+  }
+}
+```
+
+Every `credentials` key referenced from `config.json` must exist in this map — IMF fails fast
+at startup otherwise.
 
 ## Matchers and actions
 

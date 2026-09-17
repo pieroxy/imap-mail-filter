@@ -5,8 +5,8 @@ import java.util.List;
 public class MailAccountConfiguration {
   private String host;
   private int port;
-  private String username;
-  private String password;
+  /** Key into credentials.json's top-level "credentials" map — see {@link CredentialsResolver}. */
+  private String credentials;
   private String displayName;
   /**
    * Time to sleep between two runs, in seconds.
@@ -64,20 +64,12 @@ public class MailAccountConfiguration {
     this.host = host;
   }
 
-  public String getUsername() {
-    return username;
+  public String getCredentials() {
+    return credentials;
   }
 
-  public void setUsername(String username) {
-    this.username = username;
-  }
-
-  public String getPassword() {
-    return password;
-  }
-
-  public void setPassword(String password) {
-    this.password = password;
+  public void setCredentials(String credentials) {
+    this.credentials = credentials;
   }
 
   public String getDisplayName() {

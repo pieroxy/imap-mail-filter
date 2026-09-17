@@ -1,5 +1,6 @@
 package net.pieroxy.imf.mail;
 
+import net.pieroxy.imf.config.Credential;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 
 import javax.mail.MessagingException;
@@ -14,5 +15,5 @@ import javax.mail.Store;
  */
 @FunctionalInterface
 interface ImapStoreConnector {
-  Store connect(MailAccountConfiguration config) throws MessagingException;
+  Store connect(MailAccountConfiguration config, Credential credential) throws MessagingException;
 }

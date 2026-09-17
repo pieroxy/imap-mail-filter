@@ -50,4 +50,12 @@ public class Configuration {
   public void setReputationLists(List<ReputationListConfig> reputationLists) {
     this.reputationLists = reputationLists;
   }
+
+  public WebServerConfiguration getWebServer() {
+    return webServer;
+  }
+
+  public void setWebServer(WebServerConfiguration webServer) {
+    this.webServer = webServer;
+  }
 }

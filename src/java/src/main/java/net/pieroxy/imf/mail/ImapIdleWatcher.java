@@ -2,6 +2,7 @@ package net.pieroxy.imf.mail;
 
 import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.imap.IMAPStore;
+import net.pieroxy.imf.config.Credential;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 import net.pieroxy.imf.scheduling.BackoffLoop;
 
@@ -46,6 +47,7 @@ public class ImapIdleWatcher implements BackoffLoop.Waiter {
   private final static long SLICE_MS = 2 * 60 * 1000L;
 
   private final MailAccountConfiguration config;
+  private final Credential credential;
   private final ImapStoreConnector storeConnector;
   // Once a server proves it doesn't support IDLE, that's a static property of the server: no
   // point reconnecting to re-ask on every single wait for the rest of the process's lifetime.
@@ -54,20 +56,21 @@ public class ImapIdleWatcher implements BackoffLoop.Waiter {
   // thread by interruptNow(), so it can close this specific connection out from under it.
   private volatile Store activeStore;
 
-  public ImapIdleWatcher(MailAccountConfiguration config) {
-    this(config, ImapIdleWatcher::connectImaps);
+  public ImapIdleWatcher(MailAccountConfiguration config, Credential credential) {
+    this(config, credential, ImapIdleWatcher::connectImaps);
   }
 
   /** Visible for tests: lets a store connector be injected without real IMAPS/TLS. */
-  ImapIdleWatcher(MailAccountConfiguration config, ImapStoreConnector storeConnector) {
+  ImapIdleWatcher(MailAccountConfiguration config, Credential credential, ImapStoreConnector storeConnector) {
     this.config = config;
+    this.credential = credential;
     this.storeConnector = storeConnector;
   }
 
-  private static Store connectImaps(MailAccountConfiguration config) throws MessagingException {
+  private static Store connectImaps(MailAccountConfiguration config, Credential credential) throws MessagingException {
     Session session = Session.getDefaultInstance(new Properties());
     Store store = session.getStore("imaps");
-    store.connect(config.getHost(), config.getPort(), config.getUsername(), config.getPassword());
+    store.connect(config.getHost(), config.getPort(), credential.getUsername(), credential.getPassword());
     return store;
   }
 
@@ -112,7 +115,7 @@ public class ImapIdleWatcher implements BackoffLoop.Waiter {
 
   /** @return true if new mail arrived in the INBOX during this slice. */
   private boolean idleForOneSlice(long sliceMs) throws MessagingException {
-    Store store = storeConnector.connect(config);
+    Store store = storeConnector.connect(config, credential);
     activeStore = store;
     try {
       if (!((IMAPStore) store).hasCapability("IDLE")) {

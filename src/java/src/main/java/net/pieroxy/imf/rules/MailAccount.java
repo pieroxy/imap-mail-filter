@@ -7,6 +7,7 @@ import net.pieroxy.imf.classifier.ClassifierScanState;
 import net.pieroxy.imf.classifier.ClassifierScanStateStore;
 import net.pieroxy.imf.classifier.HeaderClassifierTrainer;
 import net.pieroxy.imf.classifier.SubjectClassifierTrainer;
+import net.pieroxy.imf.config.Credential;
 import net.pieroxy.imf.config.MailAccountConfiguration;
 import net.pieroxy.imf.learning.LearnedRulesStore;
 import net.pieroxy.imf.learning.RuleLearner;
@@ -43,6 +44,7 @@ public class MailAccount implements Runnable {
   private final static int PROCESSED_FINGERPRINT_RETENTION_DAYS = 30;
 
   private final MailAccountConfiguration config;
+  private final Credential credential;
   private final MailAccountStateStore stateStore;
   private final LearnedRulesStore learnedRulesStore;
   private final RuleCatalog ruleCatalog;
@@ -60,13 +62,14 @@ public class MailAccount implements Runnable {
   private final Thread thread;
   private LocalDate lastSkeletonEnsureDate;
 
-  public MailAccount(MailAccountConfiguration config, String dataFolder) {
-    this(config, dataFolder, ImapMailboxConnection::connect);
+  public MailAccount(MailAccountConfiguration config, Credential credential, String dataFolder) {
+    this(config, credential, dataFolder, ImapMailboxConnection::connect);
   }
 
   /** Visible for tests: lets a mailbox factory be injected without real IMAPS/TLS. */
-  MailAccount(MailAccountConfiguration config, String dataFolder, ImapMailboxFactory mailboxFactory) {
+  MailAccount(MailAccountConfiguration config, Credential credential, String dataFolder, ImapMailboxFactory mailboxFactory) {
     this.config = config;
+    this.credential = credential;
     this.stateStore = new MailAccountStateStore(dataFolder, config.getDisplayName());
     this.learnedRulesStore = new LearnedRulesStore(dataFolder, config.getDisplayName());
     this.classifierCorpusRetentionDays = config.getClassifierCorpusRetentionDays();
@@ -87,7 +90,7 @@ public class MailAccount implements Runnable {
     this.classifierExcludedFolders = config.getClassifierExcludedFolders() != null
         ? config.getClassifierExcludedFolders() : List.of();
     this.mailboxFactory = mailboxFactory;
-    this.idleWatcher = new ImapIdleWatcher(config);
+    this.idleWatcher = new ImapIdleWatcher(config, credential);
     // Not started here: Thread's constructor only stores the Runnable, and this is only ever
     // read (start()/requestStop()/join()) after construction completes — see Runner#main.
     this.thread = new Thread(this, "mail-account-" + config.getDisplayName());
@@ -144,7 +147,7 @@ public class MailAccount implements Runnable {
   /** displayName if set, otherwise falls back to the IMAP login — see {@link RuleCatalog#logRules}. */
   private String accountLabel() {
     String displayName = config.getDisplayName();
-    return (displayName == null || displayName.isBlank()) ? config.getUsername() : displayName;
+    return (displayName == null || displayName.isBlank()) ? credential.getUsername() : displayName;
   }
 
   /** Applies the first matching rule (manual config, then learned rules). */
@@ -155,7 +158,7 @@ public class MailAccount implements Runnable {
   /** Package-private (instead of private): lets MailAccountTest run a cycle without going through run()/BackoffLoop. */
   void processMessages() throws MessagingException {
     LOGGER.info("Processing account " + config.getDisplayName());
-    try (ImapMailbox mailbox = mailboxFactory.connect(config)) {
+    try (ImapMailbox mailbox = mailboxFactory.connect(config, credential)) {
       RuleLearner learner = new RuleLearner(mailbox, learnedRulesStore, config.getLearningShortcuts(), config.isDiscoveryTreeDisabled());
       ManualReprocessor reprocessor = new ManualReprocessor(mailbox, ruleCatalog);
       ensureFolderSkeletonsIfDue(learner, reprocessor);
