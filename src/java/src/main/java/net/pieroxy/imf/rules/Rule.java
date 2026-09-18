@@ -1,6 +1,7 @@
 package net.pieroxy.imf.rules;
 
 import net.pieroxy.imf.config.MailFilterRuleConfiguration;
+import net.pieroxy.imf.logging.StatsLog;
 import net.pieroxy.imf.rules.actions.Action;
 import net.pieroxy.imf.rules.matchers.MatchResult;
 import net.pieroxy.imf.rules.matchers.Matcher;
@@ -14,6 +15,7 @@ public class Rule implements RuleInterface {
   private final MailFilterRuleConfiguration config;
   private final Matcher matcher;
   private final Action action;
+  private final RuleContext context;
 
   /** Equivalent to {@link #Rule(MailFilterRuleConfiguration, RuleContext)} with no account context available. */
   public Rule(MailFilterRuleConfiguration config) {
@@ -25,6 +27,7 @@ public class Rule implements RuleInterface {
       throw new IllegalStateException("A MATCHER_ACTION_RULE rule needs both a matcher and an action");
     }
     this.config = config;
+    this.context = context;
     matcher = Matcher.build(config.getMatcher(), context);
     action = Action.build(config.getAction(), context);
   }
@@ -58,6 +61,7 @@ public class Rule implements RuleInterface {
       return RuleExecutionResult.NOT_APPLIED;
     }
     matcher.getLogger().info(() -> matchResult.debugString() + " matched message from " + MailTools.describeFromSafely(message));
+    StatsLog.recordMatch(context.statsDir(), matchResult.debugString());
 
     try {
       boolean result = action.run(message);

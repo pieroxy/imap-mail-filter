@@ -20,6 +20,7 @@ import net.pieroxy.imf.scheduling.BackoffLoop;
 import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -80,7 +81,7 @@ public class MailAccount implements Runnable {
     // BodyClassifierMatcher have no other way to know which account's model file to load, since
     // they're built without context by MatcherType.getImplementation() — see RuleContext.
     RuleContext ruleContext = new RuleContext(classifierCorpusStore.getModelFile(), classifierCorpusStore.getHeaderModelFile(),
-        classifierCorpusStore.getBodyModelFile());
+        classifierCorpusStore.getBodyModelFile(), new File(dataFolder, "logs"));
     this.ruleCatalog = new RuleCatalog(config.getRules(), learnedRulesStore, ruleContext);
     this.subjectClassifierTrainer = new SubjectClassifierTrainer(classifierCorpusStore);
     this.headerClassifierTrainer = new HeaderClassifierTrainer(classifierCorpusStore);

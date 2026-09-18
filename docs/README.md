@@ -17,6 +17,7 @@ configurable rules to new mail: move it, mark it read, or both. Rules can be wri
   - [Learning shortcuts](#learning-shortcuts)
 - [Manually reprocessing a message](#manually-reprocessing-a-message)
 - [Logging](#logging)
+  - [Stats log](#stats-log)
 - [Data files](#data-files)
 - [Classifier corpus collection](#classifier-corpus-collection)
   - [Excluding a folder from the corpus](#excluding-a-folder-from-the-corpus)
@@ -386,6 +387,24 @@ or [`DMARC_RESULT_EQUALS`](matchers/dmarc-result-equals.md) matcher is particula
 surfaces that rule's full live verification trace (DNS records fetched, mechanisms/signatures
 evaluated, alignment computed) without touching any global logging configuration.
 
+### Stats log
+
+Besides the human-readable log above, every successful rule match also appends one JSON line to
+`<dataFolder>/logs/stats-YYYY-MM-DD.json` (UTC day), e.g.:
+
+```json
+{"matcher":"IpReputationMatcher[spamhaus-drop](score=0.87)","date":"2026-09-18 10:35:12Z"}
+{"matcher":"FromDomainMatcher(gmail.com)","date":"2026-09-18 10:36:01Z"}
+```
+
+One JSON object per line (not one JSON array for the whole file), so recording an event is a
+plain append, never a rewrite of the whole day's file — safe with several accounts matching
+concurrently. The `matcher` field is the same description shown in the console/`log.txt` line
+for that match (see [Rule evaluation order](#rule-evaluation-order)), including any per-message
+detail a matcher reports (a reputation score, a classifier score, which of several configured
+keys hit...). Nothing is written for a rule that doesn't match, and this file has no rotation or
+pruning of its own — clean up old `stats-*.json` files yourself if needed.
+
 ## Data files
 
 Everything IMF persists lives under `dataFolder`, one file/folder per account (keyed by
@@ -394,6 +413,7 @@ Everything IMF persists lives under `dataFolder`, one file/folder per account (k
 | Path | Contents |
 |---|---|
 | `logs/log.txt` | Current log file (see [Logging](#logging)); rotated into `logs/log.txt.N.lz4` archives. |
+| `logs/stats-YYYY-MM-DD.json` | One JSON-lines file per UTC day of successful rule matches (see [Stats log](#stats-log)). Not rotated/pruned by IMF. |
 | `<displayName>.json` | INBOX UID cursor (which messages have already been processed). |
 | `<displayName>-learned-rules.json` | Rules learned via `imf-rules/` (see above). Hand-editable. |
 | `classifier-corpus/<displayName>-scan-state.json` | Per-folder UID cursor for corpus scanning. |

@@ -6,10 +6,15 @@ import net.pieroxy.imf.config.MailFilterRuleMatcherConfiguration;
 import net.pieroxy.imf.rules.actions.ActionType;
 import net.pieroxy.imf.rules.matchers.MatcherType;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import java.io.File;
+import java.nio.file.Files;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -27,6 +32,9 @@ import static org.junit.Assert.assertTrue;
  * Action.build) from a config, then evaluates it against a message.
  */
 public class RuleTest {
+  @org.junit.Rule
+  public TemporaryFolder tmp = new TemporaryFolder();
+
   private final Session session = Session.getDefaultInstance(new Properties());
 
   private MimeMessage messageFrom(String address) throws Exception {
@@ -62,6 +70,37 @@ public class RuleTest {
     Rule rule = new Rule(config);
 
     assertTrue(rule.apply(messageFrom("alice@example.com")).ruleApplied());
+  }
+
+  @Test
+  public void recordsAStatsEventWhenTheMatcherMatches() throws Exception {
+    File statsDir = new File(tmp.getRoot(), "logs");
+    MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
+    config.setMatcher(fromEquals("alice@example.com"));
+    config.setAction(noopAction());
+    RuleContext context = new RuleContext(null, null, null, statsDir);
+
+    Rule rule = new Rule(config, context);
+    rule.apply(messageFrom("alice@example.com"));
+
+    String today = LocalDate.now(ZoneOffset.UTC).toString();
+    List<String> lines = Files.readAllLines(new File(statsDir, "stats-" + today + ".json").toPath());
+    assertEquals(1, lines.size());
+    assertTrue(lines.get(0).contains("FromExactMatcher(alice@example.com)"));
+  }
+
+  @Test
+  public void doesNotRecordAStatsEventWhenTheMatcherDoesNotMatch() throws Exception {
+    File statsDir = new File(tmp.getRoot(), "logs");
+    MailFilterRuleConfiguration config = new MailFilterRuleConfiguration();
+    config.setMatcher(fromEquals("alice@example.com"));
+    config.setAction(noopAction());
+    RuleContext context = new RuleContext(null, null, null, statsDir);
+
+    Rule rule = new Rule(config, context);
+    rule.apply(messageFrom("carol@example.com"));
+
+    assertFalse(statsDir.isDirectory());
   }
 
   @Test
