@@ -56,9 +56,8 @@ same directory — see [Credentials file](#credentials-file).
 | Field | Required | Description |
 |---|---|---|
 | `configurations` | yes | List of accounts to monitor (see below). |
-| `dataFolder` | yes | Directory where IMF persists its own state: per-account UID cursors, learned rules, classifier corpus. Created if missing. |
-| `logFile` | no | Path to a log file. If absent, IMF only logs to the console. |
-| `keepLogFiles` | no | Number of rotated, lz4-compressed daily log files to keep. Only relevant if `logFile` is set; `0` or absent disables rotation. |
+| `dataFolder` | yes | Directory where IMF persists its own state: per-account UID cursors, learned rules, classifier corpus, and logs (`<dataFolder>/logs/log.txt`). Created if missing. |
+| `keepLogFiles` | no | Number of rotated, lz4-compressed daily log files to keep. `0` or absent disables rotation (the log file just keeps growing). |
 | `reputationLists` | no | IP/domain reputation lists to download and refresh (see [Reputation lists](#reputation-lists)). Absent means the feature is off. |
 | `webServer` | no | Embedded web server serving the web UI (see [Web server](#web-server)). Absent, or `enabled: false`, means the feature is off entirely — no Tomcat startup. |
 
@@ -88,7 +87,6 @@ Connections are always made over IMAPS (implicit TLS) — there is no plain-IMAP
 ```json
 {
   "dataFolder": "/var/lib/imf",
-  "logFile": "/var/log/imf/imf.log",
   "keepLogFiles": 14,
   "configurations": [
     {
@@ -378,8 +376,8 @@ used by the learning system above, marked unread the same way) for manual review
 
 ## Logging
 
-Console logging is always on. Setting `logFile` also writes to that file, rotating daily into
-lz4-compressed archives (kept for `keepLogFiles` days) if `keepLogFiles > 0`.
+Console logging is always on. IMF also always writes to `<dataFolder>/logs/log.txt`, rotating
+daily into lz4-compressed archives (kept for `keepLogFiles` days) if `keepLogFiles > 0`.
 
 Each matcher/action node in a rule has its own logger, independently leveled via that node's
 `logLevel` config field (default `INFO`). Setting `"logLevel": "DEBUG"` on an
@@ -395,6 +393,7 @@ Everything IMF persists lives under `dataFolder`, one file/folder per account (k
 
 | Path | Contents |
 |---|---|
+| `logs/log.txt` | Current log file (see [Logging](#logging)); rotated into `logs/log.txt.N.lz4` archives. |
 | `<displayName>.json` | INBOX UID cursor (which messages have already been processed). |
 | `<displayName>-learned-rules.json` | Rules learned via `imf-rules/` (see above). Hand-editable. |
 | `classifier-corpus/<displayName>-scan-state.json` | Per-folder UID cursor for corpus scanning. |

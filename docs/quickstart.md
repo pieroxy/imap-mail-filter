@@ -22,13 +22,12 @@ Edit `config.json` and `credentials.json`:
 - In `credentials.json`, fill in `username`/`password` for the `personal` entry (or rename it —
   just keep it matching the `credentials` key used in `config.json`).
 - In `config.json`, fill in `host` (and `port`/`displayName` if needed) under `configurations`.
-- For this first try, point `dataFolder` and `logFile` at plain local paths instead of the
-  `/var/lib`/`/var/log` ones in the example — you don't have write access there yet, and you
-  don't want to run as root just to test:
+- For this first try, point `dataFolder` at a plain local path instead of `/var/lib/imf` in the
+  example — you don't have write access there yet, and you don't want to run as root just to
+  test:
 
   ```json
   "dataFolder": "./data",
-  "logFile": "./imf.log",
   ```
 
 See the [configuration reference](README.md#configuration-file) for what every field does —
@@ -44,30 +43,30 @@ java -jar imf-core-1.0.0.jar .
 
 IMF starts one thread per account, connects, creates the `imf-rules/` folder skeleton used for
 [learning rules by example](README.md#learning-rules-by-example), and begins polling every
-`runEvery` seconds. Watch `./imf.log` (or the console) to confirm it's picking up mail and
-matching rules. Ctrl-C stops it.
+`runEvery` seconds. Watch `./data/logs/log.txt` (or the console) to confirm it's picking up mail
+and matching rules. Ctrl-C stops it.
 
 Once you're satisfied it's working, move on to running it as a service.
 
 ## 2. Run it as a systemd service on Linux
 
-This sets IMF up under a dedicated, unprivileged system user, with the FHS-style paths the
-example config already assumes (`/var/lib/imf`, `/var/log/imf`).
+This sets IMF up under a dedicated, unprivileged system user, with the FHS-style path the example
+config already assumes (`/var/lib/imf`, which also holds the logs — see
+[Logging](README.md#logging)).
 
-Create the user and directories:
+Create the user and directory:
 
 ```sh
 sudo useradd --system --home /opt/imf --shell /usr/sbin/nologin imf
-sudo mkdir -p /opt/imf /var/lib/imf /var/log/imf
+sudo mkdir -p /opt/imf /var/lib/imf
 ```
 
-Put the jar and your finished `config.json`/`credentials.json` (from step 1, with
-`dataFolder`/`logFile` switched back to `/var/lib/imf`/`/var/log/imf/imf.log` as in the example)
-into `/opt/imf`:
+Put the jar and your finished `config.json`/`credentials.json` (from step 1, with `dataFolder`
+switched back to `/var/lib/imf` as in the example) into `/opt/imf`:
 
 ```sh
 sudo cp imf-core-1.0.0.jar config.json credentials.json /opt/imf/
-sudo chown -R imf:imf /opt/imf /var/lib/imf /var/log/imf
+sudo chown -R imf:imf /opt/imf /var/lib/imf
 sudo chmod 600 /opt/imf/credentials.json
 ```
 
@@ -90,7 +89,7 @@ RestartSec=30
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/imf /var/log/imf
+ReadWritePaths=/var/lib/imf
 
 [Install]
 WantedBy=multi-user.target
@@ -108,7 +107,7 @@ sudo systemctl enable --now imf
 sudo systemctl status imf
 ```
 
-Two places to look for logs: `/var/log/imf/imf.log` (IMF's own rotating log, per `logFile`/
+Two places to look for logs: `/var/lib/imf/logs/log.txt` (IMF's own rotating log, per
 `keepLogFiles` in the config — see [Logging](README.md#logging)) for the day-to-day activity,
 and `journalctl -u imf -f` for service-level output (startup, crashes, anything printed before
 the log file is set up).

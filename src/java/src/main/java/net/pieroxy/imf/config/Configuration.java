@@ -5,7 +5,6 @@ import java.util.List;
 public class Configuration {
   private List<MailAccountConfiguration> configurations;
   private String dataFolder;
-  private String logFile;
   private int keepLogFiles;
   /** IP/domain reputation sources (see {@link ReputationListConfig}) — absent = feature disabled. */
   private List<ReputationListConfig> reputationLists;
@@ -25,14 +24,6 @@ public class Configuration {
 
   public void setDataFolder(String dataFolder) {
     this.dataFolder = dataFolder;
-  }
-
-  public String getLogFile() {
-    return logFile;
-  }
-
-  public void setLogFile(String logFile) {
-    this.logFile = logFile;
   }
 
   public int getKeepLogFiles() {

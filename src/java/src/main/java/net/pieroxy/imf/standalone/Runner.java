@@ -27,6 +27,7 @@ public class Runner {
   private final static String GIT_REV;
   private final static String MVN_VER;
   private static Configuration config;
+  private static String logFile;
   private static final List<MailAccount> accounts = new ArrayList<>();
   private static ReputationRegistry reputationRegistry;
   private static Tomcat webServer;
@@ -50,7 +51,8 @@ public class Runner {
     Gson gson = new Gson();
     Runner.config = gson.fromJson(new FileReader(new File(args[0], "config.json")), Configuration.class);
     CredentialsFile credentialsFile = gson.fromJson(new FileReader(new File(args[0], "credentials.json")), CredentialsFile.class);
-    LoggingBootstrap.configure(config.getLogFile(), config.getKeepLogFiles());
+    logFile = new File(config.getDataFolder(), "logs/log.txt").getAbsolutePath();
+    LoggingBootstrap.configure(logFile, config.getKeepLogFiles());
 
     reputationRegistry = new ReputationRegistry(config.getReputationLists(), config.getDataFolder());
     reputationRegistry.start();
@@ -111,13 +113,10 @@ public class Runner {
   private static void logDirectly(String message) {
     String line = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + " " + message;
     System.err.println(line);
-    String logFile = config.getLogFile();
-    if (logFile != null && !logFile.isBlank()) {
-      try (FileWriter writer = new FileWriter(logFile, true)) {
-        writer.write(line + System.lineSeparator());
-      } catch (IOException ignored) {
-        // best effort: nothing more reliable to do at this stage of shutdown.
-      }
+    try (FileWriter writer = new FileWriter(logFile, true)) {
+      writer.write(line + System.lineSeparator());
+    } catch (IOException ignored) {
+      // best effort: nothing more reliable to do at this stage of shutdown.
     }
   }
 
