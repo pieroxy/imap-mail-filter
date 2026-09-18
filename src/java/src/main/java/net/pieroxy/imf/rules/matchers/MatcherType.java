@@ -14,6 +14,7 @@ import net.pieroxy.imf.rules.matchers.implementations.HeaderClassifierMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.IpReputationMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.NotMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.OrMatcher;
+import net.pieroxy.imf.rules.matchers.implementations.RegexpFromAddressMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SpfResultMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SubjectClassifierMatcher;
 import net.pieroxy.imf.rules.matchers.implementations.SubjectStartsWithMatcher;
@@ -26,6 +27,9 @@ public enum MatcherType {
   FROM_EQUALS(FromExactMatcher::new, true),
   FROM_ADDRESS_EQUALS(FromAddressMatcher::new, true),
   FROM_DOMAIN_EQUALS(FromDomainMatcher::new, true),
+  // Not learnable: unlike a literal address or domain, there's no sensible way to generalize a
+  // regular expression from one example message.
+  FROM_ADDRESS_REGEXP(RegexpFromAddressMatcher::new, false),
   SUBJECT_STARTS_WITH(SubjectStartsWithMatcher::new, true),
   // Not learnable: the possible key (pass/fail/softfail/...) is a fixed, already-documented
   // set, not a specific value to discover from the example. And unlike FROM_*, the learned

@@ -15,6 +15,15 @@ public class MatcherTypeTest {
     assertTrue(MatcherType.learnableValues().contains(MatcherType.SUBJECT_STARTS_WITH));
   }
 
+  /**
+   * Not learnable: unlike a literal address or domain, there's no sensible way to generalize a
+   * regular expression from one example message.
+   */
+  @Test
+  public void regexpFromAddressIsNotLearnable() {
+    assertFalse(MatcherType.learnableValues().contains(MatcherType.FROM_ADDRESS_REGEXP));
+  }
+
   @Test
   public void compositeTypesAreNotLearnable() {
     assertFalse(MatcherType.learnableValues().contains(MatcherType.AND));
